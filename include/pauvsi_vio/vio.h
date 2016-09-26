@@ -10,6 +10,9 @@
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/calib3d.hpp>
+#include <opencv2/features2d.hpp>
+#include "opencv2/core/core.hpp"
+#include "opencv2/features2d/features2d.hpp"
 #include <vector>
 #include <string>
 #include <ros/ros.h>
@@ -20,6 +23,7 @@
 #define DEFAULT_NUM_KEYFRAMES 1
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
 #define DEFAULT_IMU_TOPIC "/IMU_Full"
+#define DEFAULT_FAST_THRESHOLD 20
 
 class VIO
 {
@@ -36,6 +40,8 @@ private:
 
 	std::vector<double> position; // the current position
 	std::vector<double> orientation; // the current orientation
+
+	int fastThreshold;
 
 public:
 
@@ -65,6 +71,8 @@ public:
 	void viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints);
 
 	std::vector<cv::KeyPoint> computeFASTFeatures(cv::Mat, int);
+
+	cv::Mat extractDescriptors(cv::Mat, std::vector<cv::KeyPoint>);
 
 };
 

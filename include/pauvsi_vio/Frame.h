@@ -23,6 +23,7 @@ public:
 	ros::Time timeCreated;
 	cv::Mat image;
 	std::vector<cv::KeyPoint> corners;
+	cv::Mat descriptors;
 
 	Frame(cv::Mat img, ros::Time t)
 	{

@@ -39,6 +39,8 @@ void VIO::correctPosition(std::vector<double> pos)
 void VIO::setCurrentFrame(cv::Mat frame, ros::Time t)
 {
 	currentFrame = Frame(frame, t);
+	currentFrame.corners = this->computeFASTFeatures(currentFrame.image, this->fastThreshold);
+	currentFrame.descriptors = this->extractDescriptors(currentFrame.image, currentFrame.corners);
 }
 
 /*
@@ -55,6 +57,8 @@ void VIO::readROSParameters()
 	ROS_WARN_COND(!ros::param::has("~imuTopic"), "Parameter for 'imuTopic' has not been set");
 	ros::param::param<std::string>("~imuTopic", imuTopic, DEFAULT_IMU_TOPIC);
 	ROS_DEBUG_STREAM("IMU topic is: " << imuTopic);
+
+	ros::param::param<int>("~fast_threshold", fastThreshold, DEFAULT_FAST_THRESHOLD);
 }
 
 /*
@@ -62,8 +66,15 @@ void VIO::readROSParameters()
  */
 std::vector<cv::KeyPoint> VIO::computeFASTFeatures(cv::Mat img, int threshold){
 	std::vector<cv::KeyPoint> corners;
-	cv::FAST(img, corners, threshold);
+	cv::FAST(img, corners, threshold, true); // detect with nonmax suppression
 	return corners;
+}
+
+/*
+ * uses the ORB algorithm to extract feature descriptors
+ */
+cv::Mat VIO::extractDescriptors(cv::Mat img, std::vector<cv::KeyPoint> corners){
+
 }
 
 

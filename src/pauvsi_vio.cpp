@@ -10,7 +10,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	cv::Mat temp = cv_bridge::toCvShare(msg, "mono8")->image.clone();
 	vio.setCurrentFrame(temp, cv_bridge::toCvCopy(msg, "mono8")->header.stamp); //set the current frame and its time created
-	//vio.viewImage(vio.getCurrentFrame().image, vio.computeFASTFeatures(vio.getCurrentFrame().image, 9));
+	vio.viewImage(vio.getCurrentFrame().image, vio.getCurrentFrame().corners);
 }
 
 int main(int argc, char **argv)
