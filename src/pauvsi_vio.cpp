@@ -11,7 +11,10 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 	ros::Time start = ros::Time::now();
 	cv::Mat temp = cv_bridge::toCvShare(msg, "mono8")->image.clone();
 	vio.setCurrentFrame(temp, cv_bridge::toCvCopy(msg, "mono8")->header.stamp); //set the current frame and its time created
+
 	//vio.viewImage(vio.getCurrentFrame().image, vio.getCurrentFrame().corners);
+	//if(vio.isLastFrameSet()){vio.viewImage(vio.getLastFrame(), vio.getCurrentFrame(), vio.matchFeaturesWithFlann(vio.getLastFrame().descriptors, vio.getCurrentFrame().descriptors));}
+
 	ROS_DEBUG_STREAM("message #" << cv_bridge::toCvShare(msg, "mono8")->header.seq << " finished in " << (ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds");
 }
 

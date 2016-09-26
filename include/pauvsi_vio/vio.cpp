@@ -9,7 +9,8 @@
 
 VIO::VIO()
 {
-
+	this->lastFrameSet = false;
+	this->currentFrameSet = false;
 }
 
 /*
@@ -20,8 +21,20 @@ void VIO::viewImage(cv::Mat img){
 	cv::waitKey(30);
 }
 
+/*
+ * draws frame with its features
+ */
 void VIO::viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints){
 	cv::drawKeypoints(img, keypoints, img);
+	this->viewImage(img);
+}
+
+/*
+ * draws the matches between two frames
+ */
+void VIO::viewImage(Frame frame1, Frame frame2, std::vector<cv::DMatch> matches){
+	cv::Mat img;
+	cv::drawMatches(frame1.image, frame1.corners, frame2.image, frame2.corners, matches, img);
 	this->viewImage(img);
 }
 
@@ -34,14 +47,31 @@ void VIO::correctPosition(std::vector<double> pos)
 }
 
 /*
- * sets the current frame and starts keyframe update
+ * sets the current frame and computes important
+ * info about it
+ * finds corners
+ * describes corners
  */
 void VIO::setCurrentFrame(cv::Mat frame, ros::Time t)
 {
-	//ROS_DEBUG("setting frame");
+	if(currentFrameSet)
+	{
+		//first set the last frame to current frame
+		lastFrame = currentFrame;
+		lastFrameSet = true; // the last frame has been set
+	}
+
 	currentFrame = Frame(frame, t);
-	currentFrame.corners = this->computeFASTFeatures(currentFrame.image, this->fastThreshold);
-	currentFrame.descriptors = this->extractBRIEFDescriptors(currentFrame.image, currentFrame.corners);
+	currentFrame.corners = this->computeFASTFeatures(currentFrame.image, this->fastThreshold); // get frame's features
+	currentFrame.descriptors = this->extractBRIEFDescriptors(currentFrame.image, currentFrame.corners); //describes frame's features
+	currentFrameSet = true;
+
+	// if there is a last frame to process off of and it has descriptors
+	if(this->isLastFrameSet())
+	{
+		//match the new last frame to the new current frame
+		this->matchesFromLastToCurrentFrame = this->matchFeaturesWithFlann(lastFrame.descriptors, currentFrame.descriptors);
+	}
 }
 
 /*
@@ -93,5 +123,23 @@ cv::Mat VIO::extractBRIEFDescriptors(cv::Mat img, std::vector<cv::KeyPoint> corn
 	ROS_DEBUG_STREAM_THROTTLE(2, "descriptor size: " << descriptors.cols << " X " << descriptors.rows);
 	return descriptors;
 }
+
+/*
+ * In the first variant of this method, the train descriptors are passed as an input argument. In the
+ * second variant of the method, train descriptors collection that was set by DescriptorMatcher::add is
+ * used. Optional mask (or masks) can be passed to specify which query and training descriptors can be
+ * matched. Namely, queryDescriptors[i] can be matched with trainDescriptors[j] only if
+ * mask.at\<uchar\>(i,j) is non-zero.
+ */
+std::vector<cv::DMatch> VIO::matchFeaturesWithFlann(cv::Mat query, cv::Mat train){
+	std::vector<cv::DMatch> matches;
+	cv::FlannBasedMatcher matcher(new cv::flann::LshIndexParams(20, 10, 2));
+	matcher.match(query, train, matches);
+
+	ROS_DEBUG_STREAM("query size: " << query.rows << " train size: " << train.rows << " matches size: " << matches.size());
+
+	return matches;
+}
+
 
 

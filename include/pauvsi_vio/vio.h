@@ -21,10 +21,9 @@
 #include "Frame.h"
 
 
-#define DEFAULT_NUM_KEYFRAMES 1
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
 #define DEFAULT_IMU_TOPIC "/IMU_Full"
-#define DEFAULT_FAST_THRESHOLD 20
+#define DEFAULT_FAST_THRESHOLD 100
 
 class VIO
 {
@@ -36,8 +35,11 @@ private:
 	std::string imuTopic;
 
 	Frame currentFrame;
-	std::vector<Frame> keyFrames; //the keyFrame vector
-	int numKeyFrames; //number of keyframes to keep track of
+	bool currentFrameSet;
+	Frame lastFrame; //the last frame
+	bool lastFrameSet;
+
+	std::vector<cv::DMatch> matchesFromLastToCurrentFrame;
 
 	std::vector<double> position; // the current position
 	std::vector<double> orientation; // the current orientation
@@ -62,6 +64,20 @@ public:
 	}
 
 	/*
+	 * checks if the last frame has been set
+	 */
+	bool isLastFrameSet(){
+		return this->lastFrameSet;
+	}
+
+	/*
+	 * gets the last frame
+	 */
+	Frame getLastFrame(){
+		return lastFrame;
+	}
+
+	/*
 	 * returns the camera topic used by this node
 	 */
 	std::string getCameraTopic(){
@@ -70,13 +86,15 @@ public:
 
 	void viewImage(cv::Mat img);
 	void viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints);
+	void viewImage(Frame frame1, Frame frame2, std::vector<cv::DMatch> matches);
 
 	std::vector<cv::KeyPoint> computeFASTFeatures(cv::Mat, int);
 
 	cv::Mat extractFREAKDescriptors(cv::Mat, std::vector<cv::KeyPoint>);
 	cv::Mat extractBRIEFDescriptors(cv::Mat, std::vector<cv::KeyPoint>);
 
-	void run();
+	std::vector<cv::DMatch> matchFeaturesWithFlann(cv::Mat queryDescriptors, cv::Mat trainDescriptors);
+
 
 };
 
