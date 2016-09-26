@@ -8,9 +8,11 @@ VIO vio; // create an instance of the visual odometry algorithm
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
+	ros::Time start = ros::Time::now();
 	cv::Mat temp = cv_bridge::toCvShare(msg, "mono8")->image.clone();
 	vio.setCurrentFrame(temp, cv_bridge::toCvCopy(msg, "mono8")->header.stamp); //set the current frame and its time created
-	vio.viewImage(vio.getCurrentFrame().image, vio.getCurrentFrame().corners);
+	//vio.viewImage(vio.getCurrentFrame().image, vio.getCurrentFrame().corners);
+	ROS_DEBUG_STREAM("message #" << cv_bridge::toCvShare(msg, "mono8")->header.seq << " finished in " << (ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds");
 }
 
 int main(int argc, char **argv)

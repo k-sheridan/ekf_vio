@@ -13,6 +13,7 @@
 #include <opencv2/features2d.hpp>
 #include "opencv2/core/core.hpp"
 #include "opencv2/features2d/features2d.hpp"
+#include "opencv2/xfeatures2d.hpp"
 #include <vector>
 #include <string>
 #include <ros/ros.h>
@@ -72,7 +73,10 @@ public:
 
 	std::vector<cv::KeyPoint> computeFASTFeatures(cv::Mat, int);
 
-	cv::Mat extractDescriptors(cv::Mat, std::vector<cv::KeyPoint>);
+	cv::Mat extractFREAKDescriptors(cv::Mat, std::vector<cv::KeyPoint>);
+	cv::Mat extractBRIEFDescriptors(cv::Mat, std::vector<cv::KeyPoint>);
+
+	void run();
 
 };
 

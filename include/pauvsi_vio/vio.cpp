@@ -38,9 +38,10 @@ void VIO::correctPosition(std::vector<double> pos)
  */
 void VIO::setCurrentFrame(cv::Mat frame, ros::Time t)
 {
+	//ROS_DEBUG("setting frame");
 	currentFrame = Frame(frame, t);
 	currentFrame.corners = this->computeFASTFeatures(currentFrame.image, this->fastThreshold);
-	currentFrame.descriptors = this->extractDescriptors(currentFrame.image, currentFrame.corners);
+	currentFrame.descriptors = this->extractBRIEFDescriptors(currentFrame.image, currentFrame.corners);
 }
 
 /*
@@ -71,10 +72,26 @@ std::vector<cv::KeyPoint> VIO::computeFASTFeatures(cv::Mat img, int threshold){
 }
 
 /*
- * uses the ORB algorithm to extract feature descriptors
+ * uses the FREAK algorithm to extract feature descriptors
  */
-cv::Mat VIO::extractDescriptors(cv::Mat img, std::vector<cv::KeyPoint> corners){
+cv::Mat VIO::extractFREAKDescriptors(cv::Mat img, std::vector<cv::KeyPoint> corners){
+	cv::Ptr<cv::xfeatures2d::FREAK> extractor = cv::xfeatures2d::FREAK::create();
+	cv::Mat descriptors;
+	extractor->compute(img, corners, descriptors);
+	//ROS_DEBUG_STREAM_THROTTLE(2, "descriptor size: " << descriptors.cols << " X " << descriptors.rows);
+	return descriptors;
+}
 
+/*
+ * uses the BRIEF algorithm to extract feature descriptors
+ * This is the faster than FREAK
+ */
+cv::Mat VIO::extractBRIEFDescriptors(cv::Mat img, std::vector<cv::KeyPoint> corners){
+	cv::Ptr<cv::xfeatures2d::BriefDescriptorExtractor> extractor = cv::xfeatures2d::BriefDescriptorExtractor::create();
+	cv::Mat descriptors;
+	extractor->compute(img, corners, descriptors);
+	ROS_DEBUG_STREAM_THROTTLE(2, "descriptor size: " << descriptors.cols << " X " << descriptors.rows);
+	return descriptors;
 }
 
 
