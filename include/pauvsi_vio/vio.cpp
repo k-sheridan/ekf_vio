@@ -9,7 +9,20 @@
 
 VIO::VIO()
 {
-	this->readROSParameters(); //import the parameters from server
+
+}
+
+/*
+ * shows cv::Mat
+ */
+void VIO::viewImage(cv::Mat img){
+	cv::imshow("test", img);
+	cv::waitKey(30);
+}
+
+void VIO::viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints){
+	cv::drawKeypoints(img, keypoints, img);
+	this->viewImage(img);
 }
 
 /*
@@ -42,6 +55,15 @@ void VIO::readROSParameters()
 	ROS_WARN_COND(!ros::param::has("~imuTopic"), "Parameter for 'imuTopic' has not been set");
 	ros::param::param<std::string>("~imuTopic", imuTopic, DEFAULT_IMU_TOPIC);
 	ROS_DEBUG_STREAM("IMU topic is: " << imuTopic);
+}
+
+/*
+ * finds the features within an image
+ */
+std::vector<cv::KeyPoint> VIO::computeFASTFeatures(cv::Mat img, int threshold){
+	std::vector<cv::KeyPoint> corners;
+	cv::FAST(img, corners, threshold);
+	return corners;
 }
 
 

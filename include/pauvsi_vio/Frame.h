@@ -22,7 +22,7 @@ private:
 public:
 	ros::Time timeCreated;
 	cv::Mat image;
-	std::vector<cv::Point2d> corners;
+	std::vector<cv::KeyPoint> corners;
 
 	Frame(cv::Mat img, ros::Time t)
 	{
@@ -41,6 +41,10 @@ public:
 	double getAgeSeconds()
 	{
 		return ros::Time::now().toSec() - this->timeCreated.toSec();
+	}
+
+	void setCorners(std::vector<cv::KeyPoint> _corners){
+		this->corners = _corners;
 	}
 
 };

@@ -26,6 +26,10 @@ class VIO
 
 private:
 
+	//global vars initialized with default values
+	std::string cameraTopic;
+	std::string imuTopic;
+
 	Frame currentFrame;
 	std::vector<Frame> keyFrames; //the keyFrame vector
 	int numKeyFrames; //number of keyframes to keep track of
@@ -35,10 +39,6 @@ private:
 
 public:
 
-	//global vars initialized with default values
-	std::string cameraTopic;
-	std::string imuTopic;
-
 	VIO();
 
 	void correctPosition(std::vector<double> pos);
@@ -46,6 +46,25 @@ public:
 	void readROSParameters();
 
 	void setCurrentFrame(cv::Mat frame, ros::Time t);
+
+	/*
+	 * gets the most recently added frame
+	 */
+	Frame getCurrentFrame(){
+		return currentFrame;
+	}
+
+	/*
+	 * returns the camera topic used by this node
+	 */
+	std::string getCameraTopic(){
+		return cameraTopic;
+	}
+
+	void viewImage(cv::Mat img);
+	void viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints);
+
+	std::vector<cv::KeyPoint> computeFASTFeatures(cv::Mat, int);
 
 };
 

@@ -10,6 +10,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	cv::Mat temp = cv_bridge::toCvShare(msg, "mono8")->image.clone();
 	vio.setCurrentFrame(temp, cv_bridge::toCvCopy(msg, "mono8")->header.stamp); //set the current frame and its time created
+	//vio.viewImage(vio.getCurrentFrame().image, vio.computeFASTFeatures(vio.getCurrentFrame().image, 9));
 }
 
 int main(int argc, char **argv)
@@ -17,10 +18,12 @@ int main(int argc, char **argv)
 	ros::init(argc, argv, "pauvsi_vio", ros::init_options::AnonymousName); // initializes with a randomish name
 	ros::NodeHandle nh;
 
+	vio.readROSParameters(); // read parameters into vio class from parameter server
+
 	//set up image transport
 	image_transport::ImageTransport it(nh);
 	image_transport::Subscriber imageSub;
-	imageSub = it.subscribe(vio.cameraTopic, 1, imageCallback);
+	imageSub = it.subscribe(vio.getCameraTopic(), 1, imageCallback);
 
 	ros::spin();
 
