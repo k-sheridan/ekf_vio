@@ -43,7 +43,7 @@ public:
 
 	void correctPosition(std::vector<double> pos);
 
-	void getROSParameters();
+	void readROSParameters();
 
 	void setCurrentFrame(cv::Mat frame, ros::Time t);
 

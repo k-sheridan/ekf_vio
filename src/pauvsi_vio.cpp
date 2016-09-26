@@ -8,7 +8,7 @@ VIO vio; // create an instance of the visual odometry algorithm
 
 void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
-	cv::Mat temp = cv_bridge::toCvShare(msg, "mono8")->image;
+	cv::Mat temp = cv_bridge::toCvShare(msg, "mono8")->image.clone();
 	vio.setCurrentFrame(temp, cv_bridge::toCvCopy(msg, "mono8")->header.stamp); //set the current frame and its time created
 }
 

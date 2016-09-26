@@ -9,7 +9,7 @@
 
 VIO::VIO()
 {
-	this->getROSParameters(); //import the parameters from server
+	this->readROSParameters(); //import the parameters from server
 }
 
 /*
@@ -31,7 +31,7 @@ void VIO::setCurrentFrame(cv::Mat frame, ros::Time t)
 /*
  * gets parameters from ROS param server
  */
-void VIO::getROSParameters()
+void VIO::readROSParameters()
 {
 	//CAMERA TOPIC
 	ROS_WARN_COND(!ros::param::has("~cameraTopic"), "Parameter for 'cameraTopic' has not been set");

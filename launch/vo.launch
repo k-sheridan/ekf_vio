@@ -1,0 +1,26 @@
+<launch>
+	
+	<param name="m7_description" command="cat $(find pauvsi_m7)/urdf/pauvsi_m7_robot.urdf" />
+	
+	<node pkg="robot_state_publisher" type="robot_state_publisher" name="m7_state_pub" >
+      <remap from="robot_description" to="m7_description" />
+      <remap from="joint_states" to="/arm/jointStates" />
+    </node>
+
+	<node name="camera" pkg="pauvsi_pgc_driver" type="pgcDriver" output="screen">
+		<param name="frame_rate" value="150" />
+  		<param name="serial_number" value="15374828" />
+  		<param name="publish_rectified" value="false" />
+		<param name="publish_distort" value="true" />
+		<param name="publish_color" value="false" />
+		<param name="publish_mono" value="true" />
+		<param name="topic" value="/camera/bottom"/>
+		<param name="frame" value="bottomCamera"/>
+		<rosparam file="$(find pauvsi_pgc_driver)/params/13Y3C_params.yaml"/>
+	</node>
+	
+	<node name="vio" pkg="pauvsi_vio" type="pauvsi_vio" output="screen">
+	</node>
+	
+	
+</launch>
