@@ -37,15 +37,14 @@ private:
 	std::string cameraTopic;
 	std::string imuTopic;
 
-	Frame currentFrame;
-	bool currentFrameSet;
+	Frame currentFrame; // the current frame
 	Frame lastFrame; //the last frame
-	bool lastFrameSet;
-
-	std::vector<cv::DMatch> matchesFromLastToCurrentFrame;
 
 	std::vector<double> position; // the current position
 	std::vector<double> orientation; // the current orientation
+
+	std::vector<VIOFeature3D> active3DFeatures;
+	std::vector<VIOFeature3D> inactive3DFeatures;
 
 	int fastThreshold;
 
@@ -67,13 +66,6 @@ public:
 	}
 
 	/*
-	 * checks if the last frame has been set
-	 */
-	bool isLastFrameSet(){
-		return this->lastFrameSet;
-	}
-
-	/*
 	 * gets the last frame
 	 */
 	Frame getLastFrame(){
@@ -89,11 +81,6 @@ public:
 
 	void viewImage(cv::Mat img);
 	void viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints);
-
-	std::vector<cv::KeyPoint> computeFASTFeatures(cv::Mat, int);
-
-	cv::Mat extractFREAKDescriptors(cv::Mat, std::vector<cv::KeyPoint>);
-	cv::Mat extractBRIEFDescriptors(cv::Mat, std::vector<cv::KeyPoint>);
 
 	std::vector<cv::DMatch> matchFeaturesWithFlann(cv::Mat queryDescriptors, cv::Mat trainDescriptors);
 

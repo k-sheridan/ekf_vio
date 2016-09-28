@@ -52,6 +52,49 @@ public:
 		described = true; // the feature has not been described with this constructor
 	}
 
+	cv::KeyPoint getFASTCorner(){
+		return fast_corner;
+	}
+
+	cv::Point2f getFeaturePosition(){
+		return position;
+	}
+
+	cv::Mat getFeatureDescription(){
+		return description;
+	}
+
+	bool isFeatureDescribed(){
+		return described;
+	}
+
+	int getFeatureID(){
+		return id;
+	}
+
+	/*
+	 * sets the corner and position of feature
+	 */
+	void setFASTCorner(cv::KeyPoint kp){
+		fast_corner = kp;
+		position = kp.pt;
+	}
+
+	void setFeaturePosition(cv::Point2f pt){
+		position = pt;
+	}
+
+	/*
+	 * sets the description and sets the feature to described
+	 */
+	void setFeatureDescription(cv::Mat desc){
+		description = desc;
+		described = true;
+	}
+
+	void setFeatureID(int _id){
+		id = _id;
+	}
 
 };
 
