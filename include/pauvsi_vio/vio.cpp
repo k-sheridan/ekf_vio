@@ -34,7 +34,7 @@ void VIO::viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints){
  */
 void VIO::viewImage(Frame frame1, Frame frame2, std::vector<cv::DMatch> matches){
 	cv::Mat img;
-	cv::drawMatches(frame1.image, frame1.corners, frame2.image, frame2.corners, matches, img);
+	//cv::drawMatches(frame1.image, frame1.corners, frame2.image, frame2.corners, matches, img);
 	this->viewImage(img);
 }
 
@@ -52,7 +52,7 @@ void VIO::correctPosition(std::vector<double> pos)
  * finds corners
  * describes corners
  */
-void VIO::setCurrentFrame(cv::Mat frame, ros::Time t)
+void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 {
 	if(currentFrameSet)
 	{
@@ -61,16 +61,16 @@ void VIO::setCurrentFrame(cv::Mat frame, ros::Time t)
 		lastFrameSet = true; // the last frame has been set
 	}
 
-	currentFrame = Frame(frame, t);
-	currentFrame.corners = this->computeFASTFeatures(currentFrame.image, this->fastThreshold); // get frame's features
-	currentFrame.descriptors = this->extractBRIEFDescriptors(currentFrame.image, currentFrame.corners); //describes frame's features
+	currentFrame = Frame(img, t);
+	//currentFrame.corners = this->computeFASTFeatures(currentFrame.image, this->fastThreshold); // get frame's features
+	//currentFrame.descriptors = this->extractBRIEFDescriptors(currentFrame.image, currentFrame.corners); //describes frame's features
 	currentFrameSet = true;
 
 	// if there is a last frame to process off of and it has descriptors
 	if(this->isLastFrameSet())
 	{
 		//match the new last frame to the new current frame
-		this->matchesFromLastToCurrentFrame = this->matchFeaturesWithFlann(lastFrame.descriptors, currentFrame.descriptors);
+		//this->matchesFromLastToCurrentFrame = this->matchFeaturesWithFlann(lastFrame.descriptors, currentFrame.descriptors);
 	}
 }
 
@@ -148,15 +148,15 @@ std::vector<cv::DMatch> VIO::matchFeaturesWithFlann(cv::Mat query, cv::Mat train
  * This function does not require a prediction
  */
 std::vector<cv::KeyPoint> VIO::findFeaturesInNewImage(Frame oldFrame, cv::Mat newImage){
-	cv::KeyPoint pointConverter;
-	std::vector<cv::Point2f> newPoints;
-	std::vector<cv::Point2f> oldPoints;
-	pointConverter.convert(oldFrame.corners, oldPoints); // convert the Keypoints to point2fs
+	//cv::KeyPoint pointConverter;
+	//std::vector<cv::Point2f> newPoints;
+	//std::vector<cv::Point2f> oldPoints;
+	//pointConverter.convert(oldFrame.corners, oldPoints); // convert the Keypoints to point2fs
 
-	std::vector<unsigned char> status; // status vector for each point
-	std::vector<int> error; // error vector for each point
+	//std::vector<unsigned char> status; // status vector for each point
+	//std::vector<int> error; // error vector for each point
 
-	cv::calcOpticalFlowPyrLK(oldFrame.image, newImage, oldPoints, newPoints, status, error);
+	//cv::calcOpticalFlowPyrLK(oldFrame.image, newImage, oldPoints, newPoints, status, error);
 }
 
 

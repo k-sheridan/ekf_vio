@@ -10,9 +10,16 @@
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/calib3d.hpp>
+#include <opencv2/features2d.hpp>
+#include "opencv2/core/core.hpp"
+#include "opencv2/features2d/features2d.hpp"
+#include "opencv2/xfeatures2d.hpp"
+#include "opencv2/video.hpp"
 #include <vector>
 #include <string>
 #include <ros/ros.h>
+
+#include "VIOFeature2D.hpp"
 
 class Frame
 {
@@ -22,8 +29,7 @@ private:
 public:
 	ros::Time timeCreated;
 	cv::Mat image;
-	std::vector<cv::KeyPoint> corners; //raw corners from detector
-	cv::Mat descriptors; // descriptors of corners
+	std::vector<VIOFeature2D> features; //the feature vector for this frame
 
 	Frame(cv::Mat img, ros::Time t)
 	{
@@ -42,10 +48,6 @@ public:
 	double getAgeSeconds()
 	{
 		return ros::Time::now().toSec() - this->timeCreated.toSec();
-	}
-
-	void setCorners(std::vector<cv::KeyPoint> _corners){
-		this->corners = _corners;
 	}
 
 };

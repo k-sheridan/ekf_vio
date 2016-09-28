@@ -23,6 +23,7 @@ class VIOFeature2D
 {
 
 private:
+	unsigned int id;
 	cv::KeyPoint fast_corner;
 	cv::Point2f position;
 	cv::Mat description;

@@ -20,11 +20,13 @@
 #include <ros/ros.h>
 
 #include "Frame.hpp"
+#include "VIOFeature3D.hpp"
+#include "VIOFeature2D.hpp"
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
 #define DEFAULT_IMU_TOPIC "/IMU_Full"
-#define DEFAULT_FAST_THRESHOLD 100
+#define DEFAULT_FAST_THRESHOLD 50
 
 class VIO
 {
