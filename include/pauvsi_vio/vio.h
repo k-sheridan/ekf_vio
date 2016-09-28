@@ -14,11 +14,12 @@
 #include "opencv2/core/core.hpp"
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/xfeatures2d.hpp"
+#include "opencv2/video.hpp"
 #include <vector>
 #include <string>
 #include <ros/ros.h>
 
-#include "Frame.h"
+#include "Frame.hpp"
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -95,6 +96,7 @@ public:
 
 	std::vector<cv::DMatch> matchFeaturesWithFlann(cv::Mat queryDescriptors, cv::Mat trainDescriptors);
 
+	std::vector<cv::KeyPoint> findFeaturesInNewImage(Frame oldFrame, cv::Mat newImage);
 
 };
 

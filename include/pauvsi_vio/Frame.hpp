@@ -22,8 +22,8 @@ private:
 public:
 	ros::Time timeCreated;
 	cv::Mat image;
-	std::vector<cv::KeyPoint> corners;
-	cv::Mat descriptors;
+	std::vector<cv::KeyPoint> corners; //raw corners from detector
+	cv::Mat descriptors; // descriptors of corners
 
 	Frame(cv::Mat img, ros::Time t)
 	{

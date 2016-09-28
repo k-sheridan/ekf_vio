@@ -125,6 +125,8 @@ cv::Mat VIO::extractBRIEFDescriptors(cv::Mat img, std::vector<cv::KeyPoint> corn
 }
 
 /*
+ * This will match feature descriptors between two images
+ *
  * In the first variant of this method, the train descriptors are passed as an input argument. In the
  * second variant of the method, train descriptors collection that was set by DescriptorMatcher::add is
  * used. Optional mask (or masks) can be passed to specify which query and training descriptors can be
@@ -136,9 +138,25 @@ std::vector<cv::DMatch> VIO::matchFeaturesWithFlann(cv::Mat query, cv::Mat train
 	cv::FlannBasedMatcher matcher(new cv::flann::LshIndexParams(20, 10, 2));
 	matcher.match(query, train, matches);
 
-	ROS_DEBUG_STREAM("query size: " << query.rows << " train size: " << train.rows << " matches size: " << matches.size());
+	ROS_DEBUG_STREAM_THROTTLE(2, "query size: " << query.rows << " train size: " << train.rows << " matches size: " << matches.size());
 
 	return matches;
+}
+
+/*
+ * uses optical flow to find a vector of features in another image
+ * This function does not require a prediction
+ */
+std::vector<cv::KeyPoint> VIO::findFeaturesInNewImage(Frame oldFrame, cv::Mat newImage){
+	cv::KeyPoint pointConverter;
+	std::vector<cv::Point2f> newPoints;
+	std::vector<cv::Point2f> oldPoints;
+	pointConverter.convert(oldFrame.corners, oldPoints); // convert the Keypoints to point2fs
+
+	std::vector<unsigned char> status; // status vector for each point
+	std::vector<int> error; // error vector for each point
+
+	cv::calcOpticalFlowPyrLK(oldFrame.image, newImage, oldPoints, newPoints, status, error);
 }
 
 
