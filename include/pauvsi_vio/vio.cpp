@@ -30,15 +30,6 @@ void VIO::viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints){
 }
 
 /*
- * draws the matches between two frames
- */
-void VIO::viewImage(Frame frame1, Frame frame2, std::vector<cv::DMatch> matches){
-	cv::Mat img;
-	//cv::drawMatches(frame1.image, frame1.corners, frame2.image, frame2.corners, matches, img);
-	this->viewImage(img);
-}
-
-/*
  * corrects the drift in position
  */
 void VIO::correctPosition(std::vector<double> pos)

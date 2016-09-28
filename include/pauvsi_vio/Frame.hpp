@@ -21,33 +21,62 @@
 
 #include "VIOFeature2D.hpp"
 
+#define DEFAULT_FEATURE_SEARCH_RANGE 5
+
 class Frame
 {
 
 private:
+	cv::Ptr<cv::xfeatures2d::BriefDescriptorExtractor> descriptionExtractor;
+	bool frameSet;
 
 public:
-	ros::Time timeCreated;
+	ros::Time timeImageCreated;
 	cv::Mat image;
 	std::vector<VIOFeature2D> features; //the feature vector for this frame
 
 	Frame(cv::Mat img, ros::Time t)
 	{
 		this->image = img;
-		this->timeCreated = t;
+		this->timeImageCreated = t;
+		descriptionExtractor = cv::xfeatures2d::BriefDescriptorExtractor::create();
+		frameSet = true;
 	}
 
 	Frame()
 	{
+		descriptionExtractor = cv::xfeatures2d::BriefDescriptorExtractor::create();
+		frameSet = false;
+	}
 
+	bool isFrameSet(){
+		return frameSet;
 	}
 
 	/*
-	 * gets the time since this frame was create
+	 * gets the time since this image was captured
 	 */
 	double getAgeSeconds()
 	{
-		return ros::Time::now().toSec() - this->timeCreated.toSec();
+		return ros::Time::now().toSec() - this->timeImageCreated.toSec();
+	}
+
+	/*
+	 * get the fast corners from this image
+	 * and add them to the frames features
+	 *
+	 * This function does not check for identical features
+	 */
+	bool getFASTCornersFromImage(cv::Mat img, int threshold){
+		std::vector<cv::KeyPoint> corners;
+		cv::FAST(img, corners, threshold, true); // detect with nonmax suppression
+
+		int startingID = features.size(); // the starting ID is the current size of the feature vector
+
+		for(int i=0; i < corners.size(); i++)
+		{
+			this->features.push_back(VIOFeature2D(corners.at(i), startingID + i));
+		}
 	}
 
 };

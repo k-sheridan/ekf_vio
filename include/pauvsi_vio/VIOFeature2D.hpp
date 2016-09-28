@@ -27,11 +27,32 @@ private:
 	cv::KeyPoint fast_corner;
 	cv::Point2f position;
 	cv::Mat description;
+	bool described;
 
 public:
-	VIOFeature2D(){
-
+	/*
+	 * creates a feature
+	 * without description
+	 */
+	VIOFeature2D(cv::KeyPoint corner, int _id){
+		fast_corner = corner;
+		position = corner.pt;
+		id = _id;
+		described = false; // the feature has not been described with this constructor
 	}
+
+	/*
+	 * creates a feature with a description
+	 */
+	VIOFeature2D(cv::KeyPoint corner, cv::Mat _description, int _id){
+		fast_corner = corner;
+		position = corner.pt;
+		id = _id;
+		description = _description;
+		described = true; // the feature has not been described with this constructor
+	}
+
+
 };
 
 

@@ -10,7 +10,12 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 {
 	ros::Time start = ros::Time::now();
 	cv::Mat temp = cv_bridge::toCvShare(msg, "mono8")->image.clone();
-	vio.setCurrentFrame(temp, cv_bridge::toCvCopy(msg, "mono8")->header.stamp); //set the current frame and its time created
+
+	/* sets the current frame and its time created
+	 * It also runs a series of functions which ultimately estimate
+	 * the motion of the camera
+	 */
+	vio.setCurrentFrame(temp, cv_bridge::toCvCopy(msg, "mono8")->header.stamp);
 
 	//vio.viewImage(vio.getCurrentFrame().image, vio.getCurrentFrame().corners);
 	//if(vio.isLastFrameSet()){vio.viewImage(vio.getLastFrame(), vio.getCurrentFrame(), vio.matchFeaturesWithFlann(vio.getLastFrame().descriptors, vio.getCurrentFrame().descriptors));}

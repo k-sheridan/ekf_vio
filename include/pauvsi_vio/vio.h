@@ -89,7 +89,6 @@ public:
 
 	void viewImage(cv::Mat img);
 	void viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints);
-	void viewImage(Frame frame1, Frame frame2, std::vector<cv::DMatch> matches);
 
 	std::vector<cv::KeyPoint> computeFASTFeatures(cv::Mat, int);
 
