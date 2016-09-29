@@ -19,6 +19,10 @@
 #include <string>
 #include <ros/ros.h>
 
+#include "VIOLine.hpp"
+
+#define RANSAC_ITERATIONS 100
+
 class VIOFeature3D
 {
 private:

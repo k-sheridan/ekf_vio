@@ -33,7 +33,8 @@ catkin_package(
    DEPENDS eigen opencv
 )
 
-
+add_library(vioLine include/pauvsi_vio/VIOLine.hpp)
+set_target_properties(vioLine PROPERTIES LINKER_LANGUAGE CXX)
 add_library(vioFeature3d include/pauvsi_vio/VIOFeature3D.hpp)
 set_target_properties(vioFeature3d PROPERTIES LINKER_LANGUAGE CXX)
 add_library(vioFeature2d include/pauvsi_vio/VIOFeature2D.hpp)
@@ -43,6 +44,7 @@ set_target_properties(frame PROPERTIES LINKER_LANGUAGE CXX)
 add_library(vio include/pauvsi_vio/vio.cpp)
 
 add_executable(pauvsi_vio src/pauvsi_vio.cpp)
+target_link_libraries(vioFeature3d vioLine)
 target_link_libraries(frame vioFeature3d)
 target_link_libraries(frame vioFeature2d)
 target_link_libraries(vio frame)
