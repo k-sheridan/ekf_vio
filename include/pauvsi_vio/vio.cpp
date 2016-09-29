@@ -124,6 +124,7 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 	ROS_DEBUG_STREAM_ONCE("ran optical flow and got " << newPoints.size() << "points out");
 
+	int lostFeatures = 0;
 	//next add these features into the new Frame
 	for (int i = 0; i < newPoints.size(); i++)
 	{
@@ -140,7 +141,13 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 			newFrame.addFeature(feat); // add this feature to the new frame
 		}
+		else
+		{
+			lostFeatures++;
+		}
 	}
+
+	ROS_DEBUG_STREAM_COND(lostFeatures, "optical flow lost " << lostFeatures <<  " feature(s)");
 
 	return true;
 }

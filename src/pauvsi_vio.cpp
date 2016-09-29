@@ -19,7 +19,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& msg)
 
 	vio.viewImage(vio.getCurrentFrame());
 
-	ROS_DEBUG_STREAM("message #" << cv_bridge::toCvShare(msg, "mono8")->header.seq << " finished in " << (ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds");
+	ROS_DEBUG_STREAM_THROTTLE(2, "message #" << cv_bridge::toCvShare(msg, "mono8")->header.seq << " finished in " << (ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds");
 }
 
 int main(int argc, char **argv)
