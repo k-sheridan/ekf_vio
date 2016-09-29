@@ -31,27 +31,59 @@ private:
 	bool described;
 	bool matched;
 	int matchedFeatureFromLastFrameIndex;
-	unsigned int matchedFeatureFromLastFrameID;
+	int matchedFeatureFromLastFrameID;
 
 public:
+
+	/*
+	 * create a feature with a position and match
+	 */
+	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, int _id){
+		this->setFeaturePosition(pt);
+		id = _id;
+		described = false; // the feature has not been described with this constructor
+		matched = true;
+		matchedFeatureFromLastFrameID = matchedID;
+		matchedFeatureFromLastFrameIndex = matchedIndex;
+	}
+	/*
+	 * create a feature with a position, description and match
+	 */
+	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, cv::Mat desc, int _id){
+		this->setFeaturePosition(pt);
+		id = _id;
+		described = true; // the feature has been described with this constructor
+		description = desc;
+		matched = true;
+		matchedFeatureFromLastFrameID = matchedID;
+		matchedFeatureFromLastFrameIndex = matchedIndex;
+	}
 	/*
 	 * creates a feature
 	 * without description
+	 * not matched
 	 */
 	VIOFeature2D(cv::KeyPoint _corner, int _id){
 		feature = _corner;
 		id = _id;
 		described = false; // the feature has not been described with this constructor
+		matched = false;
+		matchedFeatureFromLastFrameID = -1;
+		matchedFeatureFromLastFrameIndex = -1;
 	}
 
 	/*
 	 * creates a feature with a description
+	 * not matched
 	 */
 	VIOFeature2D(cv::KeyPoint _corner, cv::Mat _description, int _id){
 		feature = _corner;
 		id = _id;
 		description = _description;
 		described = true; // the feature has not been described with this constructor
+		matched = false;
+		matchedFeatureFromLastFrameID = -1;
+		matchedFeatureFromLastFrameIndex = -1;
 	}
 
 	cv::KeyPoint getFeature(){

@@ -28,6 +28,8 @@ class VIOFeature3D
 private:
 	cv::Mat feature_description;
 	std::vector<double> position;
+	int health; // a quantified representation of how good this feature is.
+	cv::Scalar color; // the color of this point for visualization
 
 public:
 

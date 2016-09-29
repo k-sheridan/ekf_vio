@@ -25,7 +25,7 @@ void VIO::viewImage(cv::Mat img){
  */
 void VIO::viewImage(Frame frame){
 	cv::Mat img;
-	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img);
+	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img, cv::Scalar(255, 0, 0));
 	this->viewImage(img);
 }
 
@@ -52,12 +52,13 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 	}
 
 	currentFrame = Frame(img, t, lastFrame.nextFeatureID); // create a frame with a starting ID of the last frame's next id
-	currentFrame.getFASTCorners(this->FAST_THRESHOLD);
+	if(!lastFrame.isFrameSet()) {currentFrame.getFASTCorners(this->FAST_THRESHOLD);}
 
 	// if there is a last frame, flow features and estimate motion
 	if(lastFrame.isFrameSet())
 	{
-
+		ROS_DEBUG_ONCE("starting optical flow");
+		this->flowFeaturesToNewFrame(lastFrame, currentFrame);
 	}
 }
 
@@ -108,16 +109,38 @@ std::vector<cv::DMatch> VIO::matchFeaturesWithFlann(cv::Mat query, cv::Mat train
 bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 	std::vector<cv::Point2f> oldPoints = oldFrame.getPoint2fVectorFromFeatures();
+	ROS_DEBUG_STREAM_ONCE("got " << oldPoints.size() << " old point2fs from the oldframe which has " << oldFrame.features.size() << " features");
 	std::vector<cv::Point2f> newPoints;
 
-	std::vector<unsigned char> status; // status vector for each point
-	std::vector<int> error; // error vector for each point
+	std::vector<uchar> status; // status vector for each point
+	cv::Mat error; // error vector for each point
 
+	ROS_DEBUG_ONCE("running lucas kande optical flow algorithm");
 	/*
 	 * this calculates the new positions of the old features in the new image
 	 * status tells us whether or not a point index has been flowed over to the new frame
 	 */
 	cv::calcOpticalFlowPyrLK(oldFrame.image, newFrame.image, oldPoints, newPoints, status, error);
+
+	ROS_DEBUG_STREAM_ONCE("ran optical flow and got " << newPoints.size() << "points out");
+
+	//next add these features into the new Frame
+	for (int i = 0; i < newPoints.size(); i++)
+	{
+		//check if the point was able to flow
+		if(status.at(i) == 1)
+		{
+			// the id number is not that important because it will be handled by the frame
+			VIOFeature2D feat(newPoints.at(i), oldFrame.features.at(i).getFeatureID(), i, -1); // create a matched feature with id = -1
+			//if the previous feature was described
+			if(oldFrame.features.at(i).isFeatureDescribed())
+			{
+				feat.setFeatureDescription(oldFrame.features.at(i).getFeatureDescription()); // transfer previous description to new feature
+			}
+
+			newFrame.addFeature(feat); // add this feature to the new frame
+		}
+	}
 
 	return true;
 }

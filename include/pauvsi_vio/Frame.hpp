@@ -100,6 +100,15 @@ public:
 		//ROS_DEBUG_STREAM("adding feature with ID " << nextFeatureID);
 		features.push_back(VIOFeature2D(_corner, nextFeatureID));
 		nextFeatureID++; // iterate the nextFeatureID
+		return true;
+	}
+
+	bool addFeature(VIOFeature2D feat){
+		//ROS_DEBUG_STREAM("adding feature with ID " << nextFeatureID);
+		//set the feature id
+		feat.setFeatureID(nextFeatureID);
+		features.push_back(feat); // add it to the features vector
+		nextFeatureID++; // iterate the nextFeatureID
 	}
 
 	/*
