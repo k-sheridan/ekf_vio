@@ -23,8 +23,9 @@ void VIO::viewImage(cv::Mat img){
 /*
  * draws frame with its features
  */
-void VIO::viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints){
-	cv::drawKeypoints(img, keypoints, img);
+void VIO::viewImage(Frame frame){
+	cv::Mat img;
+	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img);
 	this->viewImage(img);
 }
 
@@ -50,13 +51,13 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 		lastFrame = currentFrame;
 	}
 
-	currentFrame = Frame(img, t);
+	currentFrame = Frame(img, t, lastFrame.nextFeatureID); // create a frame with a starting ID of the last frame's next id
+	currentFrame.getFASTCorners(this->FAST_THRESHOLD);
 
-	// if there is a last frame to process off of and it has descriptors
+	// if there is a last frame, flow features and estimate motion
 	if(lastFrame.isFrameSet())
 	{
-		//match the new last frame to the new current frame
-		//this->matchesFromLastToCurrentFrame = this->matchFeaturesWithFlann(lastFrame.descriptors, currentFrame.descriptors);
+
 	}
 }
 
@@ -75,7 +76,7 @@ void VIO::readROSParameters()
 	ros::param::param<std::string>("~imuTopic", imuTopic, DEFAULT_IMU_TOPIC);
 	ROS_DEBUG_STREAM("IMU topic is: " << imuTopic);
 
-	ros::param::param<int>("~fast_threshold", fastThreshold, DEFAULT_FAST_THRESHOLD);
+	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, DEFAULT_FAST_THRESHOLD);
 }
 
 
@@ -101,17 +102,24 @@ std::vector<cv::DMatch> VIO::matchFeaturesWithFlann(cv::Mat query, cv::Mat train
 /*
  * uses optical flow to find a vector of features in another image
  * This function does not require a prediction
+ * This will set the feature vector within the new frame with the
+ * flowed points
  */
-std::vector<cv::KeyPoint> VIO::findFeaturesInNewImage(Frame oldFrame, cv::Mat newImage){
-	//cv::KeyPoint pointConverter;
-	//std::vector<cv::Point2f> newPoints;
-	//std::vector<cv::Point2f> oldPoints;
-	//pointConverter.convert(oldFrame.corners, oldPoints); // convert the Keypoints to point2fs
+bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
-	//std::vector<unsigned char> status; // status vector for each point
-	//std::vector<int> error; // error vector for each point
+	std::vector<cv::Point2f> oldPoints = oldFrame.getPoint2fVectorFromFeatures();
+	std::vector<cv::Point2f> newPoints;
 
-	//cv::calcOpticalFlowPyrLK(oldFrame.image, newImage, oldPoints, newPoints, status, error);
+	std::vector<unsigned char> status; // status vector for each point
+	std::vector<int> error; // error vector for each point
+
+	/*
+	 * this calculates the new positions of the old features in the new image
+	 * status tells us whether or not a point index has been flowed over to the new frame
+	 */
+	cv::calcOpticalFlowPyrLK(oldFrame.image, newFrame.image, oldPoints, newPoints, status, error);
+
+	return true;
 }
 
 

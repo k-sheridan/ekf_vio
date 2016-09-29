@@ -19,24 +19,27 @@
 #include <string>
 #include <ros/ros.h>
 
+#define DEAFAULT_FEATURE_SIZE 1.0
+
 class VIOFeature2D
 {
 
 private:
-	unsigned int id;
-	cv::KeyPoint fast_corner;
-	cv::Point2f position;
+	int id;
+	cv::KeyPoint feature;
 	cv::Mat description;
 	bool described;
+	bool matched;
+	int matchedFeatureFromLastFrameIndex;
+	unsigned int matchedFeatureFromLastFrameID;
 
 public:
 	/*
 	 * creates a feature
 	 * without description
 	 */
-	VIOFeature2D(cv::KeyPoint corner, int _id){
-		fast_corner = corner;
-		position = corner.pt;
+	VIOFeature2D(cv::KeyPoint _corner, int _id){
+		feature = _corner;
 		id = _id;
 		described = false; // the feature has not been described with this constructor
 	}
@@ -44,20 +47,19 @@ public:
 	/*
 	 * creates a feature with a description
 	 */
-	VIOFeature2D(cv::KeyPoint corner, cv::Mat _description, int _id){
-		fast_corner = corner;
-		position = corner.pt;
+	VIOFeature2D(cv::KeyPoint _corner, cv::Mat _description, int _id){
+		feature = _corner;
 		id = _id;
 		description = _description;
 		described = true; // the feature has not been described with this constructor
 	}
 
-	cv::KeyPoint getFASTCorner(){
-		return fast_corner;
+	cv::KeyPoint getFeature(){
+		return this->feature;
 	}
 
 	cv::Point2f getFeaturePosition(){
-		return position;
+		return this->feature.pt;
 	}
 
 	cv::Mat getFeatureDescription(){
@@ -75,13 +77,19 @@ public:
 	/*
 	 * sets the corner and position of feature
 	 */
-	void setFASTCorner(cv::KeyPoint kp){
-		fast_corner = kp;
-		position = kp.pt;
+	void setFeature(cv::KeyPoint kp){
+		feature = kp;
 	}
 
 	void setFeaturePosition(cv::Point2f pt){
-		position = pt;
+		feature = cv::KeyPoint(pt, DEAFAULT_FEATURE_SIZE);
+	}
+
+	/*
+	 * sets the feature by creating it with a szie and pos
+	 */
+	void setFeature(cv::Point2f pt, float size){
+		feature = cv::KeyPoint(pt, size);
 	}
 
 	/*

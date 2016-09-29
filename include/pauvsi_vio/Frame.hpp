@@ -21,7 +21,10 @@
 
 #include "VIOFeature2D.hpp"
 
+
+
 #define DEFAULT_FEATURE_SEARCH_RANGE 5
+#define MAXIMUM_ID_NUM 1000000000 //this is the maximum size that a feature ID should be to ensure there are no overflow issues.
 
 class Frame
 {
@@ -34,9 +37,12 @@ public:
 	ros::Time timeImageCreated;
 	cv::Mat image;
 	std::vector<VIOFeature2D> features; //the feature vector for this frame
+	//this ensures that all features have a unique ID
+	int nextFeatureID; // the id of the next feature that is added to this frame
 
 	/*
 	 * initilize and set frame
+	 * the next feature id will be 0;
 	 */
 	Frame(cv::Mat img, ros::Time t)
 	{
@@ -44,15 +50,38 @@ public:
 		this->timeImageCreated = t;
 		descriptionExtractor = cv::xfeatures2d::BriefDescriptorExtractor::create();
 		frameSet = true;
+		nextFeatureID = 0;
+	}
+
+	/*
+	 * initilize and set frame
+	 * The startingID  should be equal to the lastFrame's last feature's ID
+	 * if the startingID is too large it will wrap to 0
+	 */
+	Frame(cv::Mat img, ros::Time t, int startingID)
+	{
+		this->image = img;
+		this->timeImageCreated = t;
+		descriptionExtractor = cv::xfeatures2d::BriefDescriptorExtractor::create();
+		frameSet = true;
+		if(startingID > MAXIMUM_ID_NUM){
+			nextFeatureID = 0;
+			ROS_WARN("2D FEATURE ID's ARE OVER FLOWING!");
+		}
+		else{
+			nextFeatureID = startingID;
+		}
 	}
 
 	/*
 	 * initilize frame but don't set it
+	 * nextFeatureID will be set to zero
 	 */
 	Frame()
 	{
 		descriptionExtractor = cv::xfeatures2d::BriefDescriptorExtractor::create();
 		frameSet = false;
+		nextFeatureID = 0; // assume that this frame starts at zero featureID
 	}
 
 	bool isFrameSet(){
@@ -67,22 +96,52 @@ public:
 		return ros::Time::now().toSec() - this->timeImageCreated.toSec();
 	}
 
+	bool addFeature(cv::KeyPoint _corner){
+		//ROS_DEBUG_STREAM("adding feature with ID " << nextFeatureID);
+		features.push_back(VIOFeature2D(_corner, nextFeatureID));
+		nextFeatureID++; // iterate the nextFeatureID
+	}
+
 	/*
 	 * get the fast corners from this image
 	 * and add them to the frames features
 	 *
 	 * This function does not check for identical features
 	 */
-	bool getFASTCornersFromImage(cv::Mat img, int threshold){
+	bool getFASTCorners(int threshold){
 		std::vector<cv::KeyPoint> corners;
-		cv::FAST(img, corners, threshold, true); // detect with nonmax suppression
+		cv::FAST(this->image, corners, threshold, true); // detect with nonmax suppression
 
 		int startingID = features.size(); // the starting ID is the current size of the feature vector
 
 		for(int i=0; i < corners.size(); i++)
 		{
-			this->features.push_back(VIOFeature2D(corners.at(i), startingID + i));
+			this->addFeature(corners.at(i)); // ensure that id's do not repeat
 		}
+	}
+
+	/*
+	 * gets the a keypoint vector form the feature vector
+	 */
+	std::vector<cv::KeyPoint> getKeyPointVectorFromFeatures(){
+		std::vector<cv::KeyPoint> kp;
+		for (int i = 0; i < this->features.size(); i++)
+		{
+			kp.push_back(this->features.at(i).getFeature());
+		}
+		return kp;
+	}
+
+	/*
+	 * gets a point2f vector from the local feature vector
+	 */
+	std::vector<cv::Point2f> getPoint2fVectorFromFeatures(){
+		std::vector<cv::Point2f> points;
+		for (int i = 0; i < this->features.size(); i++)
+		{
+			points.push_back(this->features.at(i).getFeature().pt);
+		}
+		return points;
 	}
 
 	/*
@@ -91,7 +150,7 @@ public:
 	cv::Mat extractBRIEFDescriptor(VIOFeature2D feature){
 		cv::Mat descriptor;
 		std::vector<cv::KeyPoint> kp(1); // must be in the form of a vector
-		kp.push_back((feature.getFASTCorner()));
+		kp.push_back((feature.getFeature()));
 		descriptionExtractor->compute(this->image, kp, descriptor);
 		return descriptor;
 	}
@@ -110,7 +169,7 @@ public:
 			if(!features.at(i).isFeatureDescribed())
 			{
 				featureIndexes.push_back(i);
-				featureKPs.push_back(features.at(i).getFASTCorner());
+				featureKPs.push_back(features.at(i).getFeature());
 			}
 		}
 

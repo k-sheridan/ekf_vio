@@ -46,9 +46,9 @@ private:
 	std::vector<VIOFeature3D> active3DFeatures;
 	std::vector<VIOFeature3D> inactive3DFeatures;
 
-	int fastThreshold;
-
 public:
+
+	int FAST_THRESHOLD;
 
 	VIO();
 
@@ -80,11 +80,11 @@ public:
 	}
 
 	void viewImage(cv::Mat img);
-	void viewImage(cv::Mat img, std::vector<cv::KeyPoint> keypoints);
+	void viewImage(Frame frame);
 
 	std::vector<cv::DMatch> matchFeaturesWithFlann(cv::Mat queryDescriptors, cv::Mat trainDescriptors);
 
-	std::vector<cv::KeyPoint> findFeaturesInNewImage(Frame oldFrame, cv::Mat newImage);
+	bool flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame);
 
 };
 
