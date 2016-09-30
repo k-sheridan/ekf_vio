@@ -28,7 +28,16 @@ class VIOFeature3D
 private:
 	cv::Mat feature_description;
 	std::vector<double> position;
+
+	//int stamina; // if the feature has lasted for a long time it gets stamina
+	//int armor; // how resistant the point is to taking health damage
+	//int agility; // how well the feature can move
+	//int charisma; // how influential the feature is on the pose
 	int health; // a quantified representation of how good this feature is.
+	//int strength; // how much force the feature can put on the camera
+	//int intelligence; // how man skills the feature has
+	//int morale; // if the morale is low the health will not increase at a normal levels
+
 	cv::Scalar color; // the color of this point for visualization
 
 public:

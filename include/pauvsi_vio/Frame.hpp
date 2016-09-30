@@ -193,6 +193,22 @@ public:
 
 	}
 
+	/*
+	 * compares two descriptors
+	 * 0 is perfect match
+	 * 255 * 32 is the worst possible match
+	 * expects two row vectors in cvMats with uchars
+	 * assumes that the two description vectors match in size
+	 */
+	int compareDescriptors(cv::Mat desc1, cv::Mat desc2){
+		int error = 0;
+		for(int i = 0; i < desc1.cols; i++)
+		{
+			error += std::abs(desc2.at<uchar>(0, i) - desc1.at<uchar>(0, i));
+		}
+		return error;
+	}
+
 };
 
 
