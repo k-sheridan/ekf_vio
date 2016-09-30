@@ -32,6 +32,7 @@ private:
 	bool matched;
 	int matchedFeatureFromLastFrameIndex;
 	int matchedFeatureFromLastFrameID;
+	float distanceFromFrameCenter;
 
 public:
 
@@ -104,6 +105,14 @@ public:
 
 	int getFeatureID(){
 		return id;
+	}
+
+	float getDistanceFromFrameCenter(){
+		return distanceFromFrameCenter;
+	}
+
+	void setDistanceFromFrameCenter(float d){
+		distanceFromFrameCenter = d;
 	}
 
 	/*

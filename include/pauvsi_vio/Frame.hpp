@@ -165,7 +165,7 @@ public:
 	}
 
 	/*
-	 * searches for all features in a the global feature vector that have not been described
+	 * searches for all features in a the local feature vector that have not been described
 	 * and describes them using the BRIEF algorithm
 	 */
 	bool describeFeaturesWithBRIEF(){
@@ -207,6 +207,41 @@ public:
 			error += std::abs(desc2.at<uchar>(0, i) - desc1.at<uchar>(0, i));
 		}
 		return error;
+	}
+
+	/*
+	 * Checks all local frame features for whether or not a feature is outside of the kill radius.
+	 * It will kill the feature if it is
+	 * It will set the feature's distance to center if it is not
+	 */
+	void cleanUpFeaturesByKillRadius(float killRadius)
+	{
+		cv::Point2f imageCenter = cv::Point2f((float)(this->image.cols / 2), (float)(this->image.rows / 2));
+		std::vector<VIOFeature2D> cleanFeatures;
+		for(int i = 0; i < this->features.size(); i++)
+		{
+			if(this->getAndSetFeatureRadius(this->features.at(i), imageCenter) <= killRadius)
+			{
+				cleanFeatures.push_back(this->features.at(i));
+			}
+			else
+			{
+				ROS_DEBUG_STREAM("removing a feature with radius " << this->features.at(i).getDistanceFromFrameCenter());
+			}
+		}
+
+		//finally set the local feature vector to the new featureVector
+		this->features = cleanFeatures;
+	}
+
+	/*
+	 * this will check the feature's radius and both set an its radius
+	 */
+	float getAndSetFeatureRadius(VIOFeature2D& feat, cv::Point2f imageCenter){
+		float dx = feat.getFeaturePosition().x - imageCenter.x;
+		float dy = feat.getFeaturePosition().y - imageCenter.y;
+		feat.setDistanceFromFrameCenter(sqrt(dx * dx + dy * dy));
+		return feat.getDistanceFromFrameCenter();
 	}
 
 };

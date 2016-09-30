@@ -52,13 +52,18 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 	}
 
 	currentFrame = Frame(img, t, lastFrame.nextFeatureID); // create a frame with a starting ID of the last frame's next id
-	if(!lastFrame.isFrameSet()) {currentFrame.getFASTCorners(this->FAST_THRESHOLD);}
+	if(!lastFrame.isFrameSet()){
+		currentFrame.getFASTCorners(this->FAST_THRESHOLD);
+		currentFrame.describeFeaturesWithBRIEF();
+		currentFrame.cleanUpFeaturesByKillRadius(this->KILL_RADIUS); // cleans features by killing them if their radius to too large
+	}
 
 	// if there is a last frame, flow features and estimate motion
 	if(lastFrame.isFrameSet())
 	{
 		ROS_DEBUG_ONCE("starting optical flow");
 		this->flowFeaturesToNewFrame(lastFrame, currentFrame);
+		currentFrame.cleanUpFeaturesByKillRadius(this->KILL_RADIUS); // clean features by killing ones with a large radius from center
 	}
 }
 
@@ -78,6 +83,8 @@ void VIO::readROSParameters()
 	ROS_DEBUG_STREAM("IMU topic is: " << imuTopic);
 
 	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, DEFAULT_FAST_THRESHOLD);
+
+	ros::param::param<float>("~feature_kill_radius", KILL_RADIUS, DEFAULT_2D_KILL_RADIUS);
 }
 
 
@@ -136,6 +143,7 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 			//if the previous feature was described
 			if(oldFrame.features.at(i).isFeatureDescribed())
 			{
+				//ROS_DEBUG("transferring feature description");
 				feat.setFeatureDescription(oldFrame.features.at(i).getFeatureDescription()); // transfer previous description to new feature
 			}
 
