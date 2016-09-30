@@ -213,6 +213,7 @@ public:
 	 * Checks all local frame features for whether or not a feature is outside of the kill radius.
 	 * It will kill the feature if it is
 	 * It will set the feature's distance to center if it is not
+	 * this function ensoures that the feature id's remain in ascending order
 	 */
 	void cleanUpFeaturesByKillRadius(float killRadius)
 	{
@@ -226,7 +227,7 @@ public:
 			}
 			else
 			{
-				ROS_DEBUG_STREAM("removing a feature with radius " << this->features.at(i).getDistanceFromFrameCenter());
+				//ROS_DEBUG_STREAM("removing a feature with radius " << this->features.at(i).getDistanceFromFrameCenter());
 			}
 		}
 
