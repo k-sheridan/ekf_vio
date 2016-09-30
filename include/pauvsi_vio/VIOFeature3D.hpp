@@ -40,6 +40,9 @@ private:
 
 	cv::Scalar color; // the color of this point for visualization
 
+	int current2DFeatureMatchIndex;
+	int current2DFeatureMatchID;
+
 public:
 
 	VIOFeature3D(){

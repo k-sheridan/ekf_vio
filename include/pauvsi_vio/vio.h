@@ -27,7 +27,7 @@
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
 #define DEFAULT_IMU_TOPIC "/IMU_Full"
 #define DEFAULT_FAST_THRESHOLD 50
-#define DEFAULT_2D_KILL_RADIUS 200
+#define DEFAULT_2D_KILL_RADIUS 210
 
 class VIO
 {

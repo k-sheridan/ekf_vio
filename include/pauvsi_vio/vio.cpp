@@ -129,7 +129,7 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 	 */
 	cv::calcOpticalFlowPyrLK(oldFrame.image, newFrame.image, oldPoints, newPoints, status, error);
 
-	ROS_DEBUG_STREAM_ONCE("ran optical flow and got " << newPoints.size() << "points out");
+	ROS_DEBUG_STREAM_ONCE("ran optical flow and got " << newPoints.size() << " points out");
 
 	int lostFeatures = 0;
 	//next add these features into the new Frame

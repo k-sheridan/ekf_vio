@@ -6,20 +6,20 @@
 
 VIO vio; // create an instance of the visual odometry algorithm
 
-void imageCallback(const sensor_msgs::ImageConstPtr& msg)
+void cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::CameraInfoConstPtr& cam)
 {
 	ros::Time start = ros::Time::now();
-	cv::Mat temp = cv_bridge::toCvShare(msg, "mono8")->image.clone();
+	cv::Mat temp = cv_bridge::toCvShare(img, "mono8")->image.clone();
 
 	/* sets the current frame and its time created
 	 * It also runs a series of functions which ultimately estimate
 	 * the motion of the camera
 	 */
-	vio.setCurrentFrame(temp, cv_bridge::toCvCopy(msg, "mono8")->header.stamp);
+	vio.setCurrentFrame(temp, cv_bridge::toCvCopy(img, "mono8")->header.stamp);
 
-	//vio.viewImage(vio.getCurrentFrame());
+	vio.viewImage(vio.getCurrentFrame());
 
-	ROS_DEBUG_STREAM_THROTTLE(2, "message #" << cv_bridge::toCvShare(msg, "mono8")->header.seq << " finished in " << (ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds");
+	ROS_DEBUG_STREAM_THROTTLE(2, "message #" << cv_bridge::toCvShare(img, "mono8")->header.seq << " finished in " << (ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds");
 }
 
 int main(int argc, char **argv)
@@ -31,8 +31,8 @@ int main(int argc, char **argv)
 
 	//set up image transport
 	image_transport::ImageTransport it(nh);
-	image_transport::Subscriber imageSub;
-	imageSub = it.subscribe(vio.getCameraTopic(), 1, imageCallback);
+	image_transport::CameraSubscriber cameraSub;
+	cameraSub = it.subscribeCamera(vio.getCameraTopic(), 1, cameraCallback);
 
 	ros::spin();
 
