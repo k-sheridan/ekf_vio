@@ -145,6 +145,7 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 			{
 				//ROS_DEBUG("transferring feature description");
 				feat.setFeatureDescription(oldFrame.features.at(i).getFeatureDescription()); // transfer previous description to new feature
+				//ROS_DEBUG_STREAM_THROTTLE(0, feat.getFeatureDescription());
 			}
 
 			newFrame.addFeature(feat); // add this feature to the new frame
@@ -158,6 +159,28 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 	ROS_DEBUG_STREAM_COND(lostFeatures, "optical flow lost " << lostFeatures <<  " feature(s)");
 
 	return true;
+}
+
+/*
+ * gets corresponding points between the two frames as two vectors of point2f
+ * checks if index and id match for saftey
+ */
+void VIO::getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, std::vector<cv::Point2f>& lastPoints, std::vector<cv::Point2f>& currentPoints)
+{
+
+	for (int i = 0; i < currentFrame.features.size(); i++)
+	{
+		if(currentFrame.features.at(i).isMatched() &&
+				lastFrame.features.at(currentFrame.features.at(i).getMatchedIndex()).getFeatureID() ==
+						currentFrame.features.at(i).getMatchedID()){
+			lastPoints.push_back(lastFrame.features.at(currentFrame.features.at(i).getMatchedIndex()).getFeature().pt);
+			currentPoints.push_back(currentFrame.features.at(i).getFeature().pt);
+		}
+		else
+		{
+			ROS_WARN("could not match feature id to index");
+		}
+	}
 }
 
 

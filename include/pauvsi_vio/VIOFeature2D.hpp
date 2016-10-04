@@ -26,10 +26,11 @@ class VIOFeature2D
 
 private:
 	int id;
-	cv::KeyPoint feature;
-	cv::Mat description;
+	cv::KeyPoint feature; // response = quality
+	cv::Mat description; // vector 1X32
 	bool described;
 	bool matched;
+	float quality;
 	int matchedFeatureFromLastFrameIndex;
 	int matchedFeatureFromLastFrameID;
 	float distanceFromFrameCenter;
@@ -46,6 +47,7 @@ public:
 		matched = true;
 		matchedFeatureFromLastFrameID = matchedID;
 		matchedFeatureFromLastFrameIndex = matchedIndex;
+		quality = -1.0;
 	}
 	/*
 	 * create a feature with a position, description and match
@@ -58,6 +60,7 @@ public:
 		matched = true;
 		matchedFeatureFromLastFrameID = matchedID;
 		matchedFeatureFromLastFrameIndex = matchedIndex;
+		quality = -1.0;
 	}
 	/*
 	 * creates a feature
@@ -71,6 +74,7 @@ public:
 		matched = false;
 		matchedFeatureFromLastFrameID = -1;
 		matchedFeatureFromLastFrameIndex = -1;
+		quality = -1.0;
 	}
 
 	/*
@@ -85,6 +89,7 @@ public:
 		matched = false;
 		matchedFeatureFromLastFrameID = -1;
 		matchedFeatureFromLastFrameIndex = -1;
+		quality = -1.0;
 	}
 
 	cv::KeyPoint getFeature(){
@@ -103,12 +108,32 @@ public:
 		return described;
 	}
 
+	bool isMatched(){
+		return matched;
+	}
+
 	int getFeatureID(){
 		return id;
 	}
 
+	float getQuality(){
+		return quality;
+	}
+
 	float getDistanceFromFrameCenter(){
 		return distanceFromFrameCenter;
+	}
+
+	int getMatchedID(){
+		return this->matchedFeatureFromLastFrameID;
+	}
+
+	int getMatchedIndex(){
+		return this->matchedFeatureFromLastFrameIndex;
+	}
+
+	void setQuality(float _quality){
+		this->quality = _quality;
 	}
 
 	void setDistanceFromFrameCenter(float d){

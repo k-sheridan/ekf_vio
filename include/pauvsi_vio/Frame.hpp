@@ -126,6 +126,7 @@ public:
 		for(int i=0; i < corners.size(); i++)
 		{
 			this->addFeature(corners.at(i)); // ensure that id's do not repeat
+			//ROS_DEBUG_STREAM("corner id " << corners.at(i).response);
 		}
 	}
 

@@ -88,6 +88,10 @@ public:
 
 	bool flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame);
 
+	void getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, std::vector<cv::Point2f>& lastPoints, std::vector<cv::Point2f>& currentPoints);
+
+	int estimateMotion(Frame frame1, Frame frame2, std::vector<double> translationPrediction, std::vector<double> rotationPrediction);
+
 };
 
 
