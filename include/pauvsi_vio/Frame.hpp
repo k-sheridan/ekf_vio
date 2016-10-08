@@ -218,24 +218,24 @@ public:
 
 	/*
 	 * compares two descriptors
-	 * 255 is perfect match
-	 * 0 is the worst possible match
+	 * 0 is perfect match
+	 * 256 is the worst possible match
 	 * expects two row vectors in cvMats with uchars
 	 * assumes that the two description vectors match in size
 	 */
 	int compareDescriptors(cv::Mat desc1, cv::Mat desc2){
-		int sum = 0;
+		int sumError = 0;
 		int mask;
 		for(int i = 0; i < desc1.cols; i++)
 		{
 			mask = desc1.at<uchar>(0, i) ^ desc2.at<uchar>(0, i);
 			for(int j = 0; j<8; ++j)
 			{
-				sum += (mask >> j) & 1;
+				sumError += (mask >> j) & 1;
 			}
 			//error += std::abs(desc2.at<uchar>(0, i) - desc1.at<uchar>(0, i));
 		}
-		return sum;
+		return sumError;
 	}
 
 	/*
