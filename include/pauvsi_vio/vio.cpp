@@ -161,6 +161,8 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 	ROS_DEBUG_STREAM_COND(lostFeatures, "optical flow lost " << lostFeatures <<  " feature(s)");
 
+	this->checkFeatureConsistency(newFrame, this->FEATURE_SIMILARITY_THRESHOLD);
+
 	return true;
 }
 
@@ -191,7 +193,21 @@ void VIO::getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, 
  * if similarity is bellow threshold, feature is kept and descriptor is updated
  * otherwise feature is removed from feature vector
  */
-void VIO::checkFeatureConsistency(Frame checkFrame, int killThreshold ){
+void VIO::checkFeatureConsistency(Frame& checkFrame, int killThreshold ){
+	cv::Mat newDescription = checkFrame.describeFeaturesWithBRIEF(checkFrame.image, checkFrame.features);
 
+	std::vector<VIOFeature2D> tempFeatures;
+
+	for (int i = 0; i < checkFrame.features.size(); i++){
+
+		cv::Mat row = newDescription.row(i);
+
+		if (checkFrame.compareDescriptors(row, checkFrame.features.at(i).getFeatureDescription()) <= killThreshold){
+			checkFrame.features.at(i).setFeatureDescription(row);
+
+			tempFeatures.push_back(checkFrame.features.at(i));
+		}
+	}
+	checkFrame.features = tempFeatures;
 }
 

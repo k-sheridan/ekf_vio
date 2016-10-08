@@ -94,7 +94,7 @@ public:
 
 	int estimateMotion(Frame frame1, Frame frame2, std::vector<double> translationPrediction, std::vector<double> rotationPrediction);
 
-	void checkFeatureConsistency(Frame checkFrame, int killThreshold );
+	void checkFeatureConsistency(Frame& checkFrame, int killThreshold );
 };
 
 
