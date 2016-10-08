@@ -163,6 +163,8 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 	this->checkFeatureConsistency(newFrame, this->FEATURE_SIMILARITY_THRESHOLD);
 
+	ROS_DEBUG_STREAM("after checking feature consistency new frame contains " << newFrame.features.size());
+
 	return true;
 }
 
