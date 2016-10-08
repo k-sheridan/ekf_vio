@@ -25,6 +25,7 @@
 	<node name="vio" pkg="pauvsi_vio" type="pauvsi_vio" output="screen">
 		<param name="cameraTopic" value="/camera/bottom/image_scaled"/>
 		<param name="fast_threshold" value="20"/>
+		<param name="feature_similarity_threshold" value="300"/>
 	</node>
 	
 	
