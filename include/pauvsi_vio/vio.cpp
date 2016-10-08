@@ -186,5 +186,12 @@ void VIO::getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, 
 	}
 }
 
+/*
+ * checks to see if current descriptor is similar to actual feature
+ * if similarity is bellow threshold, feature is kept and descriptor is updated
+ * otherwise feature is removed from feature vector
+ */
+void VIO::checkFeatureConsistency(Frame checkFrame, int killThreshold ){
 
+}
 

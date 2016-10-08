@@ -143,6 +143,19 @@ public:
 	}
 
 	/*
+	 * gets the a keypoint vector form the feature vector
+	 */
+	std::vector<cv::KeyPoint> getKeyPointVectorFromFeatures(std::vector<VIOFeature2D> featureVector){
+		std::vector<cv::KeyPoint> kp;
+		for (int i = 0; i < featureVector.size(); i++)
+		{
+			kp.push_back(featureVector.at(i).getFeature());
+		}
+		return kp;
+	}
+
+
+	/*
 	 * gets a point2f vector from the local feature vector
 	 */
 	std::vector<cv::Point2f> getPoint2fVectorFromFeatures(){
@@ -192,6 +205,15 @@ public:
 			features.at(featureIndexes.at(i)).setFeatureDescription(desc);
 		}
 
+	}
+	/*
+	 * take a feature vector and describe each of the features
+	 */
+	cv::Mat describeFeaturesWithBRIEF(cv::Mat image, std::vector<VIOFeature2D> featureVector){
+		std::vector<cv::KeyPoint> kp = this->getKeyPointVectorFromFeatures(featureVector);
+		cv::Mat description;
+		descriptionExtractor->compute(image, kp, description);
+		return description;
 	}
 
 	/*
