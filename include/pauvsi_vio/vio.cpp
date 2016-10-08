@@ -27,6 +27,7 @@ void VIO::viewImage(Frame frame){
 	cv::Mat img;
 	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img, cv::Scalar(255, 0, 0));
 	this->viewImage(img);
+
 }
 
 /*
@@ -85,6 +86,8 @@ void VIO::readROSParameters()
 	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, DEFAULT_FAST_THRESHOLD);
 
 	ros::param::param<float>("~feature_kill_radius", KILL_RADIUS, DEFAULT_2D_KILL_RADIUS);
+
+	ros::param::param<int>("~feature_similarity_threshold", FEATURE_SIMILARITY_THRESHOLD, DEFAULT_FEATURE_SIMILARITY_THRESHOLD);
 }
 
 

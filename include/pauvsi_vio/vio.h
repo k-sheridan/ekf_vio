@@ -28,6 +28,7 @@
 #define DEFAULT_IMU_TOPIC "/IMU_Full"
 #define DEFAULT_FAST_THRESHOLD 50
 #define DEFAULT_2D_KILL_RADIUS 210
+#define DEFAULT_FEATURE_SIMILARITY_THRESHOLD 10
 
 class VIO
 {
@@ -51,6 +52,7 @@ public:
 
 	int FAST_THRESHOLD;
 	float KILL_RADIUS;
+	int FEATURE_SIMILARITY_THRESHOLD;
 
 	VIO();
 
@@ -92,6 +94,7 @@ public:
 
 	int estimateMotion(Frame frame1, Frame frame2, std::vector<double> translationPrediction, std::vector<double> rotationPrediction);
 
+	void checkFeatureConsistency(Frame checkFrame, int killThreshold );
 };
 
 
