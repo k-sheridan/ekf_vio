@@ -202,14 +202,27 @@ void VIO::checkFeatureConsistency(Frame& checkFrame, int killThreshold ){
 
 	for (int i = 0; i < checkFrame.features.size(); i++){
 
+		if(!checkFrame.features.at(i).isFeatureDescribed())
+			break;
 		cv::Mat row = newDescription.row(i);
-
-		if (checkFrame.compareDescriptors(row, checkFrame.features.at(i).getFeatureDescription()) <= killThreshold){
+		ROS_DEBUG_STREAM_ONCE("got feature description " << row);
+		int x = checkFrame.compareDescriptors(row, checkFrame.features.at(i).getFeatureDescription());
+		//int x = checkFrame.compareDescriptors(row, row);
+		if (x <= killThreshold){
+			ROS_DEBUG_STREAM("features match " << i <<" : "<<checkFrame.features.size()<<" : "<< newDescription.rows <<" : " << x);
+			//ROS_DEBUG_STREAM("i+1: "<< checkFrame.features.at(i+1).getFeatureDescription()<<":"<<checkFrame.features.at(i+1).isFeatureDescribed());
+			ROS_DEBUG_STREAM("description size " << checkFrame.features.at(i).getFeatureDescription().cols);
 			checkFrame.features.at(i).setFeatureDescription(row);
-
+			ROS_DEBUG("modified feature");
 			tempFeatures.push_back(checkFrame.features.at(i));
+			ROS_DEBUG("pushed back modified feature");
+		}
+		else{
+			ROS_DEBUG("features dont match");
 		}
 	}
+	ROS_DEBUG("setting new features");
 	checkFrame.features = tempFeatures;
+	ROS_DEBUG("set new features");
 }
 
