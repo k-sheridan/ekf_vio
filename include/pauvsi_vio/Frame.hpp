@@ -238,6 +238,11 @@ public:
 		return sumError;
 	}
 
+/*	void rankFeatures(int threshold)
+	{
+		features.at(0).
+	}
+*/
 	/*
 	 * Checks all local frame features for whether or not a feature is outside of the kill radius.
 	 * It will kill the feature if it is

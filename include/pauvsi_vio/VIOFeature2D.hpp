@@ -104,6 +104,12 @@ public:
 		return description;
 	}
 
+	float getResponse()
+	{
+		return feature.response;
+	}
+
+
 	bool isFeatureDescribed(){
 		return described;
 	}
