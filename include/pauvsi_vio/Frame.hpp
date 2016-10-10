@@ -246,7 +246,11 @@ public:
 		bool v = i.getQuality()<j.getQuality();
 		return i.getQuality()<j.getQuality();
 	}
-	//210
+
+	/* Takes Threshold for FAST corner detection and KillRadius of the Region of Interest
+	 * Defines the quality of all the features and then Sorts them in ascending order of quality.
+	 * 80% of quality depends on feature response and 20% on radius within region of interest.
+	 */
 	void rankFeatures(int fastThreshold, int killRadius)
 	{
 		float scaleValue = 0.2 * fastThreshold;
@@ -259,7 +263,6 @@ public:
 									  (1/(1+exp(-(5-(10*features.at(i).getDistanceFromFrameCenter()/killRadius))))));
 			//Implemented sigmoid function and scaled to [-5,5]. Actual sigmoid => sigmoid(killRadius/2 - DistanceFromCenter
 		}
-
 		std::sort(features.begin(), features.end(), wayToSort);
 
 		return;
