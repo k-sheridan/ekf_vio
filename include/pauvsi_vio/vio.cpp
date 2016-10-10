@@ -65,6 +65,9 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 		ROS_DEBUG_ONCE("starting optical flow");
 		this->flowFeaturesToNewFrame(lastFrame, currentFrame);
 		currentFrame.cleanUpFeaturesByKillRadius(this->KILL_RADIUS); // clean features by killing ones with a large radius from center
+
+		//estimate motion
+		this->estimateMotion(lastFrame, currentFrame);
 	}
 }
 
@@ -243,5 +246,28 @@ void VIO::checkFeatureConsistency(Frame& checkFrame, int killThreshold ){
 	//ROS_DEBUG("setting new features");
 	checkFrame.features = tempFeatures;
 	//ROS_DEBUG("set new features");
+}
+
+/*
+ * uses epipolar geometry from two frames to
+ * estimate relative motion of the frame;
+ */
+bool VIO::estimateMotion(Frame frame1, Frame frame2)
+{
+	//first get the feature deltas from the two frames
+	std::vector<cv::Point2f> prevPoints, currentPoints;
+	this->getCorrespondingPointsFromFrames(frame1, frame2, prevPoints, currentPoints);
+
+	//calculate the essential matrix
+	cv::Mat essentialMatrix = cv::findEssentialMat(prevPoints, currentPoints, this->K);
+
+	//recover pose change from essential matrix
+	cv::Mat translation;
+	cv::Mat rotation;
+	cv::recoverPose(essentialMatrix, prevPoints, currentPoints, this->K, rotation, translation);
+
+	ROS_DEBUG_STREAM("translation: " << translation);
+
+	return true;
 }
 

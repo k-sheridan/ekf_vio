@@ -49,6 +49,9 @@ private:
 	std::vector<VIOFeature3D> active3DFeatures;
 	std::vector<VIOFeature3D> inactive3DFeatures;
 
+	cv::Mat K;
+	cv::Mat D;
+
 public:
 
 	int FAST_THRESHOLD;
@@ -86,6 +89,14 @@ public:
 		return cameraTopic;
 	}
 
+	void setK(cv::Mat _K){
+		K = _K;
+	}
+
+	void setD(cv::Mat _D){
+		D = _D;
+	}
+
 	void viewImage(cv::Mat img);
 	void viewImage(Frame frame);
 
@@ -95,7 +106,7 @@ public:
 
 	void getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, std::vector<cv::Point2f>& lastPoints, std::vector<cv::Point2f>& currentPoints);
 
-	int estimateMotion(Frame frame1, Frame frame2);
+	bool estimateMotion(Frame frame1, Frame frame2);
 
 	void checkFeatureConsistency(Frame& checkFrame, int killThreshold );
 };
