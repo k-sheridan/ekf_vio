@@ -97,7 +97,7 @@ public:
 		D = _D;
 	}
 
-	void viewImage(cv::Mat img);
+	void viewImage(cv::Mat img, bool rect);
 	void viewImage(Frame frame);
 
 	std::vector<cv::DMatch> matchFeaturesWithFlann(cv::Mat queryDescriptors, cv::Mat trainDescriptors);

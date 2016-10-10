@@ -20,6 +20,8 @@ cv::Mat get3x3FromVector(boost::array<double, 9> vec)
 	return mat;
 }
 
+
+
 void cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::CameraInfoConstPtr& cam)
 {
 	ros::Time start = ros::Time::now();
@@ -27,7 +29,7 @@ void cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::Ca
 
 	//set the K and D matrices
 	vio.setK(get3x3FromVector(cam->K));
-	//vio.setD(cv::Mat(cam->D));
+	vio.setD(cv::Mat(cam->D, false));
 
 	/* sets the current frame and its time created
 	 * It also runs a series of functions which ultimately estimate

@@ -15,7 +15,14 @@ VIO::VIO()
 /*
  * shows cv::Mat
  */
-void VIO::viewImage(cv::Mat img){
+void VIO::viewImage(cv::Mat img, bool rectify){
+	if(rectify)
+	{
+		cv::Matx33d newK = K;
+		newK(0, 0) = 100;
+		newK(1, 1) = 100;
+		cv::fisheye::undistortImage(img, img, this->K, this->D, newK);
+	}
 	cv::imshow("test", img);
 	cv::waitKey(30);
 }
@@ -26,7 +33,7 @@ void VIO::viewImage(cv::Mat img){
 void VIO::viewImage(Frame frame){
 	cv::Mat img;
 	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img, cv::Scalar(255, 0, 0));
-	this->viewImage(img);
+	this->viewImage(img, true);
 
 }
 
@@ -261,12 +268,17 @@ bool VIO::estimateMotion(Frame frame1, Frame frame2)
 	//calculate the essential matrix
 	cv::Mat essentialMatrix = cv::findEssentialMat(prevPoints, currentPoints, this->K);
 
+	//undistort points using fisheye model
+	//cv::fisheye::undistortPoints(prevPoints, prevPoints, this->K, this->D);
+	//cv::fisheye::undistortPoints(currentPoints, currentPoints, this->K, this->D);
+
 	//recover pose change from essential matrix
 	cv::Mat translation;
-	cv::Mat rotation;
-	cv::recoverPose(essentialMatrix, prevPoints, currentPoints, this->K, rotation, translation);
+	cv::Mat rotation1;
+	cv::Mat rotation2;
+	cv::decomposeEssentialMat(essentialMatrix, rotation1, rotation2, translation);
 
-	ROS_DEBUG_STREAM("translation: " << translation);
+	ROS_DEBUG_STREAM("translation: " << translation.t());
 
 	return true;
 }
