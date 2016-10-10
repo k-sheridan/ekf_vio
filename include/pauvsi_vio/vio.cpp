@@ -65,6 +65,9 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 		ROS_DEBUG_ONCE("starting optical flow");
 		this->flowFeaturesToNewFrame(lastFrame, currentFrame);
 		currentFrame.cleanUpFeaturesByKillRadius(this->KILL_RADIUS); // clean features by killing ones with a large radius from center
+
+		//estimate motion
+		this->estimateMotion(lastFrame, currentFrame);
 	}
 }
 
@@ -88,6 +91,9 @@ void VIO::readROSParameters()
 	ros::param::param<float>("~feature_kill_radius", KILL_RADIUS, DEFAULT_2D_KILL_RADIUS);
 
 	ros::param::param<int>("~feature_similarity_threshold", FEATURE_SIMILARITY_THRESHOLD, DEFAULT_FEATURE_SIMILARITY_THRESHOLD);
+	ros::param::param<bool>("~kill_by_dissimilarity", KILL_BY_DISSIMILARITY, false);
+
+	ros::param::param<float>("~min_eigen_value", MIN_EIGEN_VALUE, DEFAULT_MIN_EIGEN_VALUE);
 }
 
 
@@ -129,8 +135,11 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 	/*
 	 * this calculates the new positions of the old features in the new image
 	 * status tells us whether or not a point index has been flowed over to the new frame
+	 * last value is a minimum eigen value thresh
+	 * it will kill bad features
 	 */
-	cv::calcOpticalFlowPyrLK(oldFrame.image, newFrame.image, oldPoints, newPoints, status, error);
+	cv::calcOpticalFlowPyrLK(oldFrame.image, newFrame.image, oldPoints, newPoints, status, error, cv::Size(21, 21), 3,
+			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), 0, this->MIN_EIGEN_VALUE);
 
 	ROS_DEBUG_STREAM_ONCE("ran optical flow and got " << newPoints.size() << " points out");
 
@@ -161,9 +170,12 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 	ROS_DEBUG_STREAM_COND(lostFeatures, "optical flow lost " << lostFeatures <<  " feature(s)");
 
-	this->checkFeatureConsistency(newFrame, this->FEATURE_SIMILARITY_THRESHOLD);
-
-	ROS_DEBUG_STREAM("after checking feature consistency new frame contains " << newFrame.features.size());
+	//if user wants to kill by similarity
+	if(KILL_BY_DISSIMILARITY)
+	{
+		ROS_DEBUG("killing by similarity");
+		this->checkFeatureConsistency(newFrame, this->FEATURE_SIMILARITY_THRESHOLD);
+	}
 
 	return true;
 }
@@ -204,25 +216,58 @@ void VIO::checkFeatureConsistency(Frame& checkFrame, int killThreshold ){
 
 		if(!checkFrame.features.at(i).isFeatureDescribed())
 			break;
+
 		cv::Mat row = newDescription.row(i);
-		ROS_DEBUG_STREAM_ONCE("got feature description " << row);
+
+		//ROS_DEBUG_STREAM_ONCE("got feature description " << row);
+
 		int x = checkFrame.compareDescriptors(row, checkFrame.features.at(i).getFeatureDescription());
 		//int x = checkFrame.compareDescriptors(row, row);
+
 		if (x <= killThreshold){
-			ROS_DEBUG_STREAM("features match " << i <<" : "<<checkFrame.features.size()<<" : "<< newDescription.rows <<" : " << x);
+
+			//ROS_DEBUG_STREAM("features match " << i <<" : "<<checkFrame.features.size()<<" : "<< newDescription.rows <<" : " << x);
 			//ROS_DEBUG_STREAM("i+1: "<< checkFrame.features.at(i+1).getFeatureDescription()<<":"<<checkFrame.features.at(i+1).isFeatureDescribed());
-			ROS_DEBUG_STREAM("description size " << checkFrame.features.at(i).getFeatureDescription().cols);
+			//ROS_DEBUG_STREAM("description size " << checkFrame.features.at(i).getFeatureDescription().cols);
+
 			checkFrame.features.at(i).setFeatureDescription(row);
-			ROS_DEBUG("modified feature");
+
+			//ROS_DEBUG("modified feature");
+
 			tempFeatures.push_back(checkFrame.features.at(i));
-			ROS_DEBUG("pushed back modified feature");
+
+			//ROS_DEBUG("pushed back modified feature");
 		}
 		else{
-			ROS_DEBUG("features dont match");
+			ROS_DEBUG("feature does'nt match enough, killing");
 		}
 	}
-	ROS_DEBUG("setting new features");
+
+	//ROS_DEBUG("setting new features");
 	checkFrame.features = tempFeatures;
-	ROS_DEBUG("set new features");
+	//ROS_DEBUG("set new features");
+}
+
+/*
+ * uses epipolar geometry from two frames to
+ * estimate relative motion of the frame;
+ */
+bool VIO::estimateMotion(Frame frame1, Frame frame2)
+{
+	//first get the feature deltas from the two frames
+	std::vector<cv::Point2f> prevPoints, currentPoints;
+	this->getCorrespondingPointsFromFrames(frame1, frame2, prevPoints, currentPoints);
+
+	//calculate the essential matrix
+	cv::Mat essentialMatrix = cv::findEssentialMat(prevPoints, currentPoints, this->K);
+
+	//recover pose change from essential matrix
+	cv::Mat translation;
+	cv::Mat rotation;
+	cv::recoverPose(essentialMatrix, prevPoints, currentPoints, this->K, rotation, translation);
+
+	ROS_DEBUG_STREAM("translation: " << translation);
+
+	return true;
 }
 

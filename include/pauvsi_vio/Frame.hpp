@@ -211,11 +211,11 @@ public:
 	 * take a feature vector and describe each of the features
 	 */
 	cv::Mat describeFeaturesWithBRIEF(cv::Mat image, std::vector<VIOFeature2D> featureVector){
-		ROS_DEBUG("begin to describe feature with brief");
+		//ROS_DEBUG("begin to describe feature with brief");
 		std::vector<cv::KeyPoint> kp = this->getKeyPointVectorFromFeatures(featureVector);
 		cv::Mat description;
 		descriptionExtractor->compute(image, kp, description);
-		ROS_DEBUG_STREAM("found description with the size" << description.rows << " X " << description.cols);
+		//ROS_DEBUG_STREAM("found description with the size" << description.rows << " X " << description.cols);
 		return description;
 	}
 
@@ -283,7 +283,7 @@ public:
 			}
 			else
 			{
-				ROS_DEBUG_STREAM_THROTTLE(1, "removing a feature with radius " << this->features.at(i).getDistanceFromFrameCenter());
+				ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << this->features.at(i).getDistanceFromFrameCenter());
 			}
 		}
 

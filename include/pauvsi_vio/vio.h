@@ -29,6 +29,7 @@
 #define DEFAULT_FAST_THRESHOLD 50
 #define DEFAULT_2D_KILL_RADIUS 210
 #define DEFAULT_FEATURE_SIMILARITY_THRESHOLD 10
+#define DEFAULT_MIN_EIGEN_VALUE 1e-4
 
 class VIO
 {
@@ -48,11 +49,16 @@ private:
 	std::vector<VIOFeature3D> active3DFeatures;
 	std::vector<VIOFeature3D> inactive3DFeatures;
 
+	cv::Mat K;
+	cv::Mat D;
+
 public:
 
 	int FAST_THRESHOLD;
 	float KILL_RADIUS;
 	int FEATURE_SIMILARITY_THRESHOLD;
+	float MIN_EIGEN_VALUE;
+	bool KILL_BY_DISSIMILARITY;
 
 	VIO();
 
@@ -83,6 +89,14 @@ public:
 		return cameraTopic;
 	}
 
+	void setK(cv::Mat _K){
+		K = _K;
+	}
+
+	void setD(cv::Mat _D){
+		D = _D;
+	}
+
 	void viewImage(cv::Mat img);
 	void viewImage(Frame frame);
 
@@ -92,7 +106,7 @@ public:
 
 	void getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, std::vector<cv::Point2f>& lastPoints, std::vector<cv::Point2f>& currentPoints);
 
-	int estimateMotion(Frame frame1, Frame frame2, std::vector<double> translationPrediction, std::vector<double> rotationPrediction);
+	bool estimateMotion(Frame frame1, Frame frame2);
 
 	void checkFeatureConsistency(Frame& checkFrame, int killThreshold );
 };
