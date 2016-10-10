@@ -16,6 +16,7 @@
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/video.hpp"
 #include <vector>
+#include <algorithm>
 #include <string>
 #include <ros/ros.h>
 
@@ -240,11 +241,30 @@ public:
 		return sumError;
 	}
 
-/*	void rankFeatures(int threshold)
+	static bool wayToSort(VIOFeature2D i, VIOFeature2D j)
 	{
-		features.at(0).
+		bool v = i.getQuality()<j.getQuality();
+		return i.getQuality()<j.getQuality();
 	}
-*/
+	//210
+	void rankFeatures(int fastThreshold, int killRadius)
+	{
+		float scaleValue = 0.2 * fastThreshold;
+		int size = features.size();
+		for(int i=0; i<size; ++i)
+		{
+			//Scaled to 80% from response value and 20% from distance from center
+			features.at(i).setQuality(0.8*features.at(i).getResponse() +
+					  	  	  	  	  0.2*features.at(i).getResponse() *
+									  (1/(1+exp(-(5-(10*features.at(i).getDistanceFromFrameCenter()/killRadius))))));
+			//Implemented sigmoid function and scaled to [-5,5]. Actual sigmoid => sigmoid(killRadius/2 - DistanceFromCenter
+		}
+
+		std::sort(features.begin(), features.end(), wayToSort);
+
+		return;
+	}
+
 	/*
 	 * Checks all local frame features for whether or not a feature is outside of the kill radius.
 	 * It will kill the feature if it is
