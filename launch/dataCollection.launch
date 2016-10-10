@@ -18,5 +18,10 @@
 		<param name="scaleY" value="512" />
 		<rosparam file="$(find pauvsi_pgc_driver)/params/13Y3C_params.yaml"/>
 	</node>
-	
+
+	<node pkg="tf" type="static_transform_publisher" name="IMU_base" 
+			args="0.01 -0.034 0 0 0 0 /imu_frame /base_link 100"/>
+			
+	<node pkg="tf" type="static_transform_publisher" name="base_camera" 
+			args="0.096 0 0.023 0 -0.087266 0 /base_link /camera_frame 100"/> 		 	
 </launch>
