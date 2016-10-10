@@ -1,16 +1,9 @@
 <launch>
 	
-	<param name="m7_description" command="cat $(find pauvsi_m7)/urdf/pauvsi_m7_robot.urdf" />
-	
 	<node name="flightControllerSerial" pkg="rosserial_python" type="serial_node.py">
 		<param name="port" value="/dev/ttyACM0" />
 	</node>
 	
-	<node pkg="robot_state_publisher" type="robot_state_publisher" name="m7_state_pub" >
-      <remap from="robot_description" to="m7_description" />
-      <remap from="joint_states" to="/arm/jointStates" />
-    </node>
-
 	<node name="camera" pkg="pauvsi_pgc_driver" type="pgcDriver" output="screen">
 		<param name="frame_rate" value="50" />
   		<param name="serial_number" value="15374828" />
@@ -25,14 +18,5 @@
 		<param name="scaleY" value="512" />
 		<rosparam file="$(find pauvsi_pgc_driver)/params/13Y3C_params.yaml"/>
 	</node>
-	
-	<node name="vio" pkg="pauvsi_vio" type="pauvsi_vio" output="screen">
-		<param name="cameraTopic" value="/camera/bottom/image_scaled"/>
-		<param name="fast_threshold" value="20"/>
-		<param name="feature_similarity_threshold" value="90"/>
-		<param name="kill_by_dissimilarity" value="true"/>
-		<param name="min_eigen_value" value="0.007"/>
-	</node>
-	
 	
 </launch>
