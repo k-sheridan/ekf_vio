@@ -257,11 +257,40 @@ public:
 		int size = features.size();
 		for(int i=0; i<size; ++i)
 		{
-			//Scaled to 80% from response value and 20% from distance from center
-			features.at(i).setQuality(0.8*features.at(i).getResponse() +
-					  	  	  	  	  0.2*features.at(i).getResponse() *
-									  (1/(1+exp(-(5-(10*features.at(i).getDistanceFromFrameCenter()/killRadius))))));
-			//Implemented sigmoid function and scaled to [-5,5]. Actual sigmoid => sigmoid(killRadius/2 - DistanceFromCenter
+			if(features.at(i).getQuality() != -1.0)
+			{
+				//Scaled to 80% from response value and 20% from distance from center
+				features.at(i).setQuality(0.8*features.at(i).getResponse() +
+						0.2*features.at(i).getResponse() *
+						(1/(1+exp(-(5-(10*features.at(i).getDistanceFromFrameCenter()/killRadius))))));
+				//Implemented sigmoid function and scaled to [-5,5]. Actual sigmoid => sigmoid(killRadius/2 - DistanceFromCenter
+			}
+		}
+		std::sort(features.begin(), features.end(), wayToSort);
+
+		return;
+	}
+
+	/* Takes Threshold for FAST corner detection and KillRadius of the Region of Interest
+	 * Defines the quality of all the features and then Sorts them in ascending order of quality.
+	 * 80% of quality depends on feature response and 20% on radius within region of interest.
+	 *
+	 * overloaded uses referenced feature vector
+	 */
+	void rankFeatures(std::vector<VIOFeature2D>& features, int fastThreshold, int killRadius)
+	{
+		float scaleValue = 0.2 * fastThreshold;
+		int size = features.size();
+		for(int i=0; i<size; ++i)
+		{
+			if(features.at(i).getQuality() != -1.0)
+			{
+				//Scaled to 80% from response value and 20% from distance from center
+				features.at(i).setQuality(0.8*features.at(i).getResponse() +
+						0.2*features.at(i).getResponse() *
+						(1/(1+exp(-(5-(10*features.at(i).getDistanceFromFrameCenter()/killRadius))))));
+				//Implemented sigmoid function and scaled to [-5,5]. Actual sigmoid => sigmoid(killRadius/2 - DistanceFromCenter
+			}
 		}
 		std::sort(features.begin(), features.end(), wayToSort);
 

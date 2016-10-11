@@ -82,7 +82,13 @@ public:
         return z;
     }
 
-    void closest_distance(VIOLine L1, VIOLine L2, vector<double>& cp) {
+    /*
+     * accepts two lines and will find the closest point between those two
+     * lines.
+     * cp is the closest equidistant point bewteen the two lines
+     * returns: the distance at the closest point bewteen the two lines.
+     */
+    double closest_distance(VIOLine L1, VIOLine L2, vector<double>& cp) {
         vector<double> d1 = (L1.direction_vector());
         vector<double> d2 = (L2.direction_vector());
 
@@ -102,6 +108,10 @@ public:
         cp[0] = (c2[0]+c1[0])/2;
         cp[1] = (c2[1]+c1[1])/2;
         cp[2] = (c2[2]+c1[2])/2;
+
+        vector<double> c21 = subtract(c2, c1);
+
+        return sqrt(c21[0] * c21[0] + c21[1] * c21[1] + c21[2] * c21[2]);
     }
 
     vector<double> getP0() {

@@ -30,6 +30,8 @@
 #define DEFAULT_2D_KILL_RADIUS 210
 #define DEFAULT_FEATURE_SIMILARITY_THRESHOLD 10
 #define DEFAULT_MIN_EIGEN_VALUE 1e-4
+#define DEFAULT_NUM_FEATURES 50
+#define DEFAULT_MIN_NEW_FEATURE_DIST 10
 
 class VIO
 {
@@ -59,6 +61,8 @@ public:
 	int FEATURE_SIMILARITY_THRESHOLD;
 	float MIN_EIGEN_VALUE;
 	bool KILL_BY_DISSIMILARITY;
+	int NUM_FEATURES;
+	int MIN_NEW_FEATURE_DISTANCE;
 
 	VIO();
 
@@ -109,6 +113,8 @@ public:
 	bool estimateMotion(Frame frame1, Frame frame2);
 
 	void checkFeatureConsistency(Frame& checkFrame, int killThreshold );
+
+	void run();
 };
 
 

@@ -30,8 +30,9 @@
 		<param name="cameraTopic" value="/camera/bottom/image_scaled"/>
 		<param name="fast_threshold" value="20"/>
 		<param name="feature_similarity_threshold" value="90"/>
-		<param name="kill_by_dissimilarity" value="true"/>
+		<param name="kill_by_dissimilarity" value="false"/>
 		<param name="min_eigen_value" value="0.007"/>
+		<param name="num_features" value="50"/>
 	</node>
 	
 	

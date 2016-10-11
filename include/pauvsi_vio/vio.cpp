@@ -60,22 +60,41 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 	}
 
 	currentFrame = Frame(img, t, lastFrame.nextFeatureID); // create a frame with a starting ID of the last frame's next id
-	if(!lastFrame.isFrameSet()){
-		currentFrame.getFASTCorners(this->FAST_THRESHOLD);
-		currentFrame.describeFeaturesWithBRIEF();
-		currentFrame.cleanUpFeaturesByKillRadius(this->KILL_RADIUS); // cleans features by killing them if their radius to too large
-	}
 
+	this->run();
+}
+
+/*
+ * runs:
+ * feature detection, ranking, flowing
+ * motion estimation
+ * feature mapping
+ */
+void VIO::run()
+{
 	// if there is a last frame, flow features and estimate motion
 	if(lastFrame.isFrameSet())
 	{
-		ROS_DEBUG_ONCE("starting optical flow");
-		this->flowFeaturesToNewFrame(lastFrame, currentFrame);
-		currentFrame.cleanUpFeaturesByKillRadius(this->KILL_RADIUS); // clean features by killing ones with a large radius from center
+		if(lastFrame.features.size() > 0)
+		{
+			this->flowFeaturesToNewFrame(lastFrame, currentFrame);
+			currentFrame.cleanUpFeaturesByKillRadius(this->KILL_RADIUS);
+		}
 
 		//estimate motion
-		this->estimateMotion(lastFrame, currentFrame);
+		if(currentFrame.features.size() >= 5)
+		{
+			this->estimateMotion(lastFrame, currentFrame);
+		}
+		else
+		{
+			//use solely the accelerometer and gyro estimates
+		}
 	}
+
+	//check the number of 2d features in the current frame
+	//if this is below the required amount refill the feature vector with
+	//the best new feature. It must not be redundant.
 }
 
 /*
@@ -101,6 +120,10 @@ void VIO::readROSParameters()
 	ros::param::param<bool>("~kill_by_dissimilarity", KILL_BY_DISSIMILARITY, false);
 
 	ros::param::param<float>("~min_eigen_value", MIN_EIGEN_VALUE, DEFAULT_MIN_EIGEN_VALUE);
+
+	ros::param::param<int>("~num_features", NUM_FEATURES, DEFAULT_NUM_FEATURES);
+
+	ros::param::param<int>("~min_new_feature_distance", MIN_NEW_FEATURE_DISTANCE, DEFAULT_MIN_NEW_FEATURE_DIST);
 }
 
 
@@ -175,12 +198,12 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 		}
 	}
 
-	ROS_DEBUG_STREAM_COND(lostFeatures, "optical flow lost " << lostFeatures <<  " feature(s)");
+	//ROS_DEBUG_STREAM_COND(lostFeatures, "optical flow lost " << lostFeatures <<  " feature(s)");
 
 	//if user wants to kill by similarity
 	if(KILL_BY_DISSIMILARITY)
 	{
-		ROS_DEBUG("killing by similarity");
+		//ROS_DEBUG("killing by similarity");
 		this->checkFeatureConsistency(newFrame, this->FEATURE_SIMILARITY_THRESHOLD);
 	}
 
@@ -265,8 +288,10 @@ bool VIO::estimateMotion(Frame frame1, Frame frame2)
 	std::vector<cv::Point2f> prevPoints, currentPoints;
 	this->getCorrespondingPointsFromFrames(frame1, frame2, prevPoints, currentPoints);
 
+	cv::Mat mask;
+
 	//calculate the essential matrix
-	cv::Mat essentialMatrix = cv::findEssentialMat(prevPoints, currentPoints, this->K);
+	cv::Mat essentialMatrix = cv::findEssentialMat(prevPoints, currentPoints, this->K, cv::RANSAC, 0.999, 1.0, mask);
 
 	//undistort points using fisheye model
 	//cv::fisheye::undistortPoints(prevPoints, prevPoints, this->K, this->D);
@@ -274,11 +299,12 @@ bool VIO::estimateMotion(Frame frame1, Frame frame2)
 
 	//recover pose change from essential matrix
 	cv::Mat translation;
-	cv::Mat rotation1;
-	cv::Mat rotation2;
-	cv::decomposeEssentialMat(essentialMatrix, rotation1, rotation2, translation);
+	cv::Mat rotation;
 
-	ROS_DEBUG_STREAM("translation: " << translation.t());
+	cv::recoverPose(essentialMatrix, prevPoints, currentPoints, this->K, rotation, translation, mask);
+
+
+	//ROS_DEBUG_STREAM("translation: " << translation.t());
 
 	return true;
 }
