@@ -118,17 +118,21 @@ public:
 	 *
 	 * This function does not check for identical features
 	 */
-	bool getFASTCorners(int threshold){
+	std::vector<VIOFeature2D> getFASTCorners(int threshold){
 		std::vector<cv::KeyPoint> corners;
 		cv::FAST(this->image, corners, threshold, true); // detect with nonmax suppression
 
 		int startingID = features.size(); // the starting ID is the current size of the feature vector
 
+		std::vector<VIOFeature2D> feats;
 		for(int i=0; i < corners.size(); i++)
 		{
-			this->addFeature(corners.at(i)); // ensure that id's do not repeat
+			//use a negative id because it is not important to give it a relevant id yet
+			feats.push_back(VIOFeature2D(corners.at(i), -1)); // ensure that id's do not repeat
 			//ROS_DEBUG_STREAM("corner id " << corners.at(i).response);
 		}
+
+		return feats;
 	}
 
 	/*
@@ -324,6 +328,35 @@ public:
 	}
 
 	/*
+		 * Checks all local frame features for whether or not a feature is outside of the kill radius.
+		 * It will kill the feature if it is
+		 * It will set the feature's distance to center if it is not
+		 * this function ensures that the feature id's remain in ascending order
+		 *
+		 * overloaded:
+		 * uses a referenced feature vector
+		 */
+		void cleanUpFeaturesByKillRadius(std::vector<VIOFeature2D>& feats, float killRadius)
+		{
+			cv::Point2f imageCenter = cv::Point2f((float)(this->image.cols / 2), (float)(this->image.rows / 2));
+			std::vector<VIOFeature2D> cleanFeatures;
+			for(int i = 0; i < features.size(); i++)
+			{
+				if(this->getAndSetFeatureRadius(features.at(i), imageCenter) <= killRadius)
+				{
+					cleanFeatures.push_back(features.at(i));
+				}
+				else
+				{
+					ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << features.at(i).getDistanceFromFrameCenter());
+				}
+			}
+
+			//finally set the local feature vector to the new featureVector
+			features = cleanFeatures;
+		}
+
+	/*
 	 * this will check the feature's radius and both set an its radius
 	 */
 	float getAndSetFeatureRadius(VIOFeature2D& feat, cv::Point2f imageCenter){
@@ -332,6 +365,96 @@ public:
 		feat.setDistanceFromFrameCenter(sqrt(dx * dx + dy * dy));
 		return feat.getDistanceFromFrameCenter();
 	}
+
+	/*
+	 * uses manhattan method to find distance between two pixels
+	 */
+	int manhattan(cv::Point2f p1, cv::Point2f p2){
+		return abs((int)p2.x - (int) p1.x) + abs((int)p2.y - (int)p1.y);
+	}
+
+	/*
+	 * removes redundant features from the clean vector by comparing
+	 * its features with the compare vector and checking their
+	 * distances with min_feature_dist
+	 */
+	void removeRedundantFeature(std::vector<VIOFeature2D>& toClean, std::vector<VIOFeature2D> compare, int min_feature_dist)
+	{
+		std::vector<VIOFeature2D> cleaned;
+		bool removed = false;
+
+		for(int i = 0; i < toClean.size(); i++)
+		{
+			for(int j = 0; j < compare.size(); j++)
+			{
+				if(manhattan(toClean.at(i).getFeature().pt, compare.at(j).getFeature().pt) < min_feature_dist)
+				{
+					removed = true;
+					break;
+				}
+			}
+
+			//if it has not been found to be redundant
+			// push it back into the cleaned vector
+			if(!removed)
+			{
+				cleaned.push_back(toClean.at(i));
+			}
+
+			removed = false;
+		}
+
+		//ROS_DEBUG_STREAM("After cleaning " << toClean.size() << " features, we are left with " << cleaned.size() << " features");
+		toClean = cleaned;
+	}
+
+	/*
+	 * this will use the fast algorithm to find new features in the image
+	 * it will then kill all features outside the kill radius
+	 * then it will compare each feature with all features in the frame and ensure that it is not the same
+	 * finally the remaining features will be ranked and the top n features will be added to the feature vector.
+	 *
+	 * nFeatures: number of features to add to the frame
+	 * fast_threshold: the threshold to use with the fast algorithm
+	 * kill_radius: the radius to kill features at
+	 * min_feature_dist: the minimum distance between new and old features
+	 */
+	void getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_radius, int min_feature_dist)
+	{
+		std::vector<VIOFeature2D> candidates;
+
+		//get new features
+		candidates = this->getFASTCorners(fast_threshold);
+
+		//clean features by kill radius
+		this->cleanUpFeaturesByKillRadius(candidates, kill_radius);
+
+		//clean features by redundancy
+		//ROS_DEBUG_STREAM("before " << candidates.size());
+		this->removeRedundantFeature(candidates, this->features, min_feature_dist);
+		//ROS_DEBUG_STREAM("after " << candidates.size());
+
+		//rank the features
+		this->rankFeatures(candidates, fast_threshold, kill_radius);
+
+		//if after all this we have too few features only add all of them
+		if(candidates.size() < nFeatures)
+		{
+			for(int i = 0; i < candidates.size(); i++)
+			{
+				this->addFeature(candidates.at(i));
+			}
+		}
+		else
+		{
+			for(int i = 0; i < nFeatures; i++)
+			{
+				this->addFeature(candidates.at(i));
+			}
+		}
+
+	}
+
 
 };
 

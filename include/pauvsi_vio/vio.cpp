@@ -32,7 +32,7 @@ void VIO::viewImage(cv::Mat img, bool rectify){
  */
 void VIO::viewImage(Frame frame){
 	cv::Mat img;
-	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img, cv::Scalar(255, 0, 0));
+	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img, cv::Scalar(0, 0, 255));
 	this->viewImage(img, true);
 
 }
@@ -82,7 +82,7 @@ void VIO::run()
 		}
 
 		//estimate motion
-		if(currentFrame.features.size() >= 5)
+		if(currentFrame.features.size() >= 5 && lastFrame.features.size() >= 5)
 		{
 			this->estimateMotion(lastFrame, currentFrame);
 		}
@@ -95,6 +95,15 @@ void VIO::run()
 	//check the number of 2d features in the current frame
 	//if this is below the required amount refill the feature vector with
 	//the best new feature. It must not be redundant.
+
+	ROS_DEBUG_STREAM("feature count: " << currentFrame.features.size());
+
+	if(currentFrame.features.size() < this->NUM_FEATURES)
+	{
+		//add n new unique features
+		ROS_DEBUG("low on features getting more");
+		currentFrame.getAndAddNewFeatures(this->NUM_FEATURES - currentFrame.features.size(), this->FAST_THRESHOLD, this->KILL_RADIUS, this->MIN_NEW_FEATURE_DISTANCE);
+	}
 }
 
 /*
