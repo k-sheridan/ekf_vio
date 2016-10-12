@@ -12,7 +12,7 @@
     </node>
 
 	<node name="camera" pkg="pauvsi_pgc_driver" type="pgcDriver" output="screen">
-		<param name="frame_rate" value="50" />
+		<param name="frame_rate" value="5" />
   		<param name="serial_number" value="15374828" />
   		<param name="publish_rectified" value="false" />
 		<param name="publish_distort" value="true" />
@@ -28,12 +28,13 @@
 	
 	<node name="vio" pkg="pauvsi_vio" type="pauvsi_vio" output="screen">
 		<param name="cameraTopic" value="/camera/bottom/image_scaled"/>
+		<param name="imu_topic" value="/IMU_Full"/>
 		<param name="fast_threshold" value="50"/>
 		<param name="feature_similarity_threshold" value="90"/>
 		<param name="kill_by_dissimilarity" value="false"/>
-		<param name="min_eigen_value" value="0.007"/>
+		<param name="min_eigen_value" value="0.01"/>
 		<param name="num_features" value="50"/>
-		<param name="min_new_feature_distance" value="50"/>
+		<param name="min_new_feature_distance" value="20"/>
 	</node>
 	
 	

@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/Imu.h>
 
 #include "pauvsi_vio/vio.h"
 
@@ -39,7 +40,15 @@ void cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::Ca
 
 	ROS_DEBUG_STREAM_THROTTLE(0.5, "message #" << cv_bridge::toCvShare(img, "mono8")->header.seq << " finished in " << (ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds");
 
-	//vio.viewImage(vio.getCurrentFrame());
+	vio.viewImage(vio.getCurrentFrame());
+
+	//ros::Duration d = ros::Duration(0.1);
+	//d.sleep();
+}
+
+void imuCallback(const sensor_msgs::ImuConstPtr& msg)
+{
+	vio.addIMUReading(*msg);
 }
 
 int main(int argc, char **argv)
@@ -53,6 +62,9 @@ int main(int argc, char **argv)
 	image_transport::ImageTransport it(nh);
 	image_transport::CameraSubscriber cameraSub;
 	cameraSub = it.subscribeCamera(vio.getCameraTopic(), 1, cameraCallback);
+
+	//setup imu sub
+	ros::Subscriber imuSub = nh.subscribe(vio.getIMUTopic(), 100, imuCallback);
 
 	ros::spin();
 

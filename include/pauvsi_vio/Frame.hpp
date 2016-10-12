@@ -188,6 +188,11 @@ public:
 	 * and describes them using the BRIEF algorithm
 	 */
 	bool describeFeaturesWithBRIEF(){
+		if(features.size() == 0)
+		{
+			return false;
+		}
+
 		std::vector<unsigned int> featureIndexes; // the index of the feature keypoints
 		std::vector<cv::KeyPoint> featureKPs; // feature keypoints to be described
 
@@ -209,6 +214,8 @@ public:
 			cv::Mat desc = descriptions.row(i);
 			features.at(featureIndexes.at(i)).setFeatureDescription(desc);
 		}
+
+		return true;
 
 	}
 	/*
@@ -328,33 +335,33 @@ public:
 	}
 
 	/*
-		 * Checks all local frame features for whether or not a feature is outside of the kill radius.
-		 * It will kill the feature if it is
-		 * It will set the feature's distance to center if it is not
-		 * this function ensures that the feature id's remain in ascending order
-		 *
-		 * overloaded:
-		 * uses a referenced feature vector
-		 */
-		void cleanUpFeaturesByKillRadius(std::vector<VIOFeature2D>& feats, float killRadius)
+	 * Checks all local frame features for whether or not a feature is outside of the kill radius.
+	 * It will kill the feature if it is
+	 * It will set the feature's distance to center if it is not
+	 * this function ensures that the feature id's remain in ascending order
+	 *
+	 * overloaded:
+	 * uses a referenced feature vector
+	 */
+	void cleanUpFeaturesByKillRadius(std::vector<VIOFeature2D>& feats, float killRadius)
+	{
+		cv::Point2f imageCenter = cv::Point2f((float)(this->image.cols / 2), (float)(this->image.rows / 2));
+		std::vector<VIOFeature2D> cleanFeatures;
+		for(int i = 0; i < features.size(); i++)
 		{
-			cv::Point2f imageCenter = cv::Point2f((float)(this->image.cols / 2), (float)(this->image.rows / 2));
-			std::vector<VIOFeature2D> cleanFeatures;
-			for(int i = 0; i < features.size(); i++)
+			if(this->getAndSetFeatureRadius(features.at(i), imageCenter) <= killRadius)
 			{
-				if(this->getAndSetFeatureRadius(features.at(i), imageCenter) <= killRadius)
-				{
-					cleanFeatures.push_back(features.at(i));
-				}
-				else
-				{
-					ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << features.at(i).getDistanceFromFrameCenter());
-				}
+				cleanFeatures.push_back(features.at(i));
 			}
-
-			//finally set the local feature vector to the new featureVector
-			features = cleanFeatures;
+			else
+			{
+				ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << features.at(i).getDistanceFromFrameCenter());
+			}
 		}
+
+		//finally set the local feature vector to the new featureVector
+		features = cleanFeatures;
+	}
 
 	/*
 	 * this will check the feature's radius and both set an its radius

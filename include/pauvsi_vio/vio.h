@@ -18,6 +18,7 @@
 #include <vector>
 #include <string>
 #include <ros/ros.h>
+#include <sensor_msgs/Imu.h>
 
 #include "Frame.hpp"
 #include "VIOFeature3D.hpp"
@@ -46,7 +47,16 @@ private:
 	Frame lastFrame; //the last frame
 
 	std::vector<double> position; // the current position
-	std::vector<double> orientation; // the current orientation
+	std::vector<double> velocity; // the current velocity
+	std::vector<double> orientation; // the current orientation in rpy
+
+	/*
+	 * this buffer stores IMU messages until they are needed
+	 * for integration
+	 * The reason we don't integrate them right away is because there is a
+	 * slight gap it the time that the image is captured and when it is processed
+	 */
+	std::vector<sensor_msgs::Imu> imuMessageBuffer;
 
 	std::vector<VIOFeature3D> active3DFeatures;
 	std::vector<VIOFeature3D> inactive3DFeatures;
@@ -92,6 +102,9 @@ public:
 	std::string getCameraTopic(){
 		return cameraTopic;
 	}
+	std::string getIMUTopic(){
+		return imuTopic;
+	}
 
 	void setK(cv::Mat _K){
 		K = _K;
@@ -110,11 +123,19 @@ public:
 
 	void getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, std::vector<cv::Point2f>& lastPoints, std::vector<cv::Point2f>& currentPoints);
 
-	bool estimateMotion(Frame frame1, Frame frame2);
+	bool visualMotionInference(Frame frame1, Frame frame2, std::vector<double> angleChangePrediction, std::vector<double>& rotationInference, std::vector<double>& unitVelocityInference, double& averageMovement);
+
+	double estimateMotion();
 
 	void checkFeatureConsistency(Frame& checkFrame, int killThreshold );
 
 	void run();
+
+	double averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2);
+
+	void addIMUReading(sensor_msgs::Imu msg){
+		this->imuMessageBuffer.push_back(msg);
+	}
 };
 
 

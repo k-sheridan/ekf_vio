@@ -7,9 +7,25 @@
 
 #include "vio.h"
 
+/*
+ * starts all state vectors at 0.0
+ */
 VIO::VIO()
 {
+	this->position.reserve(3);
+	this->position[0] = 0.0;
+	this->position[1] = 0.0;
+	this->position[2] = 0.0;
 
+	this->velocity.reserve(3);
+	this->velocity[0] = 0.0;
+	this->velocity[1] = 0.0;
+	this->velocity[2] = 0.0;
+
+	this->orientation.reserve(3);
+	this->orientation[0] = 0.0;
+	this->orientation[1] = 0.0;
+	this->orientation[2] = 0.0;
 }
 
 /*
@@ -22,6 +38,7 @@ void VIO::viewImage(cv::Mat img, bool rectify){
 		newK(0, 0) = 100;
 		newK(1, 1) = 100;
 		cv::fisheye::undistortImage(img, img, this->K, this->D, newK);
+		//ROS_DEBUG_STREAM(newK);
 	}
 	cv::imshow("test", img);
 	cv::waitKey(30);
@@ -33,7 +50,7 @@ void VIO::viewImage(cv::Mat img, bool rectify){
 void VIO::viewImage(Frame frame){
 	cv::Mat img;
 	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img, cv::Scalar(0, 0, 255));
-	this->viewImage(img, true);
+	this->viewImage(img, false);
 
 }
 
@@ -79,30 +96,26 @@ void VIO::run()
 		{
 			this->flowFeaturesToNewFrame(lastFrame, currentFrame);
 			currentFrame.cleanUpFeaturesByKillRadius(this->KILL_RADIUS);
+			//this->checkFeatureConsistency(currentFrame, this->FEATURE_SIMILARITY_THRESHOLD);
 		}
 
-		//estimate motion
-		if(currentFrame.features.size() >= 5 && lastFrame.features.size() >= 5)
-		{
-			this->estimateMotion(lastFrame, currentFrame);
-		}
-		else
-		{
-			//use solely the accelerometer and gyro estimates
-		}
+		//MOTION ESTIMATION
+
+		double certainty = this->estimateMotion();
 	}
 
 	//check the number of 2d features in the current frame
 	//if this is below the required amount refill the feature vector with
 	//the best new feature. It must not be redundant.
 
-	ROS_DEBUG_STREAM("feature count: " << currentFrame.features.size());
+	//ROS_DEBUG_STREAM("feature count: " << currentFrame.features.size());
 
 	if(currentFrame.features.size() < this->NUM_FEATURES)
 	{
 		//add n new unique features
-		ROS_DEBUG("low on features getting more");
+		//ROS_DEBUG("low on features getting more");
 		currentFrame.getAndAddNewFeatures(this->NUM_FEATURES - currentFrame.features.size(), this->FAST_THRESHOLD, this->KILL_RADIUS, this->MIN_NEW_FEATURE_DISTANCE);
+		//currentFrame.describeFeaturesWithBRIEF();
 	}
 }
 
@@ -288,23 +301,60 @@ void VIO::checkFeatureConsistency(Frame& checkFrame, int killThreshold ){
 }
 
 /*
+ * find the average change in position
+ * for all feature correspondences
+ * vectors must be same sizes
+ */
+double VIO::averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2)
+{
+	double diff;
+	for(int i = 0; i < points1.size(); i++)
+	{
+		diff += sqrt((double)(points1.at(i).x - points2.at(i).x) * (double)(points1.at(i).x - points2.at(i).x) +
+				(double)(points1.at(i).y - points2.at(i).y) * (double)(points1.at(i).y - points2.at(i).y));
+	}
+
+	return diff / (double)points1.size();
+}
+
+double VIO::estimateMotion()
+{
+
+}
+
+/*
  * uses epipolar geometry from two frames to
  * estimate relative motion of the frame;
  */
-bool VIO::estimateMotion(Frame frame1, Frame frame2)
+bool VIO::visualMotionInference(Frame frame1, Frame frame2, std::vector<double> angleChangePrediction, std::vector<double>& rotationInference, std::vector<double>& unitVelocityInference, double& averageMovement)
 {
 	//first get the feature deltas from the two frames
 	std::vector<cv::Point2f> prevPoints, currentPoints;
 	this->getCorrespondingPointsFromFrames(frame1, frame2, prevPoints, currentPoints);
+
+	//undistort points using fisheye model
+	cv::fisheye::undistortPoints(prevPoints, prevPoints, this->K, this->D);
+	cv::fisheye::undistortPoints(currentPoints, currentPoints, this->K, this->D);
+
+	//get average movement bewteen images
+	averageMovement = this->averageFeatureChange(prevPoints, currentPoints);
+
+	//ensure that there are enough points to estimate motion with vo
+	if(currentPoints.size() < 5)
+	{
+		return false;
+	}
 
 	cv::Mat mask;
 
 	//calculate the essential matrix
 	cv::Mat essentialMatrix = cv::findEssentialMat(prevPoints, currentPoints, this->K, cv::RANSAC, 0.999, 1.0, mask);
 
-	//undistort points using fisheye model
-	//cv::fisheye::undistortPoints(prevPoints, prevPoints, this->K, this->D);
-	//cv::fisheye::undistortPoints(currentPoints, currentPoints, this->K, this->D);
+	//ensure that the essential matrix is the correct size
+	if(essentialMatrix.rows != 3 || essentialMatrix.cols != 3)
+	{
+		return false;
+	}
 
 	//recover pose change from essential matrix
 	cv::Mat translation;
@@ -312,8 +362,8 @@ bool VIO::estimateMotion(Frame frame1, Frame frame2)
 
 	cv::recoverPose(essentialMatrix, prevPoints, currentPoints, this->K, rotation, translation, mask);
 
-
-	//ROS_DEBUG_STREAM("translation: " << translation.t());
+	cv::Mat mtxR, mtxQ;
+	cv::Vec3d angle = cv::RQDecomp3x3(rotation, mtxR, mtxQ);
 
 	return true;
 }
