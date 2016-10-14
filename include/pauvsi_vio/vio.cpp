@@ -16,25 +16,12 @@ VIO::VIO()
 
 	//set up image transport
 	image_transport::ImageTransport it(nh);
-	cameraSub = it.subscribeCamera(this->getCameraTopic(), 1, &VIO::cameraCallback, this);
+	this->cameraSub = it.subscribeCamera(this->getCameraTopic(), 1, &VIO::cameraCallback, this);
 
 	//setup imu sub
-	ros::Subscriber imuSub = nh.subscribe(this->getIMUTopic(), 100, &VIO::imuCallback, this);
+	this->imuSub = nh.subscribe(this->getIMUTopic(), 100, &VIO::imuCallback, this);
 
-	this->position.reserve(3);
-	this->position[0] = 0.0;
-	this->position[1] = 0.0;
-	this->position[2] = 0.0;
-
-	this->velocity.reserve(3);
-	this->velocity[0] = 0.0;
-	this->velocity[1] = 0.0;
-	this->velocity[2] = 0.0;
-
-	this->orientation.reserve(3);
-	this->orientation[0] = 0.0;
-	this->orientation[1] = 0.0;
-	this->orientation[2] = 0.0;
+	this->pose = geometry_msgs::PoseStamped();
 }
 
 VIO::~VIO()
@@ -67,6 +54,7 @@ void VIO::cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msg
 
 void VIO::imuCallback(const sensor_msgs::ImuConstPtr& msg)
 {
+	//ROS_DEBUG_STREAM_THROTTLE(0.1, "accel: " << msg->linear_acceleration);
 	this->addIMUReading(*msg);
 }
 
@@ -165,6 +153,8 @@ void VIO::run()
 		currentFrame.getAndAddNewFeatures(this->NUM_FEATURES - currentFrame.features.size(), this->FAST_THRESHOLD, this->KILL_RADIUS, this->MIN_NEW_FEATURE_DISTANCE);
 		//currentFrame.describeFeaturesWithBRIEF();
 	}
+
+	ROS_DEBUG_STREAM("imu readings: " << this->imuMessageBuffer.size());
 }
 
 /*
@@ -181,6 +171,12 @@ void VIO::readROSParameters()
 	ROS_WARN_COND(!ros::param::has("~imuTopic"), "Parameter for 'imuTopic' has not been set");
 	ros::param::param<std::string>("~imuTopic", imuTopic, DEFAULT_IMU_TOPIC);
 	ROS_DEBUG_STREAM("IMU topic is: " << imuTopic);
+
+	ros::param::param<std::string>("~imu_frame_name", imu_frame, DEFAULT_IMU_FRAME_NAME);
+	ros::param::param<std::string>("~camera_frame_name", camera_frame, DEFAULT_CAMERA_FRAME_NAME);
+	ros::param::param<std::string>("~odom_frame_name", odom_frame, DEFAULT_ODOM_FRAME_NAME);
+	ros::param::param<std::string>("~center_of_mass_frame_name", CoM_frame, DEFAULT_COM_FRAME_NAME);
+	ros::param::param<std::string>("~world_frame_name", world_frame, DEFAULT_WORLD_FRAME_NAME);
 
 	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, DEFAULT_FAST_THRESHOLD);
 
@@ -365,6 +361,18 @@ double VIO::averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<c
 	return diff / (double)points1.size();
 }
 
+void VIO::broadcastWorldToOdomTF()
+{
+	static tf::TransformBroadcaster br;
+	tf::Transform transform;
+	transform.setOrigin(tf::Vector3(this->pose.pose.position.x, this->pose.pose.position.y, this->pose.pose.position.z));
+	tf::Quaternion q;
+	q.setValue(this->pose.pose.orientation.x, this->pose.pose.orientation.y,
+			this->pose.pose.orientation.z, this->pose.pose.orientation.w);
+	transform.setRotation(q);
+	br.sendTransform(tf::StampedTransform(transform, this->pose.header.stamp, this->world_frame, this->odom_frame));
+}
+
 /*
  * returns the certainty
  * predicts the new rotation and position of the camera.
@@ -443,11 +451,54 @@ bool VIO::visualMotionInference(Frame frame1, Frame frame2, std::vector<double> 
  * this is gotten from the fromPose and fromVelocity at their times.
  * the results are output in the angle, pos, vel change vectors
  * it returns the number of IMU readings used
+ *
+ * angle change is in radians RPY
  */
-int VIO::getInertialMotionEstimate(ros::Time time, geometry_msgs::PoseStamped fromPose,
-			geometry_msgs::Vector3Stamped fromVelocity, std::vector<double>& angleChange,
+int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, std::vector<double> fromVelocity,
+		std::vector<double> fromAngularVelocity, std::vector<double>& angleChange,
 			std::vector<double>& positionChange, std::vector<double>& velocityChange)
 {
+	//check if there are any imu readings
+	if(this->imuMessageBuffer.size() == 0)
+	{
+		return 0;
+	}
+
+	int startingIMUIndex, endingIMUIndex;
+
+	/* first find the IMU reading index such that the toTime is greater than
+	 * the stamp of the IMU reading.
+	 */
+	for(int i = this->imuMessageBuffer.size() - 1; i >= 0; i--)
+	{
+		if(this->imuMessageBuffer.at(i).header.stamp.toSec() < toTime.toSec())
+		{
+			endingIMUIndex = i;
+			break;
+		}
+	}
+
+	/*
+	 * second find the IMU reading index such that the fromTime is lesser than the
+	 * stamp of the IMU message
+	 */
+	for(int i = 0; i < this->imuMessageBuffer.size(); i++)
+	{
+		if(this->imuMessageBuffer.at(i).header.stamp.toSec() > fromTime.toSec())
+		{
+			startingIMUIndex = i;
+			break;
+		}
+	}
+
+	//now we have all IMU readings between the two times.
+
+	/*
+	 * third create the corrected accelerations vector
+	 * 1) remove centripetal acceleration
+	 * 2) remove gravity
+	 */
+
 
 
 }

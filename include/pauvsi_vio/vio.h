@@ -25,6 +25,7 @@
 #include "message_filters/subscriber.h"
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
+#include <tf/transform_broadcaster.h>
 
 #include "Frame.hpp"
 #include "VIOFeature3D.hpp"
@@ -39,6 +40,12 @@
 #define DEFAULT_MIN_EIGEN_VALUE 1e-4
 #define DEFAULT_NUM_FEATURES 50
 #define DEFAULT_MIN_NEW_FEATURE_DIST 10
+#define DEFAULT_IMU_FRAME_NAME "imu_frame"
+#define DEFAULT_ODOM_FRAME_NAME "odom"
+#define DEFAULT_CAMERA_FRAME_NAME "camera_frame"
+#define DEFAULT_COM_FRAME_NAME "base_link"
+#define DEFAULT_WORLD_FRAME_NAME "world"
+
 
 class VIO
 {
@@ -103,6 +110,8 @@ public:
 	void viewImage(cv::Mat img, bool rect);
 	void viewImage(Frame frame);
 
+	void broadcastWorldToOdomTF();
+
 	std::vector<cv::DMatch> matchFeaturesWithFlann(cv::Mat queryDescriptors, cv::Mat trainDescriptors);
 
 	bool flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame);
@@ -123,27 +132,35 @@ public:
 		this->imuMessageBuffer.push_back(msg);
 	}
 
-	int getInertialMotionEstimate(ros::Time time, geometry_msgs::PoseStamped fromPose,
-			geometry_msgs::Vector3Stamped fromVelocity, std::vector<double>& angleChange,
-			std::vector<double>& positionChange, std::vector<double>& velocityChange);
+	int getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, std::vector<double> fromVelocity,
+			std::vector<double> fromAngularVelocity, std::vector<double>& angleChange,
+				std::vector<double>& positionChange, std::vector<double>& velocityChange);
 
 protected:
 	ros::NodeHandle nh;
 
 	image_transport::CameraSubscriber cameraSub;
+	ros::Subscriber imuSub;
 
-	tf::TransformListener listener; // starts a thread which keeps track of transforms in the system
+	tf::TransformListener tf_listener; // starts a thread which keeps track of transforms in the system
 
 	//initialized with default values
 	std::string cameraTopic;
 	std::string imuTopic;
 
+	//frames
+	std::string imu_frame;
+	std::string camera_frame;
+	std::string odom_frame;
+	std::string CoM_frame;
+	std::string world_frame;
+
 	Frame currentFrame; // the current frame
 	Frame lastFrame; //the last frame
 
-	std::vector<double> position; // the current position
-	std::vector<double> velocity; // the current velocity
-	std::vector<double> orientation; // the current orientation in rpy
+	geometry_msgs::PoseStamped pose;
+	geometry_msgs::Vector3Stamped velocity;
+	geometry_msgs::Vector3Stamped angular_velocity;
 
 	/*
 	 * this buffer stores IMU messages until they are needed
