@@ -351,11 +351,13 @@ void VIO::checkFeatureConsistency(Frame& checkFrame, int killThreshold ){
  */
 double VIO::averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2)
 {
-	double diff;
+	double diff = 0;
+	double dx, dy;
 	for(int i = 0; i < points1.size(); i++)
 	{
-		diff += sqrt((double)(points1.at(i).x - points2.at(i).x) * (double)(points1.at(i).x - points2.at(i).x) +
-				(double)(points1.at(i).y - points2.at(i).y) * (double)(points1.at(i).y - points2.at(i).y));
+		dx = (double)(points1.at(i).x - points2.at(i).x);
+		dy = (double)(points1.at(i).y - points2.at(i).y);
+		diff += sqrt(pow(dx, 2) + pow(dy, 2));
 	}
 
 	return diff / (double)points1.size();
@@ -498,6 +500,7 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, std::ve
 	 * 1) remove centripetal acceleration
 	 * 2) remove gravity
 	 */
+
 
 
 
