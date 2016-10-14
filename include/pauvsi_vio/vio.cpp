@@ -12,6 +12,15 @@
  */
 VIO::VIO()
 {
+	this->readROSParameters();
+
+	//set up image transport
+	image_transport::ImageTransport it(nh);
+	cameraSub = it.subscribeCamera(this->getCameraTopic(), 1, &VIO::cameraCallback, this);
+
+	//setup imu sub
+	ros::Subscriber imuSub = nh.subscribe(this->getIMUTopic(), 100, &VIO::imuCallback, this);
+
 	this->position.reserve(3);
 	this->position[0] = 0.0;
 	this->position[1] = 0.0;
@@ -26,6 +35,53 @@ VIO::VIO()
 	this->orientation[0] = 0.0;
 	this->orientation[1] = 0.0;
 	this->orientation[2] = 0.0;
+}
+
+VIO::~VIO()
+{
+
+}
+
+void VIO::cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::CameraInfoConstPtr& cam)
+{
+	ros::Time start = ros::Time::now();
+	cv::Mat temp = cv_bridge::toCvShare(img, "mono8")->image.clone();
+
+	//set the K and D matrices
+	this->setK(get3x3FromVector(cam->K));
+	this->setD(cv::Mat(cam->D, false));
+
+	/* sets the current frame and its time created
+	 * It also runs a series of functions which ultimately estimate
+	 * the motion of the camera
+	 */
+	this->setCurrentFrame(temp, cv_bridge::toCvCopy(img, "mono8")->header.stamp);
+
+	ROS_DEBUG_STREAM_THROTTLE(0.5, (ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime");
+
+	this->viewImage(this->getCurrentFrame());
+
+	//ros::Duration d = ros::Duration(0.1);
+	//d.sleep();
+}
+
+void VIO::imuCallback(const sensor_msgs::ImuConstPtr& msg)
+{
+	this->addIMUReading(*msg);
+}
+
+cv::Mat VIO::get3x3FromVector(boost::array<double, 9> vec)
+{
+	cv::Mat mat = cv::Mat(3, 3, CV_32F);
+	for(int i = 0; i < 3; i++)
+	{
+		mat.at<float>(i, 0) = vec.at(3 * i + 0);
+		mat.at<float>(i, 1) = vec.at(3 * i + 1);
+		mat.at<float>(i, 2) = vec.at(3 * i + 2);
+	}
+
+	ROS_DEBUG_STREAM_ONCE("K = " << mat);
+	return mat;
 }
 
 /*
@@ -52,14 +108,6 @@ void VIO::viewImage(Frame frame){
 	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img, cv::Scalar(0, 0, 255));
 	this->viewImage(img, false);
 
-}
-
-/*
- * corrects the drift in position
- */
-void VIO::correctPosition(std::vector<double> pos)
-{
-	position = pos;
 }
 
 /*

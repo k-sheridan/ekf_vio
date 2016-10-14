@@ -19,6 +19,12 @@
 #include <string>
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
+#include <sensor_msgs/Image.h>
+#include "tf/transform_listener.h"
+#include "tf/message_filter.h"
+#include "message_filters/subscriber.h"
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
 
 #include "Frame.hpp"
 #include "VIOFeature3D.hpp"
@@ -37,33 +43,6 @@
 class VIO
 {
 
-private:
-
-	//global vars initialized with default values
-	std::string cameraTopic;
-	std::string imuTopic;
-
-	Frame currentFrame; // the current frame
-	Frame lastFrame; //the last frame
-
-	std::vector<double> position; // the current position
-	std::vector<double> velocity; // the current velocity
-	std::vector<double> orientation; // the current orientation in rpy
-
-	/*
-	 * this buffer stores IMU messages until they are needed
-	 * for integration
-	 * The reason we don't integrate them right away is because there is a
-	 * slight gap it the time that the image is captured and when it is processed
-	 */
-	std::vector<sensor_msgs::Imu> imuMessageBuffer;
-
-	std::vector<VIOFeature3D> active3DFeatures;
-	std::vector<VIOFeature3D> inactive3DFeatures;
-
-	cv::Mat K;
-	cv::Mat D;
-
 public:
 
 	int FAST_THRESHOLD;
@@ -75,8 +54,15 @@ public:
 	int MIN_NEW_FEATURE_DISTANCE;
 
 	VIO();
+	~VIO();
 
-	void correctPosition(std::vector<double> pos);
+	//callbacks
+	void imuCallback(const sensor_msgs::ImuConstPtr& msg);
+	void cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::CameraInfoConstPtr& cam);
+
+	cv::Mat get3x3FromVector(boost::array<double, 9> vec);
+
+	void correctOrientation(std::vector<double> orientation, double certainty);
 
 	void readROSParameters();
 
@@ -136,7 +122,41 @@ public:
 	void addIMUReading(sensor_msgs::Imu msg){
 		this->imuMessageBuffer.push_back(msg);
 	}
-};
 
+protected:
+	ros::NodeHandle nh;
+
+	image_transport::CameraSubscriber cameraSub;
+
+	tf::TransformListener listener;
+
+
+
+	//initialized with default values
+	std::string cameraTopic;
+	std::string imuTopic;
+
+	Frame currentFrame; // the current frame
+	Frame lastFrame; //the last frame
+
+	std::vector<double> position; // the current position
+	std::vector<double> velocity; // the current velocity
+	std::vector<double> orientation; // the current orientation in rpy
+
+	/*
+	 * this buffer stores IMU messages until they are needed
+	 * for integration
+	 * The reason we don't integrate them right away is because there is a
+	 * slight gap it the time that the image is captured and when it is processed
+	 */
+	std::vector<sensor_msgs::Imu> imuMessageBuffer;
+
+	std::vector<VIOFeature3D> active3DFeatures;
+	std::vector<VIOFeature3D> inactive3DFeatures;
+
+	cv::Mat K;
+	cv::Mat D;
+
+};
 
 #endif /* PAUVSI_VIO_INCLUDE_VIO_LIB_H_ */

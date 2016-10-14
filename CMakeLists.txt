@@ -10,6 +10,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   dynamic_reconfigure
   cmake_modules
+  tf
 )
 
 find_package(Eigen3 REQUIRED)
@@ -47,6 +48,6 @@ add_executable(pauvsi_vio src/pauvsi_vio.cpp)
 target_link_libraries(vioFeature3d vioLine)
 target_link_libraries(frame vioFeature3d)
 target_link_libraries(frame vioFeature2d)
-target_link_libraries(vio frame)
+target_link_libraries(vio frame ${catkin_LIBRARIES})
 target_link_libraries(pauvsi_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} vio)
 
