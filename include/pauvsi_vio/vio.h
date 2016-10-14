@@ -128,9 +128,7 @@ protected:
 
 	image_transport::CameraSubscriber cameraSub;
 
-	tf::TransformListener listener;
-
-
+	tf::TransformListener listener; // starts a thread which keeps track of transforms in the system
 
 	//initialized with default values
 	std::string cameraTopic;
