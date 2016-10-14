@@ -365,8 +365,26 @@ double VIO::averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<c
 	return diff / (double)points1.size();
 }
 
+/*
+ * returns the certainty
+ * predicts the new rotation and position of the camera.
+ * transfroms it to the odometry frame
+ * and publishes a pose estimate
+ */
 double VIO::estimateMotion()
 {
+	std::vector<double> inertialAngleChange, inertialPositionChange; // change in angle and pos from imu
+	std::vector<double> visualAngleChange, visualPositionChange;
+	double visualMotionCertainty;
+	double averageMovement;
+
+	//infer motion from images
+	std::vector<double> unitVelocityInference;
+	bool visualMotionInferenceSuccessful = false;
+
+	//get motion inference from visual odometry
+	visualMotionInferenceSuccessful = this->visualMotionInference(lastFrame, currentFrame, inertialAngleChange,
+			visualAngleChange, unitVelocityInference, averageMovement);
 
 }
 
@@ -406,13 +424,31 @@ bool VIO::visualMotionInference(Frame frame1, Frame frame2, std::vector<double> 
 
 	//recover pose change from essential matrix
 	cv::Mat translation;
-	cv::Mat rotation;
+	cv::Mat rotation1;
+	cv::Mat rotation2;
 
-	cv::recoverPose(essentialMatrix, prevPoints, currentPoints, this->K, rotation, translation, mask);
+	//decompose matrix to get possible deltas
+	cv::decomposeEssentialMat(essentialMatrix, rotation1, rotation2, translation);
 
 	cv::Mat mtxR, mtxQ;
-	cv::Vec3d angle = cv::RQDecomp3x3(rotation, mtxR, mtxQ);
+	cv::Vec3d angle1 = cv::RQDecomp3x3(rotation1, mtxR, mtxQ);
+	cv::Mat mtxR2, mtxQ2;
+	cv::Vec3d angle2 = cv::RQDecomp3x3(rotation2, mtxR2, mtxQ2);
 
 	return true;
+}
+
+/*
+ * this gets the inertial motion estimate from the imu buffer to the specified time
+ * this is gotten from the fromPose and fromVelocity at their times.
+ * the results are output in the angle, pos, vel change vectors
+ * it returns the number of IMU readings used
+ */
+int VIO::getInertialMotionEstimate(ros::Time time, geometry_msgs::PoseStamped fromPose,
+			geometry_msgs::Vector3Stamped fromVelocity, std::vector<double>& angleChange,
+			std::vector<double>& positionChange, std::vector<double>& velocityChange)
+{
+
+
 }
 

@@ -123,6 +123,10 @@ public:
 		this->imuMessageBuffer.push_back(msg);
 	}
 
+	int getInertialMotionEstimate(ros::Time time, geometry_msgs::PoseStamped fromPose,
+			geometry_msgs::Vector3Stamped fromVelocity, std::vector<double>& angleChange,
+			std::vector<double>& positionChange, std::vector<double>& velocityChange);
+
 protected:
 	ros::NodeHandle nh;
 
