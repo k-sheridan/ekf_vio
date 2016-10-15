@@ -276,6 +276,13 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 	return true;
 }
 
+std::vector<double> placeFeatureInSpace(cv::Point2f point1,cv::Point2f point2,cv::Mat rotation, cv::Mat translation)
+{
+	std::vector<double> point3D;
+	point3D.reserve(3);
+
+}
+
 /*
  * gets corresponding points between the two frames as two vectors of point2f
  * checks if index and id match for saftey

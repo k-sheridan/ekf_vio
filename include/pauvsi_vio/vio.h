@@ -128,6 +128,8 @@ public:
 
 	double averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2);
 
+	std::vector<double> placeFeatureInSpace(cv::Point2f point1,cv::Point2f point2,cv::Mat rotation, cv::Mat translation );
+
 	void addIMUReading(sensor_msgs::Imu msg){
 		this->imuMessageBuffer.push_back(msg);
 	}
