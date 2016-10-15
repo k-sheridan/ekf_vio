@@ -112,13 +112,13 @@ public:
 
 	void broadcastWorldToOdomTF();
 
+	void broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
+
 	std::vector<cv::DMatch> matchFeaturesWithFlann(cv::Mat queryDescriptors, cv::Mat trainDescriptors);
 
 	bool flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame);
 
 	void getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, std::vector<cv::Point2f>& lastPoints, std::vector<cv::Point2f>& currentPoints);
-
-	bool visualMotionInference(Frame frame1, Frame frame2, std::vector<double> angleChangePrediction, std::vector<double>& rotationInference, std::vector<double>& unitVelocityInference, double& averageMovement);
 
 	double estimateMotion();
 
@@ -134,9 +134,14 @@ public:
 		this->imuMessageBuffer.push_back(msg);
 	}
 
-	int getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, std::vector<double> fromVelocity,
-			std::vector<double> fromAngularVelocity, std::vector<double>& angleChange,
-				std::vector<double>& positionChange, std::vector<double>& velocityChange);
+	bool visualMotionInference(Frame frame1, Frame frame2, geometry_msgs::Vector3 angleChangePrediction, geometry_msgs::Vector3& rotationInference,
+				geometry_msgs::Vector3& unitVelocityInference, double& averageMovement);
+
+	int getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometry_msgs::Vector3 fromVelocity,
+			geometry_msgs::Vector3 fromAngularVelocity, geometry_msgs::Vector3& angleChange,
+			geometry_msgs::Vector3& positionChange, geometry_msgs::Vector3& velocityChange);
+
+
 
 protected:
 	ros::NodeHandle nh;

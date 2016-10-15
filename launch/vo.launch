@@ -1,10 +1,13 @@
 <launch>
 	
+	<node pkg="tf" type="static_transform_publisher" name="odom_base" 
+			args="0 0 0 0 0 0 /odom /base_link 20"/>
+	
 	<node pkg="tf" type="static_transform_publisher" name="IMU_base" 
-			args="0.01 -0.034 0 0 0 0 /imu_frame /base_link 20"/>
+			args="0.01 0.034 0 0 0 0 /base_link /imu_frame 20"/>
 			
 	<node pkg="tf" type="static_transform_publisher" name="base_camera" 
-			args="0.096 0 0.023 0 -0.087266 0 /base_link /camera_frame 20"/> 
+			args="0.096 0 0.023 -1.57 0 -1.522734 /base_link /camera_frame 20"/> 
 	
 	<node name="flightControllerSerial" pkg="rosserial_python" type="serial_node.py">
 		<param name="port" value="/dev/ttyACM0" />

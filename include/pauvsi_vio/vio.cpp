@@ -22,6 +22,14 @@ VIO::VIO()
 	this->imuSub = nh.subscribe(this->getIMUTopic(), 100, &VIO::imuCallback, this);
 
 	this->pose = geometry_msgs::PoseStamped();
+	this->pose.pose.orientation.w = 1.0;
+	this->pose.pose.orientation.x = 0.0;
+	this->pose.pose.orientation.y = 0.0;
+	this->pose.pose.orientation.z = 0.0;
+
+	this->pose.header.stamp = ros::Time::now();
+
+	this->broadcastWorldToOdomTF();
 }
 
 VIO::~VIO()
@@ -154,7 +162,9 @@ void VIO::run()
 		//currentFrame.describeFeaturesWithBRIEF();
 	}
 
-	ROS_DEBUG_STREAM("imu readings: " << this->imuMessageBuffer.size());
+	this->broadcastWorldToOdomTF();
+
+	//ROS_DEBUG_STREAM("imu readings: " << this->imuMessageBuffer.size());
 }
 
 /*
@@ -370,16 +380,35 @@ double VIO::averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<c
 	return diff / (double)points1.size();
 }
 
+/*
+ * broadcasts the world to odom transform
+ */
 void VIO::broadcastWorldToOdomTF()
 {
 	static tf::TransformBroadcaster br;
 	tf::Transform transform;
 	transform.setOrigin(tf::Vector3(this->pose.pose.position.x, this->pose.pose.position.y, this->pose.pose.position.z));
 	tf::Quaternion q;
-	q.setValue(this->pose.pose.orientation.x, this->pose.pose.orientation.y,
-			this->pose.pose.orientation.z, this->pose.pose.orientation.w);
+	q.setW(this->pose.pose.orientation.w);
+	q.setX(this->pose.pose.orientation.x);
+	q.setY(this->pose.pose.orientation.y);
+	q.setZ(this->pose.pose.orientation.z);
+	//ROS_DEBUG_STREAM(this->pose.pose.orientation.w << " " << this->pose.pose.orientation.x);
 	transform.setRotation(q);
-	br.sendTransform(tf::StampedTransform(transform, this->pose.header.stamp, this->world_frame, this->odom_frame));
+	br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), this->world_frame, this->odom_frame));
+}
+
+/*
+ * broadcasts the odom to tempIMU trans
+ */
+void VIO::broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z)
+{
+	static tf::TransformBroadcaster br;
+	tf::Transform transform;
+	transform.setOrigin(tf::Vector3(x, y, z));
+	tf::Quaternion q;
+	q.setRPY(roll, pitch, yaw);
+	br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), this->odom_frame, "temp_imu_frame"));
 }
 
 /*
@@ -390,13 +419,19 @@ void VIO::broadcastWorldToOdomTF()
  */
 double VIO::estimateMotion()
 {
-	std::vector<double> inertialAngleChange, inertialPositionChange; // change in angle and pos from imu
-	std::vector<double> visualAngleChange, visualPositionChange;
+	geometry_msgs::Vector3 inertialAngleChange, inertialPositionChange, inertialVelocityChange; // change in angle and pos from imu
+	geometry_msgs::Vector3 visualAngleChange, visualPositionChange;
 	double visualMotionCertainty;
 	double averageMovement;
 
+	// get motion estimate from the IMU
+	this->getInertialMotionEstimate(this->pose.header.stamp, this->currentFrame.timeImageCreated,
+			this->velocity.vector, this->angular_velocity.vector, inertialAngleChange,
+			inertialPositionChange, inertialVelocityChange);
+
+
 	//infer motion from images
-	std::vector<double> unitVelocityInference;
+	geometry_msgs::Vector3 unitVelocityInference;
 	bool visualMotionInferenceSuccessful = false;
 
 	//get motion inference from visual odometry
@@ -409,7 +444,8 @@ double VIO::estimateMotion()
  * uses epipolar geometry from two frames to
  * estimate relative motion of the frame;
  */
-bool VIO::visualMotionInference(Frame frame1, Frame frame2, std::vector<double> angleChangePrediction, std::vector<double>& rotationInference, std::vector<double>& unitVelocityInference, double& averageMovement)
+bool VIO::visualMotionInference(Frame frame1, Frame frame2, geometry_msgs::Vector3 angleChangePrediction,
+		geometry_msgs::Vector3& rotationInference, geometry_msgs::Vector3& unitVelocityInference, double& averageMovement)
 {
 	//first get the feature deltas from the two frames
 	std::vector<cv::Point2f> prevPoints, currentPoints;
@@ -462,11 +498,14 @@ bool VIO::visualMotionInference(Frame frame1, Frame frame2, std::vector<double> 
  * it returns the number of IMU readings used
  *
  * angle change is in radians RPY
+ * removes all imu messages from before the toTime
  */
-int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, std::vector<double> fromVelocity,
-		std::vector<double> fromAngularVelocity, std::vector<double>& angleChange,
-			std::vector<double>& positionChange, std::vector<double>& velocityChange)
+int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometry_msgs::Vector3 fromVelocity,
+		geometry_msgs::Vector3 fromAngularVelocity, geometry_msgs::Vector3& angleChange,
+		geometry_msgs::Vector3& positionChange, geometry_msgs::Vector3& velocityChange)
 {
+	int startingIMUBufferSize = this->imuMessageBuffer.size();
+
 	//check if there are any imu readings
 	if(this->imuMessageBuffer.size() == 0)
 	{
@@ -508,8 +547,43 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, std::ve
 	 * 2) remove gravity
 	 */
 
+	double d_roll = 0;
+	double d_pitch = 0;
+	double d_yaw = 0;
+
+	std::vector<tf::Vector3> correctedIMUAccels;
+
+	for(int i = startingIMUIndex; i <= endingIMUIndex; i++)
+	{
+		//compute the centripetal accel
+		tf::StampedTransform distFromRotationAxisTF;
+
+		// the transformation to the CoM frame in the imu_frame
+		try{
+			this->tf_listener.lookupTransform(this->imu_frame, this->CoM_frame, ros::Time::now(), distFromRotationAxisTF);
+		}
+		catch(tf::TransformException e){
+			ROS_WARN_STREAM_ONCE(e.what());
+		}
+
+		tf::Vector3 distFromRotationAxis = distFromRotationAxisTF.getOrigin();
+
+		ROS_DEBUG_STREAM_THROTTLE(1, "tf from CoM_frame: " << distFromRotationAxis.getX() << ", " << distFromRotationAxis.getY() << ", " << distFromRotationAxis.getZ());
+
+	}
 
 
+	//finally once everything has been estimated remove all IMU messages from the buffer that have been used and before that
+	ROS_ASSERT(this->imuMessageBuffer.size() == startingIMUBufferSize);
+
+	std::vector<sensor_msgs::Imu> newIMUBuffer;
+	for(int i = endingIMUIndex + 1; i < startingIMUBufferSize; i++)
+	{
+		newIMUBuffer.push_back(this->imuMessageBuffer.at(i));
+	}
+
+	this->imuMessageBuffer = newIMUBuffer; //erase all old IMU messages
 
 }
+
 
