@@ -550,11 +550,21 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 	double d_roll = 0;
 	double d_pitch = 0;
 	double d_yaw = 0;
+	double piOver180 = CV_PI / 180.0;
 
 	std::vector<tf::Vector3> correctedIMUAccels;
 
 	for(int i = startingIMUIndex; i <= endingIMUIndex; i++)
 	{
+		//get the tf::vectors for the raw IMU readings
+		sensor_msgs::Imu msg = this->imuMessageBuffer.at(i);
+		tf::Vector3 omegaIMU(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
+		//convert the omega vec to rads
+		omegaIMU = piOver180 * omegaIMU;
+		double omegaIMU_mag = omegaIMU.length();
+		tf::Vector3 omegaIMU_hat = (1 / omegaIMU_mag) * omegaIMU;
+		tf::Vector3 alphaIMU(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
+
 		//compute the centripetal accel
 		tf::StampedTransform distFromRotationAxisTF;
 
@@ -566,9 +576,17 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 			ROS_WARN_STREAM_ONCE(e.what());
 		}
 
-		tf::Vector3 distFromRotationAxis = distFromRotationAxisTF.getOrigin();
+		//get the centripetal acceleration expected
+		tf::Vector3 deltaR = distFromRotationAxisTF.getOrigin();
+		double deltaR_mag = sqrt(pow(deltaR.getX(), 2) + pow(deltaR.getY(), 2) + pow(deltaR.getZ(), 2));
+		tf::Vector3 deltaR_hat = (1 / deltaR_mag) * deltaR;
+		//mag accel = omega^2 * r
+		//the accel is proportional to the perpendicularity of omega and deltaR
+		double perpCoeff = abs(abs((double)(deltaR_hat.dot(omegaIMU_hat))) - 1.0);
+		tf::Vector3 centripetalAccel = perpCoeff * omegaIMU_mag * omegaIMU_mag * deltaR_mag * deltaR_hat;
 
-		ROS_DEBUG_STREAM_THROTTLE(1, "tf from CoM_frame: " << distFromRotationAxis.getX() << ", " << distFromRotationAxis.getY() << ", " << distFromRotationAxis.getZ());
+		ROS_DEBUG_STREAM_THROTTLE(0.2, "ca: " << centripetalAccel.getX() << ", " << centripetalAccel.getY() <<
+				", " << centripetalAccel.getZ() << " perp: " << perpCoeff);
 
 	}
 
