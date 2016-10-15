@@ -287,11 +287,11 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 }
 
 std::vector<double> placeFeatureInSpace(cv::Point2f point1,cv::Point2f point2,cv::Mat rotation, cv::Mat translation)
-{
+		{
 	std::vector<double> point3D;
 	point3D.reserve(3);
 
-}
+		}
 
 /*
  * gets corresponding points between the two frames as two vectors of point2f
@@ -408,6 +408,8 @@ void VIO::broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double
 	transform.setOrigin(tf::Vector3(x, y, z));
 	tf::Quaternion q;
 	q.setRPY(roll, pitch, yaw);
+	//ROS_DEBUG_STREAM(q.getW() << ", " << q.getX() << ", " << q.getY() << ", " << q.getZ());
+	transform.setRotation(q);
 	br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), this->odom_frame, "temp_imu_frame"));
 }
 
@@ -424,11 +426,13 @@ double VIO::estimateMotion()
 	double visualMotionCertainty;
 	double averageMovement;
 
+	//ROS_DEBUG_STREAM("imu readings before: " << this->imuMessageBuffer.size());
 	// get motion estimate from the IMU
 	this->getInertialMotionEstimate(this->pose.header.stamp, this->currentFrame.timeImageCreated,
 			this->velocity.vector, this->angular_velocity.vector, inertialAngleChange,
 			inertialPositionChange, inertialVelocityChange);
 
+	//ROS_DEBUG_STREAM("imu readings after: " << this->imuMessageBuffer.size());
 
 	//infer motion from images
 	geometry_msgs::Vector3 unitVelocityInference;
@@ -547,9 +551,7 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 	 * 2) remove gravity
 	 */
 
-	double d_roll = 0;
-	double d_pitch = 0;
-	double d_yaw = 0;
+	tf::Vector3 dTheta(0, 0, 0);
 	double piOver180 = CV_PI / 180.0;
 
 	std::vector<tf::Vector3> correctedIMUAccels;
@@ -583,12 +585,33 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 		//mag accel = omega^2 * r
 		//the accel is proportional to the perpendicularity of omega and deltaR
 		double perpCoeff = abs(abs((double)(deltaR_hat.dot(omegaIMU_hat))) - 1.0);
+		//calculate
 		tf::Vector3 centripetalAccel = perpCoeff * omegaIMU_mag * omegaIMU_mag * deltaR_mag * deltaR_hat;
 
-		ROS_DEBUG_STREAM_THROTTLE(0.2, "ca: " << centripetalAccel.getX() << ", " << centripetalAccel.getY() <<
-				", " << centripetalAccel.getZ() << " perp: " << perpCoeff);
+		//ROS_DEBUG_STREAM_THROTTLE(0.2, "ca: " << centripetalAccel.getX() << ", " << centripetalAccel.getY() << ", " << centripetalAccel.getZ() << " perp: " << perpCoeff);
+
+		//if this is not the first iteration
+		if(i != startingIMUIndex)
+		{
+			//get the last angular velocity
+			sensor_msgs::Imu last_msg = this->imuMessageBuffer.at(i - 1);
+			tf::Vector3 last_omegaIMU(last_msg.angular_velocity.x, last_msg.angular_velocity.y, last_msg.angular_velocity.z);
+			//convert the omega vec to rads
+			last_omegaIMU = piOver180 * last_omegaIMU;
+
+			//get the new dTheta - dTheta = dTheta + omega * dt
+			dTheta = dTheta + last_omegaIMU * (msg.header.stamp.toSec() - last_msg.header.stamp.toSec());
+			//ROS_DEBUG_STREAM("dt: " << (msg.header.stamp.toSec() - last_msg.header.stamp.toSec()));
+		}
+
+		//publish the temp IMU transform
+		//ROS_DEBUG_STREAM("dTheta: " << dTheta.getX() << ", " << dTheta.getY() << ", " << dTheta.getZ());
+		this->broadcastOdomToTempIMUTF(dTheta.getX(), dTheta.getY(), dTheta.getZ(), 0, 1, 0);
 
 	}
+
+	//ROS_DEBUG_STREAM("dTheta: " << dTheta.getX() << ", " << dTheta.getY() << ", " << dTheta.getZ());
+	//ROS_DEBUG_STREAM("time diff " << currentFrame.timeImageCreated.toSec() - this->imuMessageBuffer.at(endingIMUIndex).header.stamp.toSec());
 
 
 	//finally once everything has been estimated remove all IMU messages from the buffer that have been used and before that
@@ -601,6 +624,8 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 	}
 
 	this->imuMessageBuffer = newIMUBuffer; //erase all old IMU messages
+
+
 
 }
 
