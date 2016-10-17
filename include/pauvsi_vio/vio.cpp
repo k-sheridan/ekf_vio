@@ -427,21 +427,24 @@ ros::Time VIO::broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, d
  */
 double VIO::estimateMotion()
 {
-	geometry_msgs::Vector3 inertialAngleChange, inertialPositionChange, inertialVelocityChange; // change in angle and pos from imu
-	geometry_msgs::Vector3 visualAngleChange, visualPositionChange;
+	tf::Vector3 inertialAngleChange, inertialPositionChange, inertialVelocityChange; // change in angle and pos from imu
+	tf::Vector3 visualAngleChange, visualPositionChange;
 	double visualMotionCertainty;
 	double averageMovement;
+
+	tf::Vector3 lastVelocity(this->velocity.vector.x, this->velocity.vector.y, this->velocity.vector.z);
+	tf::Vector3 lastAngularVelocity(this->angular_velocity.vector.x, this->angular_velocity.vector.y, this->angular_velocity.vector.z);
 
 	//ROS_DEBUG_STREAM("imu readings before: " << this->imuMessageBuffer.size());
 	// get motion estimate from the IMU
 	this->getInertialMotionEstimate(this->pose.header.stamp, this->currentFrame.timeImageCreated,
-			this->velocity.vector, this->angular_velocity.vector, inertialAngleChange,
+			lastVelocity, lastAngularVelocity, inertialAngleChange,
 			inertialPositionChange, inertialVelocityChange);
 
 	//ROS_DEBUG_STREAM("imu readings after: " << this->imuMessageBuffer.size());
 
 	//infer motion from images
-	geometry_msgs::Vector3 unitVelocityInference;
+	tf::Vector3 unitVelocityInference;
 	bool visualMotionInferenceSuccessful = false;
 
 	//get motion inference from visual odometry
@@ -458,8 +461,8 @@ double VIO::estimateMotion()
  * uses epipolar geometry from two frames to
  * estimate relative motion of the frame;
  */
-bool VIO::visualMotionInference(Frame frame1, Frame frame2, geometry_msgs::Vector3 angleChangePrediction,
-		geometry_msgs::Vector3& rotationInference, geometry_msgs::Vector3& unitVelocityInference, double& averageMovement)
+bool VIO::visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction,
+		tf::Vector3& rotationInference, tf::Vector3& unitVelocityInference, double& averageMovement)
 {
 	//first get the feature deltas from the two frames
 	std::vector<cv::Point2f> prevPoints, currentPoints;
@@ -524,9 +527,9 @@ bool VIO::visualMotionInference(Frame frame1, Frame frame2, geometry_msgs::Vecto
  * NOTE 2:
  * the fromVelocity and from Angular velocity must be in terms of the camera frame
  */
-int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometry_msgs::Vector3 fromVelocity,
-		geometry_msgs::Vector3 fromAngularVelocity, geometry_msgs::Vector3& angleChange,
-		geometry_msgs::Vector3& positionChange, geometry_msgs::Vector3& velocityChange)
+int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vector3 fromVelocity,
+		tf::Vector3 fromAngularVelocity, tf::Vector3& angleChange,
+		tf::Vector3& positionChange, tf::Vector3& velocityChange)
 {
 	int startingIMUBufferSize = this->imuMessageBuffer.size();
 
@@ -678,9 +681,8 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 		else
 		{
 			tf::Transform camera2IMU = imu2camera.inverse();
-			tf::Vector3 omega(fromAngularVelocity.x, fromAngularVelocity.y, fromAngularVelocity.z);
 
-			omega = camera2IMU * omega - camera2IMU * tf::Vector3(0.0, 0.0, 0.0);
+			tf::Vector3 omega = camera2IMU * fromAngularVelocity - camera2IMU * tf::Vector3(0.0, 0.0, 0.0);
 
 			//get the new dTheta - dTheta = dTheta + omega * dt
 			dTheta = dTheta + omega * (msg.header.stamp.toSec() - fromTime.toSec());
@@ -717,6 +719,12 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 		//ROS_DEBUG_STREAM("corrected accels: " << correctedIMUAccel.getX() << ", " << correctedIMUAccel.getY() << ", " << correctedIMUAccel.getZ());
 		//ROS_DEBUG_STREAM("camera accels: " << cameraAccels.at(cameraAccels.size()-1).getX() << ", " << cameraAccels.at(cameraAccels.size()-1).getY() << ", " << cameraAccels.at(cameraAccels.size()-1).getZ());
 	}
+
+	//finish the dTheta for the last time segment
+	sensor_msgs::Imu lastMsg = this->imuMessageBuffer.at(endingIMUIndex);
+	tf::Vector3 omega(lastMsg.angular_velocity.x, lastMsg.angular_velocity.y, lastMsg.angular_velocity.z);
+
+	dTheta = dTheta + omega * (toTime.toSec() - lastMsg.header.stamp.toSec());
 
 	//ROS_DEBUG_STREAM("dTheta: " << dTheta.getX() << ", " << dTheta.getY() << ", " << dTheta.getZ());
 	//ROS_DEBUG_STREAM("time diff " << currentFrame.timeImageCreated.toSec() - this->imuMessageBuffer.at(endingIMUIndex).header.stamp.toSec());

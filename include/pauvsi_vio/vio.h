@@ -136,12 +136,12 @@ public:
 		this->imuMessageBuffer.push_back(msg);
 	}
 
-	bool visualMotionInference(Frame frame1, Frame frame2, geometry_msgs::Vector3 angleChangePrediction, geometry_msgs::Vector3& rotationInference,
-				geometry_msgs::Vector3& unitVelocityInference, double& averageMovement);
+	bool visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction, tf::Vector3& rotationInference,
+			tf::Vector3& unitVelocityInference, double& averageMovement);
 
-	int getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometry_msgs::Vector3 fromVelocity,
-			geometry_msgs::Vector3 fromAngularVelocity, geometry_msgs::Vector3& angleChange,
-			geometry_msgs::Vector3& positionChange, geometry_msgs::Vector3& velocityChange);
+	int getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vector3 fromVelocity,
+			tf::Vector3 fromAngularVelocity, tf::Vector3& angleChange,
+			tf::Vector3& positionChange, tf::Vector3& velocityChange);
 
 
 
