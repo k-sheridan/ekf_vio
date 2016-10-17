@@ -112,7 +112,7 @@ public:
 
 	void broadcastWorldToOdomTF();
 
-	void broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
+	ros::Time broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
 
 	std::vector<cv::DMatch> matchFeaturesWithFlann(cv::Mat queryDescriptors, cv::Mat trainDescriptors);
 

@@ -26,6 +26,7 @@ VIO::VIO()
 	this->pose.pose.orientation.x = 0.0;
 	this->pose.pose.orientation.y = 0.0;
 	this->pose.pose.orientation.z = 0.0;
+	this->pose.header.stamp = ros::Time::now();
 
 	this->pose.header.stamp = ros::Time::now();
 
@@ -401,7 +402,7 @@ void VIO::broadcastWorldToOdomTF()
 /*
  * broadcasts the odom to tempIMU trans
  */
-void VIO::broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z)
+ros::Time VIO::broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z)
 {
 	static tf::TransformBroadcaster br;
 	tf::Transform transform;
@@ -410,7 +411,9 @@ void VIO::broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double
 	q.setRPY(roll, pitch, yaw);
 	//ROS_DEBUG_STREAM(q.getW() << ", " << q.getX() << ", " << q.getY() << ", " << q.getZ());
 	transform.setRotation(q);
-	br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), this->odom_frame, "temp_imu_frame"));
+	ros::Time sendTime = ros::Time::now();
+	br.sendTransform(tf::StampedTransform(transform, sendTime, this->odom_frame, "temp_imu_frame"));
+	return sendTime;
 }
 
 /*
@@ -441,6 +444,10 @@ double VIO::estimateMotion()
 	//get motion inference from visual odometry
 	visualMotionInferenceSuccessful = this->visualMotionInference(lastFrame, currentFrame, inertialAngleChange,
 			visualAngleChange, unitVelocityInference, averageMovement);
+
+
+	//set the time stamp of pose to now.
+	this->pose.header.stamp = ros::Time::now();
 
 }
 
@@ -510,6 +517,8 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 {
 	int startingIMUBufferSize = this->imuMessageBuffer.size();
 
+	ROS_ASSERT(fromTime.toNSec() < toTime.toNSec());
+
 	//check if there are any imu readings
 	if(this->imuMessageBuffer.size() == 0)
 	{
@@ -534,6 +543,7 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 	 * second find the IMU reading index such that the fromTime is lesser than the
 	 * stamp of the IMU message
 	 */
+	//ROS_DEBUG_STREAM("buffer size " << this->imuMessageBuffer.size());
 	for(int i = 0; i < this->imuMessageBuffer.size(); i++)
 	{
 		if(this->imuMessageBuffer.at(i).header.stamp.toSec() > fromTime.toSec())
@@ -554,17 +564,45 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 	tf::Vector3 dTheta(0, 0, 0);
 	double piOver180 = CV_PI / 180.0;
 
+	tf::Vector3 gravity(0.0, 0.0, 9.80665); // the -gravity accel vector in the world frame
+
+	//get the world->odom transform
+	tf::StampedTransform world2Odom;
+	try{
+		this->tf_listener.lookupTransform(this->world_frame, this->odom_frame, ros::Time(0), world2Odom);
+	}
+	catch(tf::TransformException e)
+	{
+		ROS_WARN_STREAM(e.what());
+	}
+
+	gravity = world2Odom.getBasis() * gravity; // rotate gravity vector into odom frame
+
+	//ROS_DEBUG("nothing to do with tf stuff!");
+
 	std::vector<tf::Vector3> correctedIMUAccels;
+
+	ROS_DEBUG_STREAM("starting end indexes " << startingIMUIndex << ", " << endingIMUIndex << " buffer size " << this->imuMessageBuffer.size());
 
 	for(int i = startingIMUIndex; i <= endingIMUIndex; i++)
 	{
 		//get the tf::vectors for the raw IMU readings
+		//ROS_DEBUG_STREAM("i value is" << i << "starting value is " << startingIMUIndex << "ending value is " << endingIMUIndex);
+
+		if(i < 0 || i >= this->imuMessageBuffer.size())
+		{
+			ROS_ERROR_STREAM("i value is " << i << " starting value is " << startingIMUIndex << " ending value is " << endingIMUIndex << " vec size " << this->imuMessageBuffer.size() << " BREAKING");
+			break;
+		}
+
 		sensor_msgs::Imu msg = this->imuMessageBuffer.at(i);
+		//ROS_DEBUG("pass 1");
 		tf::Vector3 omegaIMU(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
 		//convert the omega vec to rads
 		omegaIMU = piOver180 * omegaIMU;
 		double omegaIMU_mag = omegaIMU.length();
 		tf::Vector3 omegaIMU_hat = (1 / omegaIMU_mag) * omegaIMU;
+
 		tf::Vector3 alphaIMU(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
 
 		//compute the centripetal accel
@@ -588,13 +626,14 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 		//calculate
 		tf::Vector3 centripetalAccel = perpCoeff * omegaIMU_mag * omegaIMU_mag * deltaR_mag * deltaR_hat;
 
-		//ROS_DEBUG_STREAM_THROTTLE(0.2, "ca: " << centripetalAccel.getX() << ", " << centripetalAccel.getY() << ", " << centripetalAccel.getZ() << " perp: " << perpCoeff);
+		//ROS_DEBUG_STREAM("ca: " << centripetalAccel.getX() << ", " << centripetalAccel.getY() << ", " << centripetalAccel.getZ() << " perp: " << perpCoeff);
 
 		//if this is not the first iteration
 		if(i != startingIMUIndex)
 		{
 			//get the last angular velocity
 			sensor_msgs::Imu last_msg = this->imuMessageBuffer.at(i - 1);
+			//ROS_DEBUG("pass 2");
 			tf::Vector3 last_omegaIMU(last_msg.angular_velocity.x, last_msg.angular_velocity.y, last_msg.angular_velocity.z);
 			//convert the omega vec to rads
 			last_omegaIMU = piOver180 * last_omegaIMU;
@@ -606,7 +645,25 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 
 		//publish the temp IMU transform
 		//ROS_DEBUG_STREAM("dTheta: " << dTheta.getX() << ", " << dTheta.getY() << ", " << dTheta.getZ());
+
+		//this->broadcastWorldToOdomTF(); // tell tf what the current world -> odom is
 		this->broadcastOdomToTempIMUTF(dTheta.getX(), dTheta.getY(), dTheta.getZ(), 0, 1, 0);
+
+		//create a transform from odom to the tempIMU
+		tf::Quaternion q;
+		q.setRPY(dTheta.getX(), dTheta.getY(), dTheta.getZ());
+		tf::Transform odom2TempIMU(q);
+
+		//transform the gravity vector into the temp IMU frame
+		tf::Vector3 imuGravity = odom2TempIMU.getBasis() * gravity;
+
+		//push the corrected acceleration to the correct accel vector
+
+		correctedIMUAccels.push_back(alphaIMU - imuGravity - centripetalAccel);
+
+		//ROS_DEBUG_STREAM("grav: " << gravity.getX() << ", " << gravity.getY() << ", " << gravity.getZ());
+		//ROS_DEBUG_STREAM("trans grav: " << imuGravity.getX() << ", " << imuGravity.getY() << ", " << imuGravity.getZ());
+		ROS_DEBUG_STREAM("corrected grav: " << correctedIMUAccels.at(i).getX() << ", " << correctedIMUAccels.at(i).getY() << ", " << correctedIMUAccels.at(i).getZ());
 
 	}
 
