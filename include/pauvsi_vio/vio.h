@@ -45,6 +45,7 @@
 #define DEFAULT_CAMERA_FRAME_NAME "camera_frame"
 #define DEFAULT_COM_FRAME_NAME "base_link"
 #define DEFAULT_WORLD_FRAME_NAME "world"
+#define DEFAULT_GRAVITY_MAGNITUDE 10.027876884
 
 
 class VIO
@@ -59,6 +60,7 @@ public:
 	bool KILL_BY_DISSIMILARITY;
 	int NUM_FEATURES;
 	int MIN_NEW_FEATURE_DISTANCE;
+	double GRAVITY_MAG;
 
 	VIO();
 	~VIO();

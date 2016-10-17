@@ -65,6 +65,7 @@ void VIO::imuCallback(const sensor_msgs::ImuConstPtr& msg)
 {
 	//ROS_DEBUG_STREAM_THROTTLE(0.1, "accel: " << msg->linear_acceleration);
 	this->addIMUReading(*msg);
+	//ROS_DEBUG_STREAM("time compare " << ros::Time::now().toNSec() - msg->header.stamp.toNSec());
 }
 
 cv::Mat VIO::get3x3FromVector(boost::array<double, 9> vec)
@@ -201,6 +202,8 @@ void VIO::readROSParameters()
 	ros::param::param<int>("~num_features", NUM_FEATURES, DEFAULT_NUM_FEATURES);
 
 	ros::param::param<int>("~min_new_feature_distance", MIN_NEW_FEATURE_DISTANCE, DEFAULT_MIN_NEW_FEATURE_DIST);
+
+	ros::param::param<double>("~starting_gravity_mag", GRAVITY_MAG, DEFAULT_GRAVITY_MAGNITUDE);
 }
 
 
@@ -288,11 +291,11 @@ bool VIO::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 }
 
 std::vector<double> placeFeatureInSpace(cv::Point2f point1,cv::Point2f point2,cv::Mat rotation, cv::Mat translation)
-		{
+						{
 	std::vector<double> point3D;
 	point3D.reserve(3);
 
-		}
+						}
 
 /*
  * gets corresponding points between the two frames as two vectors of point2f
@@ -510,14 +513,22 @@ bool VIO::visualMotionInference(Frame frame1, Frame frame2, geometry_msgs::Vecto
  *
  * angle change is in radians RPY
  * removes all imu messages from before the toTime
+ *
+ * this was very poorly written sorry
+ * it contained many bugs and becae very messy as a result
+ *
+ * NOTE:
+ * this assumes a rigid transformation between the IMU - Camera - odom-base
+ * do not move the imu and camera relative to each other!
+ *
+ * NOTE 2:
+ * the fromVelocity and from Angular velocity must be in terms of the camera frame
  */
 int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometry_msgs::Vector3 fromVelocity,
 		geometry_msgs::Vector3 fromAngularVelocity, geometry_msgs::Vector3& angleChange,
 		geometry_msgs::Vector3& positionChange, geometry_msgs::Vector3& velocityChange)
 {
 	int startingIMUBufferSize = this->imuMessageBuffer.size();
-
-	ROS_ASSERT(fromTime.toNSec() < toTime.toNSec());
 
 	//check if there are any imu readings
 	if(this->imuMessageBuffer.size() == 0)
@@ -544,13 +555,24 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 	 * stamp of the IMU message
 	 */
 	//ROS_DEBUG_STREAM("buffer size " << this->imuMessageBuffer.size());
-	for(int i = 0; i < this->imuMessageBuffer.size(); i++)
+	/*
+	 * this will catch the fromTime > toTime error
+	 */
+	if(fromTime.toNSec() < toTime.toNSec())
 	{
-		if(this->imuMessageBuffer.at(i).header.stamp.toSec() > fromTime.toSec())
+		for(int i = 0; i < this->imuMessageBuffer.size(); i++)
 		{
-			startingIMUIndex = i;
-			break;
+			if(this->imuMessageBuffer.at(i).header.stamp.toSec() > fromTime.toSec())
+			{
+				startingIMUIndex = i;
+				break;
+			}
 		}
+	}
+	else
+	{
+		ROS_ERROR_STREAM("from Time is " << fromTime.toNSec() << " to time is " << toTime.toNSec() << " starting from i = 0");
+		startingIMUIndex = 0;
 	}
 
 	//now we have all IMU readings between the two times.
@@ -564,25 +586,36 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 	tf::Vector3 dTheta(0, 0, 0);
 	double piOver180 = CV_PI / 180.0;
 
-	tf::Vector3 gravity(0.0, 0.0, 9.80665); // the -gravity accel vector in the world frame
+	tf::Vector3 gravity(0.0, 0.0, this->GRAVITY_MAG); // the -gravity accel vector in the world frame gravity magnitude is variable to adjust for biases
 
 	//get the world->odom transform
 	tf::StampedTransform world2Odom;
 	try{
-		this->tf_listener.lookupTransform(this->world_frame, this->odom_frame, ros::Time(0), world2Odom);
+		this->tf_listener.lookupTransform(this->odom_frame, this->world_frame, ros::Time(0), world2Odom);
 	}
 	catch(tf::TransformException e)
 	{
 		ROS_WARN_STREAM(e.what());
 	}
 
-	gravity = world2Odom.getBasis() * gravity; // rotate gravity vector into odom frame
+	//get the imu->camera transform
+	tf::StampedTransform imu2camera;
+	try{
+		this->tf_listener.lookupTransform(this->camera_frame, this->imu_frame, ros::Time(0), imu2camera);
+	}
+	catch(tf::TransformException e)
+	{
+		ROS_WARN_STREAM(e.what());
+	}
+
+	gravity = world2Odom * gravity - world2Odom * tf::Vector3(0.0, 0.0, 0.0); // rotate gravity vector into odom frame
 
 	//ROS_DEBUG("nothing to do with tf stuff!");
 
-	std::vector<tf::Vector3> correctedIMUAccels;
+	//std::vector<tf::Vector3> correctedIMUAccels;
+	std::vector<tf::Vector3> cameraAccels;
 
-	ROS_DEBUG_STREAM("starting end indexes " << startingIMUIndex << ", " << endingIMUIndex << " buffer size " << this->imuMessageBuffer.size());
+	//ROS_DEBUG_STREAM("starting end indexes " << startingIMUIndex << ", " << endingIMUIndex << " buffer size " << this->imuMessageBuffer.size());
 
 	for(int i = startingIMUIndex; i <= endingIMUIndex; i++)
 	{
@@ -591,8 +624,8 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 
 		if(i < 0 || i >= this->imuMessageBuffer.size())
 		{
-			ROS_ERROR_STREAM("i value is " << i << " starting value is " << startingIMUIndex << " ending value is " << endingIMUIndex << " vec size " << this->imuMessageBuffer.size() << " BREAKING");
-			break;
+			ROS_ERROR_STREAM("i value is " << i << " starting value is " << startingIMUIndex << " ending value is " << endingIMUIndex << " vec size " << this->imuMessageBuffer.size() << " CONTINUE");
+			continue;
 		}
 
 		sensor_msgs::Imu msg = this->imuMessageBuffer.at(i);
@@ -642,6 +675,16 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 			dTheta = dTheta + last_omegaIMU * (msg.header.stamp.toSec() - last_msg.header.stamp.toSec());
 			//ROS_DEBUG_STREAM("dt: " << (msg.header.stamp.toSec() - last_msg.header.stamp.toSec()));
 		}
+		else
+		{
+			tf::Transform camera2IMU = imu2camera.inverse();
+			tf::Vector3 omega(fromAngularVelocity.x, fromAngularVelocity.y, fromAngularVelocity.z);
+
+			omega = camera2IMU * omega - camera2IMU * tf::Vector3(0.0, 0.0, 0.0);
+
+			//get the new dTheta - dTheta = dTheta + omega * dt
+			dTheta = dTheta + omega * (msg.header.stamp.toSec() - fromTime.toSec());
+		}
 
 		//publish the temp IMU transform
 		//ROS_DEBUG_STREAM("dTheta: " << dTheta.getX() << ", " << dTheta.getY() << ", " << dTheta.getZ());
@@ -655,20 +698,36 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 		tf::Transform odom2TempIMU(q);
 
 		//transform the gravity vector into the temp IMU frame
-		tf::Vector3 imuGravity = odom2TempIMU.getBasis() * gravity;
+		tf::Vector3 imuGravity = odom2TempIMU * gravity - odom2TempIMU * tf::Vector3(0.0, 0.0, 0.0);
 
 		//push the corrected acceleration to the correct accel vector
 
-		correctedIMUAccels.push_back(alphaIMU - imuGravity - centripetalAccel);
+		tf::Vector3 correctedIMUAccel = (alphaIMU - imuGravity - centripetalAccel);
 
+
+		//transform the imu accel to the camera frame
+		cameraAccels.push_back(imu2camera * correctedIMUAccel - tf::Vector3(0.0, 0.0, 0.0));
+
+
+		//output
+		//ROS_DEBUG_STREAM("raw accel: " << alphaIMU.getX() << ", " << alphaIMU.getY() << ", " << alphaIMU.getZ());
 		//ROS_DEBUG_STREAM("grav: " << gravity.getX() << ", " << gravity.getY() << ", " << gravity.getZ());
+		//ROS_DEBUG_STREAM("ca: " << centripetalAccel.getX() << ", " << centripetalAccel.getY() << ", " << centripetalAccel.getZ() << " perp: " << perpCoeff);
 		//ROS_DEBUG_STREAM("trans grav: " << imuGravity.getX() << ", " << imuGravity.getY() << ", " << imuGravity.getZ());
-		ROS_DEBUG_STREAM("corrected grav: " << correctedIMUAccels.at(i).getX() << ", " << correctedIMUAccels.at(i).getY() << ", " << correctedIMUAccels.at(i).getZ());
-
+		//ROS_DEBUG_STREAM("corrected accels: " << correctedIMUAccel.getX() << ", " << correctedIMUAccel.getY() << ", " << correctedIMUAccel.getZ());
+		//ROS_DEBUG_STREAM("camera accels: " << cameraAccels.at(cameraAccels.size()-1).getX() << ", " << cameraAccels.at(cameraAccels.size()-1).getY() << ", " << cameraAccels.at(cameraAccels.size()-1).getZ());
 	}
 
 	//ROS_DEBUG_STREAM("dTheta: " << dTheta.getX() << ", " << dTheta.getY() << ", " << dTheta.getZ());
 	//ROS_DEBUG_STREAM("time diff " << currentFrame.timeImageCreated.toSec() - this->imuMessageBuffer.at(endingIMUIndex).header.stamp.toSec());
+
+	/*
+	 * at this point we have a dTheta from inside the IMU's frame and correct accelerations from inside the camera's frame
+	 * now we must transform the dTheta into the camera frame
+	 * we must also integrate the accels inside the camera frame
+	 */
+
+
 
 
 	//finally once everything has been estimated remove all IMU messages from the buffer that have been used and before that
@@ -682,8 +741,7 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, geometr
 
 	this->imuMessageBuffer = newIMUBuffer; //erase all old IMU messages
 
-
-
+	return endingIMUIndex - startingIMUIndex + 1;
 }
 
 

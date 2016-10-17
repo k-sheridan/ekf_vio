@@ -1,5 +1,7 @@
 <launch>
 	
+	<param name="use_sim_time" value="true"/>
+	
 	<node pkg="tf" type="static_transform_publisher" name="odom_base" 
 			args="0 0 0 0 0 0 /odom /base_link 20"/>
 	
