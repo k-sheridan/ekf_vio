@@ -28,8 +28,13 @@ VIO::VIO()
 	this->pose.pose.orientation.z = 0.0;
 	this->pose.header.stamp = ros::Time::now();
 
+	this->velocity.vector.x = 0.0;
+	this->velocity.vector.y = 0.0;
+	this->velocity.vector.z = 0.0;
 
-	this->pose.header.stamp = ros::Time::now();
+	this->angular_velocity.vector.x = 0.0;
+	this->angular_velocity.vector.y = 0.0;
+	this->angular_velocity.vector.z = 0.0;
 
 	this->broadcastWorldToOdomTF();
 }
@@ -416,7 +421,7 @@ ros::Time VIO::broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, d
 	//ROS_DEBUG_STREAM(q.getW() << ", " << q.getX() << ", " << q.getY() << ", " << q.getZ());
 	transform.setRotation(q);
 	ros::Time sendTime = ros::Time::now();
-	br.sendTransform(tf::StampedTransform(transform, sendTime, this->odom_frame, "temp_imu_frame"));
+	br.sendTransform(tf::StampedTransform(transform, sendTime, this->camera_frame, "temp_imu_frame"));
 	return sendTime;
 }
 
@@ -425,6 +430,12 @@ ros::Time VIO::broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, d
  * predicts the new rotation and position of the camera.
  * transfroms it to the odometry frame
  * and publishes a pose estimate
+ *
+ * FOR BACK UP
+ * ROS_DEBUG_STREAM("velo: " << inertialVelocityChange.getX() << ", " << inertialVelocityChange.getY() << ", " << inertialVelocityChange.getZ());
+ * ROS_DEBUG_STREAM("pos: " << inertialPositionChange.getX() << ", " << inertialPositionChange.getY() << ", " << inertialPositionChange.getZ());
+ * ROS_DEBUG_STREAM("angle: " << inertialAngleChange.getX() << ", " << inertialAngleChange.getY() << ", " << inertialAngleChange.getZ());
+ * ROS_ASSERT(inertialVelocityChange.getX() == inertialVelocityChange.getX() && inertialAngleChange.getX() == inertialAngleChange.getX());
  */
 double VIO::estimateMotion()
 {
@@ -437,17 +448,19 @@ double VIO::estimateMotion()
 	tf::Vector3 lastVelocity(this->velocity.vector.x, this->velocity.vector.y, this->velocity.vector.z);
 	tf::Vector3 lastAngularVelocity(this->angular_velocity.vector.x, this->angular_velocity.vector.y, this->angular_velocity.vector.z);
 
-
 	// get motion estimate from the IMU
 	this->getInertialMotionEstimate(this->pose.header.stamp, this->currentFrame.timeImageCreated,
 			lastVelocity, lastAngularVelocity, inertialAngleChange,
 			inertialPositionChange, inertialVelocityChange);
 
 	finalAngleChange = inertialAngleChange;
+	finalPositionChange = inertialPositionChange;
+	finalVelocityChange = inertialVelocityChange;
 
 	//infer motion from images
 	tf::Vector3 unitVelocityInference;
 	bool visualMotionInferenceSuccessful = false;
+
 	//get motion inference from visual odometry
 	visualMotionInferenceSuccessful = this->visualMotionInference(lastFrame, currentFrame, inertialAngleChange,
 			visualAngleChange, unitVelocityInference, averageMovement);
@@ -456,14 +469,16 @@ double VIO::estimateMotion()
 	//set the time stamp of the pose to the time of current frame
 	this->pose.header.stamp = this->currentFrame.timeImageCreated;
 
-	this->assembleStateVectors(finalPositionChange, finalAngleChange, finalVelocityChange, tf::Vector3(0.0, 0.0, 0.0));
+	this->assembleStateVectors(finalPositionChange, finalAngleChange, finalVelocityChange);
+
+	this->broadcastOdomToTempIMUTF(0.0, 0.0, 0.0, unitVelocityInference.getX(), unitVelocityInference.getY(), unitVelocityInference.getZ());
 
 }
 
 /*
  * uses delta vectors from camera frame to alter the odom frame
  */
-void VIO::assembleStateVectors(tf::Vector3 finalPositionChange, tf::Vector3 finalAngleChange, tf::Vector3 finalVelocityChange, tf::Vector3 angular_velocity)
+void VIO::assembleStateVectors(tf::Vector3 finalPositionChange, tf::Vector3 finalAngleChange, tf::Vector3 finalVelocityChange)
 {
 	//get the last angle in terms of tf::Quaternion - in frame ODOM
 	tf::Quaternion q0(this->pose.pose.orientation.x, this->pose.pose.orientation.y,
@@ -476,34 +491,30 @@ void VIO::assembleStateVectors(tf::Vector3 finalPositionChange, tf::Vector3 fina
 	tf::Vector3 v0(this->velocity.vector.x, this->velocity.vector.y, this->velocity.vector.z);
 
 	//create the change vectors
-	tf::Stamped<tf::Vector3> r, v, w, a;
+	tf::Stamped<tf::Vector3> r, v, a;
 
 	//create the stamped change vectors
-	tf::Stamped<tf::Vector3> r_camera, v_camera, w_camera, a_camera;
+	tf::Stamped<tf::Vector3> r_camera, v_camera, a_camera;
 	a_camera.frame_id_ = this->camera_frame;
 	r_camera.frame_id_ = this->camera_frame;
 	v_camera.frame_id_ = this->camera_frame;
-	w_camera.frame_id_ = this->camera_frame;
 
 	a_camera.stamp_ = ros::Time(0);
 	r_camera.stamp_ = ros::Time(0);
 	v_camera.stamp_ = ros::Time(0);
-	w_camera.stamp_ = ros::Time(0);
 
 	a_camera.setData(finalAngleChange);
 	r_camera.setData(finalPositionChange);
 	v_camera.setData(finalVelocityChange);
-	w_camera.setData(angular_velocity);
 
 	//transform the stamped vectors into odom frame
 	try{
 		this->tf_listener.transformVector(this->odom_frame, a_camera, a);
 		this->tf_listener.transformVector(this->odom_frame, r_camera, r);
 		this->tf_listener.transformVector(this->odom_frame, v_camera, v);
-		this->tf_listener.transformVector(this->odom_frame, w_camera, w);
 	}
 	catch (tf::TransformException e) {
-		ROS_WARN_STREAM(e.what());
+		ROS_WARN_STREAM("IN ME 1 " << e.what());
 	}
 
 	//alter update the last state
@@ -527,10 +538,6 @@ void VIO::assembleStateVectors(tf::Vector3 finalPositionChange, tf::Vector3 fina
 	this->velocity.vector.x = v_final.getX();
 	this->velocity.vector.y = v_final.getY();
 	this->velocity.vector.z = v_final.getZ();
-
-	this->angular_velocity.vector.x = w.getX();
-	this->angular_velocity.vector.y = w.getY();
-	this->angular_velocity.vector.z = w.getZ();
 
 }
 
@@ -571,16 +578,16 @@ bool VIO::visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleCha
 
 	//recover pose change from essential matrix
 	cv::Mat translation;
-	cv::Mat rotation1;
-	cv::Mat rotation2;
+	cv::Mat rotation;
 
 	//decompose matrix to get possible deltas
-	cv::decomposeEssentialMat(essentialMatrix, rotation1, rotation2, translation);
+	cv::recoverPose(essentialMatrix, prevPoints, currentPoints, this->K, rotation, translation, mask);
 
-	cv::Mat mtxR, mtxQ;
-	cv::Vec3d angle1 = cv::RQDecomp3x3(rotation1, mtxR, mtxQ);
-	cv::Mat mtxR2, mtxQ2;
-	cv::Vec3d angle2 = cv::RQDecomp3x3(rotation2, mtxR2, mtxQ2);
+
+	//set the unit velocity inference
+	unitVelocityInference.setX(translation.at<double>(0, 0));
+	unitVelocityInference.setY(translation.at<double>(1, 0));
+	unitVelocityInference.setZ(translation.at<double>(2, 0));
 
 	return true;
 }
@@ -594,8 +601,10 @@ bool VIO::visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleCha
  * angle change is in radians RPY
  * removes all imu messages from before the toTime
  *
- * inputs in camera frame
+ * inputs in odom frame
  * outputs in camera frame
+ *
+ * sets the last measured angular velocity to the state vector
  *
  * this was very poorly written sorry
  * it contained many bugs and becae very messy as a result
@@ -618,6 +627,21 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vec
 	{
 		return 0;
 	}
+
+	tf::StampedTransform odom2camera;
+	try{
+		this->tf_listener.lookupTransform(this->camera_frame, this->odom_frame, ros::Time(0), odom2camera);
+	}
+	catch(tf::TransformException e)
+	{
+		ROS_WARN_STREAM("IN ME 2 " << e.what());
+	}
+
+	//transform the two from vectors
+	fromAngularVelocity = odom2camera * fromAngularVelocity - odom2camera * tf::Vector3(0.0, 0.0, 0.0);
+	fromVelocity = odom2camera * fromVelocity - odom2camera * tf::Vector3(0.0, 0.0, 0.0);
+
+	//ROS_DEBUG_STREAM("ang velo: " << fromAngularVelocity.getX() << " velo: " << fromVelocity.getX());
 
 	int startingIMUIndex, endingIMUIndex;
 
@@ -697,6 +721,7 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vec
 
 	//std::vector<tf::Vector3> correctedIMUAccels;
 	std::vector<tf::Vector3> cameraAccels;
+	std::vector<ros::Time> cameraAccelTimes;
 
 	//ROS_DEBUG_STREAM("starting end indexes " << startingIMUIndex << ", " << endingIMUIndex << " buffer size " << this->imuMessageBuffer.size());
 
@@ -714,10 +739,22 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vec
 		sensor_msgs::Imu msg = this->imuMessageBuffer.at(i);
 		//ROS_DEBUG("pass 1");
 		tf::Vector3 omegaIMU(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
+		//ROS_DEBUG_STREAM("1 omega " << omegaIMU.getX());
 		//convert the omega vec to rads
 		omegaIMU = piOver180 * omegaIMU;
+		//ROS_DEBUG_STREAM("2 omega " << omegaIMU.getX());
 		double omegaIMU_mag = omegaIMU.length();
-		tf::Vector3 omegaIMU_hat = (1 / omegaIMU_mag) * omegaIMU;
+
+		//ROS_DEBUG_STREAM("3 omega length" << omegaIMU_mag);
+		tf::Vector3 omegaIMU_hat;
+		if(omegaIMU_mag != 0)
+		{
+			omegaIMU_hat = (1 / omegaIMU_mag) * omegaIMU;
+		}
+		else
+		{
+			omegaIMU_hat = omegaIMU;
+		}
 
 		tf::Vector3 alphaIMU(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
 
@@ -726,10 +763,10 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vec
 
 		// the transformation to the CoM frame in the imu_frame
 		try{
-			this->tf_listener.lookupTransform(this->imu_frame, this->CoM_frame, ros::Time::now(), distFromRotationAxisTF);
+			this->tf_listener.lookupTransform(this->imu_frame, this->CoM_frame, ros::Time(0), distFromRotationAxisTF);
 		}
 		catch(tf::TransformException e){
-			ROS_WARN_STREAM_ONCE(e.what());
+			ROS_WARN_STREAM_ONCE("THIS! " << e.what());
 		}
 
 		//get the centripetal acceleration expected
@@ -738,7 +775,8 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vec
 		tf::Vector3 deltaR_hat = (1 / deltaR_mag) * deltaR;
 		//mag accel = omega^2 * r
 		//the accel is proportional to the perpendicularity of omega and deltaR
-		double perpCoeff = abs(abs((double)(deltaR_hat.dot(omegaIMU_hat))) - 1.0);
+		//ROS_DEBUG_STREAM("ca unit vecs: " << deltaR_hat.getX() << ", " << omegaIMU_hat.getX());
+		double perpCoeff = deltaR_hat.cross(omegaIMU_hat).length();
 		//calculate
 		tf::Vector3 centripetalAccel = perpCoeff * omegaIMU_mag * omegaIMU_mag * deltaR_mag * deltaR_hat;
 
@@ -772,7 +810,7 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vec
 		//ROS_DEBUG_STREAM("dTheta: " << dTheta.getX() << ", " << dTheta.getY() << ", " << dTheta.getZ());
 
 		//this->broadcastWorldToOdomTF(); // tell tf what the current world -> odom is
-		this->broadcastOdomToTempIMUTF(dTheta.getX(), dTheta.getY(), dTheta.getZ(), 0, 1, 0);
+		//this->broadcastOdomToTempIMUTF(dTheta.getX(), dTheta.getY(), dTheta.getZ(), 0, 1, 0);
 
 		//create a transform from odom to the tempIMU
 		tf::Quaternion q;
@@ -785,11 +823,11 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vec
 		//push the corrected acceleration to the correct accel vector
 
 		tf::Vector3 correctedIMUAccel = (alphaIMU - imuGravity - centripetalAccel);
-
+		//tf::Vector3 correctedIMUAccel = (alphaIMU - imuGravity);
 
 		//transform the imu accel to the camera frame
 		cameraAccels.push_back(imu2camera * correctedIMUAccel - tf::Vector3(0.0, 0.0, 0.0));
-
+		cameraAccelTimes.push_back(msg.header.stamp);
 
 		//output
 		//ROS_DEBUG_STREAM("raw accel: " << alphaIMU.getX() << ", " << alphaIMU.getY() << ", " << alphaIMU.getZ());
@@ -806,6 +844,28 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vec
 
 	dTheta = dTheta + (piOver180 * omega) * (toTime.toSec() - lastMsg.header.stamp.toSec());
 
+	/*
+	 * transform and set the last measured
+	 * omega into the odom frame
+	 */
+	tf::Stamped<tf::Vector3> w;
+	tf::Stamped<tf::Vector3> w_odom;
+	w.setData(piOver180 * omega);
+	w.stamp_ = ros::Time(0);
+	w.frame_id_ = this->imu_frame;
+	try{
+		this->tf_listener.transformVector(this->odom_frame, w, w_odom);
+	}
+	catch(tf::TransformException e){
+		ROS_WARN_STREAM(e.what());
+	}
+	this->angular_velocity.vector.x = w_odom.getX();
+	this->angular_velocity.vector.y = w_odom.getY();
+	this->angular_velocity.vector.z = w_odom.getZ();
+	this->angular_velocity.header.frame_id = this->odom_frame;
+	this->angular_velocity.header.stamp = lastMsg.header.stamp;
+
+
 	//ROS_DEBUG_STREAM("dTheta: " << dTheta.getX() << ", " << dTheta.getY() << ", " << dTheta.getZ());
 	//ROS_DEBUG_STREAM("time diff " << currentFrame.timeImageCreated.toSec() - this->imuMessageBuffer.at(endingIMUIndex).header.stamp.toSec());
 
@@ -817,11 +877,42 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vec
 
 	angleChange = imu2camera * dTheta - imu2camera * tf::Vector3(0.0, 0.0, 0.0); //set the angle change vector
 
+	//INTEGRATE the cameraAccels
 
+	positionChange = tf::Vector3(0.0, 0.0, 0.0); //0,0,0 initial pos
+	velocityChange = fromVelocity; // initial velocity (subtract out fromVelocity at end!!!)
 
+	if(cameraAccels.size() == 0) // if there are not accelerations
+	{
+		double dt = toTime.toSec() - fromTime.toSec();
+		positionChange += velocityChange * dt;
+	}
+	else // integrate all time segments
+	{
+		double dt = toTime.toSec() - cameraAccelTimes.at(0).toSec();
+		positionChange += velocityChange * dt;
+		for(int i = 0; i < cameraAccels.size(); i++)
+		{
+			if(i != cameraAccels.size() - 1) // if this is not the last element
+			{
+				double dt = cameraAccelTimes.at(i + 1).toSec() - cameraAccelTimes.at(i).toSec();
+				positionChange += 0.5 * cameraAccels.at(i) * (dt * dt) + velocityChange * dt;
+				velocityChange += cameraAccels.at(i) * dt;
+			}
+			else
+			{
+				double dt = toTime.toSec() - cameraAccelTimes.at(i).toSec();
+				positionChange += 0.5 * cameraAccels.at(i) * (dt * dt) + velocityChange * dt;
+				velocityChange += cameraAccels.at(i) * dt;
+			}
+		}
+	}
+
+	//remove from velocity from the velo Change
+	velocityChange = velocityChange - fromVelocity;
 
 	//finally once everything has been estimated remove all IMU messages from the buffer that have been used and before that
-	ROS_ASSERT(this->imuMessageBuffer.size() == startingIMUBufferSize);
+	//ROS_ASSERT(this->imuMessageBuffer.size() == startingIMUBufferSize);
 
 	std::vector<sensor_msgs::Imu> newIMUBuffer;
 	for(int i = endingIMUIndex + 1; i < startingIMUBufferSize; i++)
@@ -830,6 +921,7 @@ int VIO::getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vec
 	}
 
 	this->imuMessageBuffer = newIMUBuffer; //erase all old IMU messages
+
 
 	return endingIMUIndex - startingIMUIndex + 1;
 }

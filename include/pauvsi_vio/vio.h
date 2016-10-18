@@ -143,7 +143,7 @@ public:
 			tf::Vector3 fromAngularVelocity, tf::Vector3& angleChange,
 			tf::Vector3& positionChange, tf::Vector3& velocityChange);
 
-	void assembleStateVectors(tf::Vector3 finalPositionChange, tf::Vector3 finalAngleChange, tf::Vector3 finalVelocityChange, tf::Vector3 angular_velocity);
+	void assembleStateVectors(tf::Vector3 finalPositionChange, tf::Vector3 finalAngleChange, tf::Vector3 finalVelocityChange);
 
 
 
