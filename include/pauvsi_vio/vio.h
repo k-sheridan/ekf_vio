@@ -30,6 +30,7 @@
 #include "Frame.hpp"
 #include "VIOFeature3D.hpp"
 #include "VIOFeature2D.hpp"
+#include "FeatureTracker.h"
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -116,21 +117,9 @@ public:
 
 	ros::Time broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
 
-	std::vector<cv::DMatch> matchFeaturesWithFlann(cv::Mat queryDescriptors, cv::Mat trainDescriptors);
-
-	bool flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame);
-
-	void getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, std::vector<cv::Point2f>& lastPoints, std::vector<cv::Point2f>& currentPoints);
-
 	double estimateMotion();
 
-	void checkFeatureConsistency(Frame& checkFrame, int killThreshold );
-
 	void run();
-
-	double averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2);
-
-	std::vector<double> placeFeatureInSpace(cv::Point2f point1,cv::Point2f point2,cv::Mat rotation, cv::Mat translation );
 
 	void addIMUReading(sensor_msgs::Imu msg){
 		this->imuMessageBuffer.push_back(msg);
@@ -168,6 +157,8 @@ protected:
 
 	Frame currentFrame; // the current frame
 	Frame lastFrame; //the last frame
+
+	FeatureTracker feature_tracker;
 
 	geometry_msgs::PoseStamped pose;
 	geometry_msgs::Vector3Stamped velocity;
