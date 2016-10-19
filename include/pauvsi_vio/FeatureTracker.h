@@ -36,7 +36,7 @@ class FeatureTracker {
 public:
 
 	FeatureTracker();
-	FeatureTracker(int fst, float mev, bool kbd, int nf, int mnfd);
+	void setParams(int fst, float mev, bool kbd, int nf, int mnfd);
 
 	std::vector<cv::DMatch> matchFeaturesWithFlann(cv::Mat queryDescriptors, cv::Mat trainDescriptors);
 

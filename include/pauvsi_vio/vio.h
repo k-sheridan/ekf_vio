@@ -27,10 +27,12 @@
 #include <cv_bridge/cv_bridge.h>
 #include <tf/transform_broadcaster.h>
 
+#include "EgoMotionEstimator.hpp"
 #include "Frame.hpp"
 #include "VIOFeature3D.hpp"
 #include "VIOFeature2D.hpp"
 #include "FeatureTracker.h"
+#include "InertialMotionEstimator.h"
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -62,6 +64,15 @@ public:
 	int NUM_FEATURES;
 	int MIN_NEW_FEATURE_DISTANCE;
 	double GRAVITY_MAG;
+
+	tf::TransformListener tf_listener; // starts a thread which keeps track of transforms in the system
+
+	//frames
+	std::string imu_frame;
+	std::string camera_frame;
+	std::string odom_frame;
+	std::string CoM_frame;
+	std::string world_frame;
 
 	VIO();
 	~VIO();
@@ -110,7 +121,7 @@ public:
 		D = _D;
 	}
 
-	void viewImage(cv::Mat img, bool rect);
+	void viewImage(cv::Mat img);
 	void viewImage(Frame frame);
 
 	void broadcastWorldToOdomTF();
@@ -121,19 +132,10 @@ public:
 
 	void run();
 
-	void addIMUReading(sensor_msgs::Imu msg){
-		this->imuMessageBuffer.push_back(msg);
-	}
-
 	bool visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction, tf::Vector3& rotationInference,
 			tf::Vector3& unitVelocityInference, double& averageMovement);
 
-	int getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vector3 fromVelocity,
-			tf::Vector3 fromAngularVelocity, tf::Vector3& angleChange,
-			tf::Vector3& positionChange, tf::Vector3& velocityChange);
-
 	void assembleStateVectors(tf::Vector3 finalPositionChange, tf::Vector3 finalAngleChange, tf::Vector3 finalVelocityChange);
-
 
 
 protected:
@@ -142,35 +144,20 @@ protected:
 	image_transport::CameraSubscriber cameraSub;
 	ros::Subscriber imuSub;
 
-	tf::TransformListener tf_listener; // starts a thread which keeps track of transforms in the system
-
 	//initialized with default values
 	std::string cameraTopic;
 	std::string imuTopic;
-
-	//frames
-	std::string imu_frame;
-	std::string camera_frame;
-	std::string odom_frame;
-	std::string CoM_frame;
-	std::string world_frame;
 
 	Frame currentFrame; // the current frame
 	Frame lastFrame; //the last frame
 
 	FeatureTracker feature_tracker;
 
+	InertialMotionEstimator inertial_motion_estimator;
+
 	geometry_msgs::PoseStamped pose;
 	geometry_msgs::Vector3Stamped velocity;
 	geometry_msgs::Vector3Stamped angular_velocity;
-
-	/*
-	 * this buffer stores IMU messages until they are needed
-	 * for integration
-	 * The reason we don't integrate them right away is because there is a
-	 * slight gap it the time that the image is captured and when it is processed
-	 */
-	std::vector<sensor_msgs::Imu> imuMessageBuffer;
 
 	std::vector<VIOFeature3D> active3DFeatures;
 	std::vector<VIOFeature3D> inactive3DFeatures;

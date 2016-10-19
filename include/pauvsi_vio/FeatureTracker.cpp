@@ -12,7 +12,7 @@ FeatureTracker::FeatureTracker()
 
 }
 
-FeatureTracker::FeatureTracker(int fst, float mev, bool kbd, int nf, int mnfd)
+void FeatureTracker::setParams(int fst, float mev, bool kbd, int nf, int mnfd)
 {
 	this->FEATURE_SIMILARITY_THRESHOLD = fst;
 	this->MIN_EIGEN_VALUE = mev;
