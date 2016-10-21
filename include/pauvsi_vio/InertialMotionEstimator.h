@@ -26,6 +26,14 @@ public:
 
 	InertialMotionEstimator();
 
+	double gyroBiasX;
+	double gyroBiasY;
+	double gyroBiasZ;
+	double scaleAccelerometer;
+	sensor_msgs::Imu lastMessageUsed;
+
+
+
 	void setGravityMagnitude(double g)
 	{
 		GRAVITY_MAG = g;
@@ -46,6 +54,27 @@ public:
 	void addIMUMessage(sensor_msgs::Imu msg)
 	{
 		this->imuMessageBuffer.push_back(msg);
+	}
+
+	sensor_msgs::Imu getMostRecentImu()
+	{
+		if(imuMessageBuffer.empty())
+			return lastMessageUsed;
+
+		return imuMessageBuffer.back();
+	}
+
+	tf::Quaternion getDifferenceQuaternion(tf::Vector3 v1, tf::Vector3 v2)
+	{
+		tf::Quaternion q;
+		tf::Vector3 a = v1.cross(v2);
+		q.setX(a.getX());
+		q.setY(a.getY());
+		q.setZ(a.getZ());
+		q.setW(sqrt(v1.length()*v1.length()*v2.length()*v2.length()) + v1.dot(v2));
+		q.normalize();
+
+		return q;
 	}
 
 protected:

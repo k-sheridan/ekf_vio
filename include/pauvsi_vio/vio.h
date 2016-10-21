@@ -48,8 +48,8 @@
 #define DEFAULT_CAMERA_FRAME_NAME "camera_frame"
 #define DEFAULT_COM_FRAME_NAME "base_link"
 #define DEFAULT_WORLD_FRAME_NAME "world"
-#define DEFAULT_GRAVITY_MAGNITUDE 10.027876884
-
+#define DEFAULT_GRAVITY_MAGNITUDE 9.8065
+#define PIby180 0.01745329251
 
 class VIO
 {
@@ -83,7 +83,7 @@ public:
 
 	cv::Mat get3x3FromVector(boost::array<double, 9> vec);
 
-	void correctOrientation(std::vector<double> orientation, double certainty);
+	void correctOrientation(tf::Quaternion q, double certainty);
 
 	void readROSParameters();
 
@@ -135,8 +135,8 @@ public:
 	bool visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction, tf::Vector3& rotationInference,
 			tf::Vector3& unitVelocityInference, double& averageMovement);
 
-	void assembleStateVectors(tf::Vector3 finalPositionChange, tf::Vector3 finalAngleChange, tf::Vector3 finalVelocityChange);
 
+	void recalibrateState(double avgPixelChange, double threshold, bool consecutive);
 
 protected:
 	ros::NodeHandle nh;
@@ -155,9 +155,10 @@ protected:
 
 	InertialMotionEstimator inertial_motion_estimator;
 
-	geometry_msgs::PoseStamped pose;
-	geometry_msgs::Vector3Stamped velocity;
-	geometry_msgs::Vector3Stamped angular_velocity;
+	tf::Vector3 position;
+	tf::Vector3 velocity;
+	tf::Vector3 angular_velocity;
+	tf::Quaternion orientation;
 
 	std::vector<VIOFeature3D> active3DFeatures;
 	std::vector<VIOFeature3D> inactive3DFeatures;
