@@ -117,12 +117,33 @@ public:
 		return this->error;
 	}
 
+	void recoverPose(cv::Mat E, std::vector<cv::Point2f>& p1, std::vector<cv::Point2f>& p2,
+			tf::Vector3 angleChangePrediction, cv::Mat mask, cv::Mat& rotation, cv::Mat& translation)
+	{
+		cv::Mat t, r1, r2, mtxq, mtxr;
+
+		cv::decomposeEssentialMat(E, r1, r2, t);
+
+		cv::Vec3d r1_rpy = cv::RQDecomp3x3(r1, mtxr, mtxq);
+		cv::Vec3d r2_rpy = cv::RQDecomp3x3(r2, mtxr, mtxq);
+		cv::Vec3d r_pred(angleChangePrediction.getX(), angleChangePrediction.getY(), angleChangePrediction.getZ());
+
+		cv::Vec3d delta_r1 = (r_pred - r1_rpy);
+		cv::Vec3d delta_r2 = (r_pred - r2_rpy);
+
+		double r1_chance = sqrt(delta_r1[0]*delta_r1[0] + delta_r1[1]*delta_r1[1] + delta_r1[2]*delta_r1[2]);
+		//TODO
+	}
+
 protected:
 
 	cv::Mat E;
 
 	std::vector<cv::Point2f> points1;
 	std::vector<cv::Point2f> points2;
+
+	cv::Mat translation;
+	cv::Mat rotation;
 
 	cv::Mat mask;
 
