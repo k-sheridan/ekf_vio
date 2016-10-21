@@ -26,6 +26,9 @@ VIO::VIO()
 	//setup imu sub
 	this->imuSub = nh.subscribe(this->getIMUTopic(), 100, &VIO::imuCallback, this);
 
+	this->orientation.setValue(0, 0, 0, 1);
+	this->position.setValue(0, 0, 0);
+
 	this->broadcastWorldToOdomTF();
 }
 
@@ -192,6 +195,8 @@ void VIO::readROSParameters()
 	ros::param::param<int>("~min_new_feature_distance", MIN_NEW_FEATURE_DISTANCE, DEFAULT_MIN_NEW_FEATURE_DIST);
 
 	ros::param::param<double>("~starting_gravity_mag", GRAVITY_MAG, DEFAULT_GRAVITY_MAGNITUDE);
+
+	ros::param::param<double>("~recalibration_threshold", RECALIBRATION_THRESHOLD, DEFAULT_RECALIBRATION_THRESHOLD);
 }
 
 /*
@@ -227,6 +232,9 @@ ros::Time VIO::broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, d
 
 void VIO::correctOrientation(tf::Quaternion q, double certainty)
 {
+	//check if quats are nan
+	ROS_ASSERT(orientation.getW() == orientation.getW());
+	ROS_ASSERT(q.getW() == q.getW());
 	//Takes orientation and rotates it towards q.
 	orientation = orientation.slerp(q, certainty);
 }
@@ -244,38 +252,19 @@ void VIO::correctOrientation(tf::Quaternion q, double certainty)
  */
 double VIO::estimateMotion()
 {
-//	tf::Vector3 inertialAngleChange, inertialPositionChange, inertialVelocityChange; // change in angle and pos from imu
-//	tf::Vector3 visualAngleChange, visualPositionChange;
-//	tf::Vector3 finalAngleChange(0.0, 0.0, 0.0), finalVelocityChange(0.0, 0.0, 0.0), finalPositionChange(0.0, 0.0, 0.0);
-//	double visualMotionCertainty;
-//	double averageMovement;
-//
-//	tf::Vector3 lastVelocity(this->velocity.vector.x, this->velocity.vector.y, this->velocity.vector.z);
-//	tf::Vector3 lastAngularVelocity(this->angular_velocity.vector.x, this->angular_velocity.vector.y, this->angular_velocity.vector.z);
-//
-//	// get motion estimate from the IMU
-//	//this->getInertialMotionEstimate(this->pose.header.stamp, this->currentFrame.timeImageCreated, lastVelocity, lastAngularVelocity, inertialAngleChange, inertialPositionChange, inertialVelocityChange);
-//
-//	finalAngleChange = inertialAngleChange;
-//	finalPositionChange = inertialPositionChange;
-//	finalVelocityChange = inertialVelocityChange;
-//
-//	//infer motion from images
-//	tf::Vector3 unitVelocityInference;
-//	bool visualMotionInferenceSuccessful = false;
-//
-//	//get motion inference from visual odometry
-//	visualMotionInferenceSuccessful = this->visualMotionInference(lastFrame, currentFrame, inertialAngleChange,
-//			visualAngleChange, unitVelocityInference, averageMovement);
-//
-//
-//	//set the time stamp of the pose to the time of current frame
-//	this->pose.header.stamp = this->currentFrame.timeImageCreated;
-//
-//	this->assembleStateVectors(finalPositionChange, finalAngleChange, finalVelocityChange);
-//
-//	ROS_DEBUG_STREAM("unit Velo " << unitVelocityInference.getX() << ", " << unitVelocityInference.getY() << ", " << unitVelocityInference.getZ());
-//	this->broadcastOdomToTempIMUTF(0.0, 0.0, 0.0, unitVelocityInference.getX(), unitVelocityInference.getY(), unitVelocityInference.getZ());
+	static bool consecutiveRecalibration = false;
+	double avgFeatureChange = feature_tracker.averageFeatureChange(lastFrame, currentFrame); // get the feature change between f1 and f2
+
+	//recalibrate the state using avg pixel change and track consecutive runs
+	if(avgFeatureChange <= this->RECALIBRATION_THRESHOLD)
+	{
+		this->recalibrateState(avgFeatureChange, this->RECALIBRATION_THRESHOLD, consecutiveRecalibration);
+		consecutiveRecalibration = true;
+	}
+	else
+	{
+		consecutiveRecalibration = false;
+	}
 
 }
 
@@ -338,13 +327,18 @@ bool VIO::visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleCha
  */
 void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecutive)
 {
+	ROS_DEBUG_STREAM("recalibrating with " << avgPixelChange);
+
 	static double lastNormalize = 0;
 	static sensor_msgs::Imu lastImu;
 	double normalize = avgPixelChange/threshold;
 	sensor_msgs::Imu currentImu = inertial_motion_estimator.getMostRecentImu();
 
+	ROS_DEBUG_STREAM("normalized pixel change " << normalize);
+
 	velocity = velocity * normalize;
 
+	//TODO make a gyro bias measurment vector in the inertial motion estimator and do a weighted average
 	inertial_motion_estimator.gyroBiasX = (1-normalize)*currentImu.angular_velocity.x
 											+ normalize*inertial_motion_estimator.gyroBiasX;
 	inertial_motion_estimator.gyroBiasY = (1-normalize)*currentImu.angular_velocity.y
@@ -355,18 +349,28 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 	if(consecutive)
 	{
 		normalize = (normalize+lastNormalize)/2;
-		double scale = sqrt(lastImu.angular_velocity.x*lastImu.angular_velocity.x + lastImu.angular_velocity.y*lastImu.angular_velocity.y
-							+ lastImu.angular_velocity.z*lastImu.angular_velocity.z);
-		if(scale != 0)
-			inertial_motion_estimator.scaleAccelerometer = (1-normalize)*GRAVITY_MAG/scale;
+
+		ROS_DEBUG_STREAM("running consecutive calibration with new normalized " << normalize);
 
 		tf::Vector3 accel(lastImu.linear_acceleration.x*inertial_motion_estimator.scaleAccelerometer
-					 	 , lastImu.linear_acceleration.y*inertial_motion_estimator.scaleAccelerometer
-						 , lastImu.linear_acceleration.z*inertial_motion_estimator.scaleAccelerometer);
+							 	 , lastImu.linear_acceleration.y*inertial_motion_estimator.scaleAccelerometer
+								 , lastImu.linear_acceleration.z*inertial_motion_estimator.scaleAccelerometer);
+		double scale = accel.length();
+
+		//TODO create a ten element running wieghted average of the accelerometer scale.
+		if(scale != 0)
+			inertial_motion_estimator.scaleAccelerometer = (1-normalize)*GRAVITY_MAG/scale + (normalize)*inertial_motion_estimator.scaleAccelerometer;
+
 		tf::Vector3 gravity(0,0,GRAVITY_MAG);
 
 		correctOrientation(inertial_motion_estimator.getDifferenceQuaternion(gravity, accel), (1-normalize));
+
+		ROS_DEBUG_STREAM("new acceleration after scaling " << inertial_motion_estimator.scaleAccelerometer * accel);
 	}
+
+	ROS_DEBUG_STREAM("new accel scale " << inertial_motion_estimator.scaleAccelerometer << " new gyro biases "
+			<< inertial_motion_estimator.gyroBiasX << ", " << inertial_motion_estimator.gyroBiasY << ", "
+			<< inertial_motion_estimator.gyroBiasZ);
 
 
 	lastImu = currentImu;

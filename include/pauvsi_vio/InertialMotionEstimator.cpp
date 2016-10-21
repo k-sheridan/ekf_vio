@@ -8,7 +8,10 @@
 #include "InertialMotionEstimator.h"
 
 InertialMotionEstimator::InertialMotionEstimator() {
-	// TODO Auto-generated constructor stub
+	this->gyroBiasX = 0;
+	this->gyroBiasY = 0;
+	this->gyroBiasZ = 0;
+	this->scaleAccelerometer = 1.0;
 
 }
 

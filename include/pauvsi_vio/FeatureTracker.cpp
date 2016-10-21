@@ -192,6 +192,29 @@ double FeatureTracker::averageFeatureChange(std::vector<cv::Point2f> points1, st
 	return diff / (double)points1.size();
 }
 
+double FeatureTracker::averageFeatureChange(Frame f1, Frame f2)
+{
+	int numMatched = 0;
+	double delta = 0;
+	double dx, dy;
+
+	for(int i = 0; i < f2.features.size(); i++)
+	{
+		if(f2.features.at(i).isMatched())
+		{
+			cv::Point2f p1 = f1.features.at(f2.features.at(i).getMatchedIndex()).getFeaturePosition();
+			cv::Point2f p2 = f2.features.at(i).getFeaturePosition();
+
+			dx = (double)(p1.x - p2.x);
+			dy = (double)(p1.y - p2.y);
+			delta += sqrt(pow(dx, 2) + pow(dy, 2));
+			numMatched++;
+		}
+	}
+
+	return delta / (double)numMatched;
+}
+
 
 
 

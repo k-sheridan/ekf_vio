@@ -31,15 +31,54 @@
 #include "VIOFeature3D.hpp"
 #include "VIOFeature2D.hpp"
 
+#define PI_OVER_180 0.01745329251
+
 class EgoMotionEstimator {
 public:
 	EgoMotionEstimator(){
 
 	}
 
-	bool estimateEgoMotion(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction)
+	/*
+	 * gets the essential matrix from between two frames
+	 * K = intrinsic matrix of camera
+	 * angleChangePrediction = the predicted angle change RPY (radians)
+	 */
+	bool estimateEgoMotion(Frame frame1, Frame frame2, cv::Mat K, tf::Vector3 angleChangePrediction)
 	{
+		int numCorrespondingFeatures = this->getCorrespondingPoints(frame1, frame2, points1, points2); // get the new corresponding points
 
+		if(numCorrespondingFeatures < 5)
+			return false;
+
+		this->E = cv::findEssentialMat(this->points1, this->points2, K, cv::RANSAC, 0.999, 1.0, this->mask);
+
+		if(this->E.rows != 3 && this->E.cols != 3)
+			return false;
+
+		return true;
+
+	}
+
+	/*
+	 * gets corresponding points between two frames
+	 */
+	int getCorrespondingPoints(Frame frame1, Frame frame2, std::vector<cv::Point2f>& p1, std::vector<cv::Point2f>& p2)
+	{
+		if(!p1.empty())
+			p1.clear();
+		if(!p2.empty())
+			p2.clear();
+		for(int i = 0; i < frame2.features.size(); i++)
+		{
+			if(frame2.features.at(i).isMatched())
+			{
+				p1.push_back(frame1.features.at(frame2.features.at(i).getMatchedIndex()).getFeaturePosition());
+				p2.push_back(frame2.features.at(i).getFeaturePosition());
+			}
+		}
+
+		return p1.size();
 	}
 
 	double computeError(cv::InputArray _m1, cv::InputArray _m2, cv::InputArray _model, cv::OutputArray _err)
@@ -82,8 +121,8 @@ protected:
 
 	cv::Mat E;
 
-	cv::Mat points1;
-	cv::Mat points2;
+	std::vector<cv::Point2f> points1;
+	std::vector<cv::Point2f> points2;
 
 	cv::Mat mask;
 

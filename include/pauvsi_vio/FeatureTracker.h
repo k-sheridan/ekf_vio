@@ -47,6 +47,7 @@ public:
 	void checkFeatureConsistency(Frame& checkFrame, int killThreshold );
 
 	double averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2);
+	double averageFeatureChange(Frame f1, Frame f2);
 
 protected:
 

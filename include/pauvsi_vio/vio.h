@@ -49,7 +49,8 @@
 #define DEFAULT_COM_FRAME_NAME "base_link"
 #define DEFAULT_WORLD_FRAME_NAME "world"
 #define DEFAULT_GRAVITY_MAGNITUDE 9.8065
-#define PIby180 0.01745329251
+#define PI_OVER_180 0.01745329251
+#define DEFAULT_RECALIBRATION_THRESHOLD 0.02
 
 class VIO
 {
@@ -64,6 +65,7 @@ public:
 	int NUM_FEATURES;
 	int MIN_NEW_FEATURE_DISTANCE;
 	double GRAVITY_MAG;
+	double RECALIBRATION_THRESHOLD;
 
 	tf::TransformListener tf_listener; // starts a thread which keeps track of transforms in the system
 
