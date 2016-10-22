@@ -162,14 +162,18 @@ protected:
 	tf::Vector3 velocity;
 	tf::Vector3 angular_velocity;
 	tf::Quaternion orientation;
-	struct queueNode
+	struct gyroNode
 	{
 		tf::Vector3 gyroBias;
 		double certainty;
-		double scale;
 	};
-	std::vector<queueNode> queue;
-	std::vector<queueNode> weigthedQueue;
+	struct accelNode
+	{
+		double accelScale;
+		double certainty;
+	};
+	std::vector<gyroNode> gyroQueue;
+	std::vector<accelNode> accelQueue;
 
 	std::vector<VIOFeature3D> active3DFeatures;
 	std::vector<VIOFeature3D> inactive3DFeatures;
