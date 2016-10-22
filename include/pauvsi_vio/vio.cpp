@@ -357,6 +357,62 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 								 , lastImu.linear_acceleration.z*inertial_motion_estimator.scaleAccelerometer);
 		double scale = accel.length();
 
+		//Vector with size DEFAULT_QUEUE_SIZE, elements added at front and dequeued at back
+		queueNode Node;
+		Node.gyroBias.setX(inertial_motion_estimator.gyroBiasX);
+		Node.gyroBias.setY(inertial_motion_estimator.gyroBiasY);
+		Node.gyroBias.setZ(inertial_motion_estimator.gyroBiasZ);
+		Node.certainty = (1-normalize);
+		Node.scale = GRAVITY_MAG/scale;
+		if(queue.size() >= DEFAULT_QUEUE_SIZE)
+		{
+			queue.pop_back();
+			queue.insert(queue.begin(), Node);
+
+		}
+		else
+		{
+			queue.insert(queue.begin(), Node);
+		}
+		//Calculating weighted values of gyroBiases and scale
+		double sum = 0;
+		queueNode WeightedValues;
+		WeightedValues.gyroBias.setX(0);
+		WeightedValues.gyroBias.setY(0);
+		WeightedValues.gyroBias.setZ(0);
+		WeightedValues.certainty = 0;
+		WeightedValues.scale = 0;
+		for(int i=0; i<queue.size(); ++i)
+		{
+			sum += queue.at(i).certainty;
+//			sum.gyroBias.setX(queue.at(i).gyroBias.getX()+sum.gyroBias.getX());
+//			sum.gyroBias.setY(queue.at(i).gyroBias.getY()+sum.gyroBias.getY());
+//			sum.gyroBias.setZ(queue.at(i).gyroBias.getZ()+sum.gyroBias.getZ());
+//			sum.certainty += queue.at(i).certainty;
+//			sum.scale += queue.at(i).scale;//sum += queue.at(i).certainty;//queue.at(i).scale;
+		}
+
+		std::vector<double> normalizedCertainty;
+		for(int i=0; i<queue.size(); ++i)
+		{
+			normalizedCertainty.push_back(queue.at(i).certainty / sum);
+//			Node.certainty = queue.at(i).certainty / sum.certainty;
+//			Node.gyroBias.setX(queue.at(i).gyroBias.getX() / sum.gyroBias.getX());
+//			Node.gyroBias.setY(queue.at(i).gyroBias.getY() / sum.gyroBias.getY());
+//			Node.gyroBias.setZ(queue.at(i).gyroBias.getZ() / sum.gyroBias.getZ());
+//			Node.scale = queue.at(i).scale / sum.scale;
+//
+//			weigthedQueue.push_back(Node);
+		}
+
+		for(int i=0; i<queue.size(); ++i)
+		{
+			WeightedValues.gyroBias.setX(WeightedValues.gyroBias.getX() + normalizedCertainty.at(i)*queue.at(i).gyroBias.getX());
+			WeightedValues.gyroBias.setY(WeightedValues.gyroBias.getY() + normalizedCertainty.at(i)*queue.at(i).gyroBias.getY());
+			WeightedValues.gyroBias.setZ(WeightedValues.gyroBias.getZ() + normalizedCertainty.at(i)*queue.at(i).gyroBias.getZ());
+			WeightedValues.scale += normalizedCertainty.at(i)*queue.at(i).scale;
+		}
+		//sum *= GRAVITY_MAG/queue.size();
 		//TODO create a ten element running wieghted average of the accelerometer scale.
 		if(scale != 0)
 			inertial_motion_estimator.scaleAccelerometer = (1-normalize)*GRAVITY_MAG/scale + (normalize)*inertial_motion_estimator.scaleAccelerometer;

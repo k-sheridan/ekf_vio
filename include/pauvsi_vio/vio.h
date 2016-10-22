@@ -51,6 +51,7 @@
 #define DEFAULT_GRAVITY_MAGNITUDE 9.8065
 #define PI_OVER_180 0.01745329251
 #define DEFAULT_RECALIBRATION_THRESHOLD 0.02
+#define DEFAULT_QUEUE_SIZE 10
 
 class VIO
 {
@@ -161,6 +162,14 @@ protected:
 	tf::Vector3 velocity;
 	tf::Vector3 angular_velocity;
 	tf::Quaternion orientation;
+	struct queueNode
+	{
+		tf::Vector3 gyroBias;
+		double certainty;
+		double scale;
+	};
+	std::vector<queueNode> queue;
+	std::vector<queueNode> weigthedQueue;
 
 	std::vector<VIOFeature3D> active3DFeatures;
 	std::vector<VIOFeature3D> inactive3DFeatures;
