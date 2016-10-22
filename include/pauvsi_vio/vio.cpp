@@ -372,6 +372,7 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 				gyroNormlizedCertainty.push_back(gyroQueue.at(i).certainty / gyroCertaintySum);
 			}
 
+	//FINAL WEIGHTED GYROBIASES
 	gyroNode gWeightedNode;
 	gWeightedNode.gyroBias.setX(0);
 	gWeightedNode.gyroBias.setY(0);
@@ -441,6 +442,7 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 //			weigthedQueue.push_back(Node);
 		}
 
+		//FINAL WEIGHTED ACCELERATION SCALE
 		accelNode aWeightedNode;
 		aWeightedNode.certainty = 0;
 		aWeightedNode.accelScale = 0;
