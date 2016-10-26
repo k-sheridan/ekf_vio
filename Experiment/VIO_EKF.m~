@@ -1,0 +1,5 @@
+%initialize the state vector
+X = [0; 0; 0; 0; 0; 0; 0; 0; 0; 1; 0; 0; 0; 0; 0; 0];
+%x, y, z, dx, dy, dz, qx, qy, qz, qw, bgx, bgy, bgz, bax, bay, baz
+E = zeros(16, 16);
+
