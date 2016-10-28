@@ -13,12 +13,12 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Image.h>
-#include "tf/transform_listener.h"
-#include "tf/message_filter.h"
+#include "tf2_ros/buffer_client.h"
+#include <tf2_ros/buffer.h>
+#include <tf/tf.h>
 #include "message_filters/subscriber.h"
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
-#include <tf/transform_broadcaster.h>
 
 class VIOEKF {
 public:
@@ -36,18 +36,6 @@ public:
 	{
 		GRAVITY_MAG = g;
 	}
-
-	void setTransforms(tf::StampedTransform c2o, tf::StampedTransform i2c, tf::StampedTransform c2i, tf::StampedTransform i2o)
-	{
-		cam2odom = c2o;
-		imu2cam = i2c;
-		com2imu = c2i;
-		imu2odom = i2o;
-	}
-
-	int getInertialMotionEstimate(ros::Time fromTime, ros::Time toTime, tf::Vector3 fromVelocity,
-			tf::Vector3 fromAngularVelocity, tf::Vector3& angleChange,
-			tf::Vector3& positionChange, tf::Vector3& velocityChange, tf::Vector3& lastOmega);
 
 	void addIMUMessage(sensor_msgs::Imu msg)
 	{
@@ -84,8 +72,6 @@ protected:
 	 * slight gap it the time that the image is captured and when it is processed
 	 */
 	std::vector<sensor_msgs::Imu> imuMessageBuffer;
-
-	tf::StampedTransform cam2odom, imu2cam, com2imu, imu2odom;
 
 	double GRAVITY_MAG;
 };

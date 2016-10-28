@@ -20,12 +20,12 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Image.h>
-#include "tf/transform_listener.h"
-#include "tf/message_filter.h"
 #include "message_filters/subscriber.h"
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
-#include <tf/transform_broadcaster.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/message_filter.h>
+#include <tf2_ros/transform_listener.h>
 
 #include "EgoMotionEstimator.hpp"
 #include "Frame.hpp"
@@ -33,6 +33,7 @@
 #include "VIOFeature2D.hpp"
 #include "FeatureTracker.h"
 #include "VIOEKF.h"
+#include "VIOState.hpp"
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -156,12 +157,9 @@ protected:
 
 	FeatureTracker feature_tracker;
 
+	VIOState state;
 	VIOEKF ekf;
 
-	tf::Vector3 position;
-	tf::Vector3 velocity;
-	tf::Vector3 angular_velocity;
-	tf::Quaternion orientation;
 	struct gyroNode
 	{
 		tf::Vector3 gyroBias;
