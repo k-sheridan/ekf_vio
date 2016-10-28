@@ -65,7 +65,7 @@ void VIO::cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msg
 void VIO::imuCallback(const sensor_msgs::ImuConstPtr& msg)
 {
 	//ROS_DEBUG_STREAM_THROTTLE(0.1, "accel: " << msg->linear_acceleration);
-	this->inertial_motion_estimator.addIMUMessage(*msg);
+	this->ekf.addIMUMessage(*msg);
 	//ROS_DEBUG_STREAM("time compare " << ros::Time::now().toNSec() - msg->header.stamp.toNSec());
 }
 
@@ -332,24 +332,24 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 	static double lastNormalize = 0;
 	static sensor_msgs::Imu lastImu;
 	double normalize = avgPixelChange/threshold;
-	sensor_msgs::Imu currentImu = inertial_motion_estimator.getMostRecentImu();
+	sensor_msgs::Imu currentImu = ekf.getMostRecentImu();
 
 	ROS_DEBUG_STREAM("normalized pixel change " << normalize);
 
 	velocity = velocity * normalize;
 
 	//TODO make a gyro bias measurment vector in the inertial motion estimator and do a weighted average
-//	inertial_motion_estimator.gyroBiasX = (1-normalize)*currentImu.angular_velocity.x
-//											+ normalize*inertial_motion_estimator.gyroBiasX;
-//	inertial_motion_estimator.gyroBiasY = (1-normalize)*currentImu.angular_velocity.y
-//											+ normalize*inertial_motion_estimator.gyroBiasY;
-//	inertial_motion_estimator.gyroBiasZ = (1-normalize)*currentImu.angular_velocity.z
-//											+ normalize*inertial_motion_estimator.gyroBiasZ;
+//	ekf.gyroBiasX = (1-normalize)*currentImu.angular_velocity.x
+//											+ normalize*ekf.gyroBiasX;
+//	ekf.gyroBiasY = (1-normalize)*currentImu.angular_velocity.y
+//											+ normalize*ekf.gyroBiasY;
+//	ekf.gyroBiasZ = (1-normalize)*currentImu.angular_velocity.z
+//											+ normalize*ekf.gyroBiasZ;
 
 	gyroNode gNode;
-	gNode.gyroBias.setX(inertial_motion_estimator.gyroBiasX);
-	gNode.gyroBias.setY(inertial_motion_estimator.gyroBiasY);
-	gNode.gyroBias.setZ(inertial_motion_estimator.gyroBiasZ);
+	gNode.gyroBias.setX(ekf.gyroBiasX);
+	gNode.gyroBias.setY(ekf.gyroBiasY);
+	gNode.gyroBias.setZ(ekf.gyroBiasZ);
 	gNode.certainty = (1-normalize);
 	if(gyroQueue.size() >= DEFAULT_QUEUE_SIZE)
 	{
@@ -392,9 +392,9 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 
 		ROS_DEBUG_STREAM("running consecutive calibration with new normalized " << normalize);
 
-		tf::Vector3 accel(lastImu.linear_acceleration.x*inertial_motion_estimator.scaleAccelerometer
-							 	 , lastImu.linear_acceleration.y*inertial_motion_estimator.scaleAccelerometer
-								 , lastImu.linear_acceleration.z*inertial_motion_estimator.scaleAccelerometer);
+		tf::Vector3 accel(lastImu.linear_acceleration.x*ekf.scaleAccelerometer
+							 	 , lastImu.linear_acceleration.y*ekf.scaleAccelerometer
+								 , lastImu.linear_acceleration.z*ekf.scaleAccelerometer);
 		double scale = accel.length();
 
 		//Vector with size DEFAULT_QUEUE_SIZE, elements added at front and dequeued at back
@@ -458,18 +458,18 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 		//sum *= GRAVITY_MAG/queue.size();
 		//TODO create a ten element running wieghted average of the accelerometer scale.
 		if(scale != 0)
-			inertial_motion_estimator.scaleAccelerometer = (1-normalize)*GRAVITY_MAG/scale + (normalize)*inertial_motion_estimator.scaleAccelerometer;
+			ekf.scaleAccelerometer = (1-normalize)*GRAVITY_MAG/scale + (normalize)*ekf.scaleAccelerometer;
 
 		tf::Vector3 gravity(0,0,GRAVITY_MAG);
 
-		correctOrientation(inertial_motion_estimator.getDifferenceQuaternion(gravity, accel), (1-normalize));
+		correctOrientation(ekf.getDifferenceQuaternion(gravity, accel), (1-normalize));
 
-		ROS_DEBUG_STREAM("new acceleration after scaling " << inertial_motion_estimator.scaleAccelerometer * accel);
+		ROS_DEBUG_STREAM("new acceleration after scaling " << ekf.scaleAccelerometer * accel);
 	}
 
-	ROS_DEBUG_STREAM("new accel scale " << inertial_motion_estimator.scaleAccelerometer << " new gyro biases "
-			<< inertial_motion_estimator.gyroBiasX << ", " << inertial_motion_estimator.gyroBiasY << ", "
-			<< inertial_motion_estimator.gyroBiasZ);
+	ROS_DEBUG_STREAM("new accel scale " << ekf.scaleAccelerometer << " new gyro biases "
+			<< ekf.gyroBiasX << ", " << ekf.gyroBiasY << ", "
+			<< ekf.gyroBiasZ);
 
 
 	lastImu = currentImu;
