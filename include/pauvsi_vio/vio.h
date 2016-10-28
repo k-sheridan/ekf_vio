@@ -32,7 +32,7 @@
 #include "VIOFeature3D.hpp"
 #include "VIOFeature2D.hpp"
 #include "FeatureTracker.h"
-#include "InertialMotionEstimator.h"
+#include "VIOEKF.h"
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -156,7 +156,7 @@ protected:
 
 	FeatureTracker feature_tracker;
 
-	InertialMotionEstimator inertial_motion_estimator;
+	VIOEKF ekf;
 
 	tf::Vector3 position;
 	tf::Vector3 velocity;
