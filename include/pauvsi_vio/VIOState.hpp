@@ -15,7 +15,7 @@ class VIOState
 {
 public:
 
-	Eigen::Matrix<double, 15, 1> vector; //x, y, z, dx, dy, dz, q0, q1, q2, q3, bgx, bgy, bgz, bax, bay, baz
+	Eigen::Matrix<double, 16, 1> vector; //x, y, z, dx, dy, dz, q0, q1, q2, q3, bgx, bgy, bgz, bax, bay, baz
 
 	VIOState(){
 		vector << 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0; // initialize the state vector

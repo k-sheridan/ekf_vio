@@ -69,8 +69,6 @@ public:
 	double GRAVITY_MAG;
 	double RECALIBRATION_THRESHOLD;
 
-	tf::TransformListener tf_listener; // starts a thread which keeps track of transforms in the system
-
 	//frames
 	std::string imu_frame;
 	std::string camera_frame;
@@ -144,6 +142,8 @@ public:
 
 protected:
 	ros::NodeHandle nh;
+
+	tf2_ros::Buffer tfBuffer;
 
 	image_transport::CameraSubscriber cameraSub;
 	ros::Subscriber imuSub;

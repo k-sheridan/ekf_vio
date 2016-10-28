@@ -15,6 +15,8 @@ VIO::VIO()
 {
 	this->readROSParameters();
 
+	tf2_ros::TransformListener tf_listener(tfBuffer); // starts a thread which keeps track of transforms in the system
+
 	//feature tracker pass it its params
 	this->feature_tracker.setParams(FEATURE_SIMILARITY_THRESHOLD, MIN_EIGEN_VALUE,
 			KILL_BY_DISSIMILARITY, NUM_FEATURES, MIN_EIGEN_VALUE);
