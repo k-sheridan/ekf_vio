@@ -20,6 +20,9 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 
+#include "VIOState.hpp"
+#include <eigen3/Eigen/Dense>
+
 class VIOEKF {
 public:
 	VIOEKF();
@@ -31,6 +34,18 @@ public:
 	double scaleAccelerometer;
 	sensor_msgs::Imu lastMessageUsed;
 
+	VIOState predict(VIOState lastState, ros::Time predictionTime);
+
+	VIOState update(VIOState lastState, VisualMeasurment z);
+
+	//STATE x STATE
+	Eigen::Matrix<double, 16, 16> formPredictionTransitionJacobian(VIOState x);
+	//MEASUREMENT x STATE
+	Eigen::Matrix<double, 7, 16> formMeasurmentTransitionJacobian(VIOState x);
+
+	VIOState transitionState(VIOState x, sensor_msgs::Imu imu, double dt);
+
+	VisualMeasurment predictMeasurement();
 
 	void setGravityMagnitude(double g)
 	{

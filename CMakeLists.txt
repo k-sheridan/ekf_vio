@@ -35,6 +35,9 @@ catkin_package(
 )
 
 
+add_library(visualmeasurment include/pauvsi_vio/VisualMeasurment.hpp)
+set_target_properties(visualmeasurment PROPERTIES LINKER_LANGUAGE CXX)
+
 add_library(viostate include/pauvsi_vio/VIOState.hpp)
 set_target_properties(viostate PROPERTIES LINKER_LANGUAGE CXX)
 
@@ -60,13 +63,14 @@ set_target_properties(frame PROPERTIES LINKER_LANGUAGE CXX)
 add_library(vio include/pauvsi_vio/vio.cpp)
 
 add_executable(pauvsi_vio src/pauvsi_vio.cpp)
-target_link_libraries(viostate ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
-target_link_libraries(vioekf ${catkin_LIBRARIES} ${Eigen_LIBRARIES} viostate)
-target_link_libraries(egoMotionEstimator frame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} vioFeature3d vioFeature2d)
+target_link_libraries(visualmeasurment ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+target_link_libraries(viostate ${catkin_LIBRARIES} ${Eigen_LIBRARIES} visualmeasurment)
+target_link_libraries(vioekf ${catkin_LIBRARIES} ${Eigen_LIBRARIES} viostate visualmeasurment)
+target_link_libraries(egoMotionEstimator frame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} vioFeature3d vioFeature2d visualmeasurment)
 target_link_libraries(featureTracker frame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 target_link_libraries(vioFeature3d vioLine)
 target_link_libraries(frame vioFeature3d)
 target_link_libraries(frame vioFeature2d)
-target_link_libraries(vio frame ${catkin_LIBRARIES} featureTracker vioekf egoMotionEstimator viostate)
+target_link_libraries(vio frame ${catkin_LIBRARIES} featureTracker vioekf egoMotionEstimator viostate visualmeasurment)
 target_link_libraries(pauvsi_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} vio)
 
