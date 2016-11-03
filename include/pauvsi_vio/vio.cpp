@@ -338,12 +338,6 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 	state.setVelocity(normalize * state.getVelocity());
 
 	//TODO make a gyro bias measurment vector in the inertial motion estimator and do a weighted average
-	//	ekf.gyroBiasX = (1-normalize)*currentImu.angular_velocity.x
-	//											+ normalize*ekf.gyroBiasX;
-	//	ekf.gyroBiasY = (1-normalize)*currentImu.angular_velocity.y
-	//											+ normalize*ekf.gyroBiasY;
-	//	ekf.gyroBiasZ = (1-normalize)*currentImu.angular_velocity.z
-	//											+ normalize*ekf.gyroBiasZ;
 
 	gyroNode gNode;
 	gNode.gyroBias.setX(ekf.gyroBiasX);
@@ -383,6 +377,11 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 		gWeightedNode.gyroBias.setY(gWeightedNode.gyroBias.getY() + gyroNormlizedCertainty.at(i)*gyroQueue.at(i).gyroBias.getY());
 		gWeightedNode.gyroBias.setZ(gWeightedNode.gyroBias.getZ() + gyroNormlizedCertainty.at(i)*gyroQueue.at(i).gyroBias.getZ());
 	}
+
+		ekf.gyroBiasX = gWeightedNode.gyroBias.getX();
+		ekf.gyroBiasY = gWeightedNode.gyroBias.getY();
+		ekf.gyroBiasZ = gWeightedNode.gyroBias.getZ();
+
 
 	//POTENTIAL BUG
 	if(consecutive)
@@ -457,7 +456,7 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 		//sum *= GRAVITY_MAG/queue.size();
 		//TODO create a ten element running wieghted average of the accelerometer scale.
 		if(scale != 0)
-			ekf.scaleAccelerometer = (1-normalize)*GRAVITY_MAG/scale + (normalize)*ekf.scaleAccelerometer;
+			ekf.scaleAccelerometer = aWeightedNode; // + (normalize)*ekf.scaleAccelerometer;
 
 		tf::Vector3 gravity(0,0,GRAVITY_MAG);
 
