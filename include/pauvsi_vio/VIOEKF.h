@@ -21,11 +21,13 @@
 #include <cv_bridge/cv_bridge.h>
 
 #include "VIOState.hpp"
+#include "VisualMeasurment.hpp"
 #include <eigen3/Eigen/Dense>
 
 class VIOEKF {
 public:
-	VIOEKF();
+	VIOEKF(tf2::BufferCore& buff);
+
 	virtual ~VIOEKF();
 
 	double gyroBiasX;
