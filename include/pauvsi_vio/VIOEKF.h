@@ -13,10 +13,9 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Image.h>
-#include "tf2_ros/buffer_client.h"
-#include <tf2_ros/buffer.h>
-#include <tf2_ros/transform_listener.h>
+#include <tf/transform_listener.h>
 #include <tf/tf.h>
+#include "tf/tfMessage.h"
 #include "message_filters/subscriber.h"
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -36,6 +35,13 @@ public:
 	double gyroBiasZ;
 	double scaleAccelerometer;
 	sensor_msgs::Imu lastMessageUsed;
+
+	//frames
+	std::string imu_frame;
+	std::string camera_frame;
+	std::string odom_frame;
+	std::string CoM_frame;
+	std::string world_frame;
 
 	VIOState predict(VIOState lastState, ros::Time predictionTime);
 
@@ -91,7 +97,7 @@ protected:
 	 */
 	std::vector<sensor_msgs::Imu> imuMessageBuffer;
 
-	tf2_ros::Buffer tfBuffer;
+	tf::TransformListener tf_listener;
 
 	double GRAVITY_MAG;
 };

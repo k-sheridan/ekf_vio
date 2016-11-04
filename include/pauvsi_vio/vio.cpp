@@ -28,6 +28,8 @@ VIO::VIO()
 	//setup imu sub
 	this->imuSub = nh.subscribe(this->getIMUTopic(), 100, &VIO::imuCallback, this);
 
+	ekf.setGravityMagnitude(this->GRAVITY_MAG); // set the gravity mag
+
 	this->broadcastWorldToOdomTF();
 }
 
@@ -179,6 +181,11 @@ void VIO::readROSParameters()
 	ros::param::param<std::string>("~odom_frame_name", odom_frame, DEFAULT_ODOM_FRAME_NAME);
 	ros::param::param<std::string>("~center_of_mass_frame_name", CoM_frame, DEFAULT_COM_FRAME_NAME);
 	ros::param::param<std::string>("~world_frame_name", world_frame, DEFAULT_WORLD_FRAME_NAME);
+	ekf.imu_frame = imu_frame;
+	ekf.camera_frame = camera_frame;
+	ekf.odom_frame = odom_frame;
+	ekf.CoM_frame = CoM_frame;
+	ekf.world_frame = world_frame;
 
 	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, DEFAULT_FAST_THRESHOLD);
 
