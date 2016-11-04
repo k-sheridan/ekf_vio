@@ -13,6 +13,8 @@ VIOEKF::VIOEKF() {
 	this->gyroBiasZ = 0;
 	this->scaleAccelerometer = 1.0;
 
+	tf2_ros::TransformListener tf_listener(tfBuffer);
+
 }
 
 VIOEKF::~VIOEKF() {

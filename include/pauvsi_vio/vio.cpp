@@ -15,7 +15,7 @@ VIO::VIO()
 {
 	this->readROSParameters();
 
-	tf2_ros::TransformListener tf_listener(tfBuffer); // starts a thread which keeps track of transforms in the system
+	//tf2_ros::TransformListener tf_listener(tfBuffer); // starts a thread which keeps track of transforms in the system
 
 	//feature tracker pass it its params
 	this->feature_tracker.setParams(FEATURE_SIMILARITY_THRESHOLD, MIN_EIGEN_VALUE,
@@ -340,9 +340,9 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 	//TODO make a gyro bias measurment vector in the inertial motion estimator and do a weighted average
 
 	gyroNode gNode;
-	gNode.gyroBias.setX(ekf.gyroBiasX);
-	gNode.gyroBias.setY(ekf.gyroBiasY);
-	gNode.gyroBias.setZ(ekf.gyroBiasZ);
+	gNode.gyroBias.setX(currentImu.angular_velocity.x);
+	gNode.gyroBias.setY(currentImu.angular_velocity.y);
+	gNode.gyroBias.setZ(currentImu.angular_velocity.z);
 	gNode.certainty = (1-normalize);
 	if(gyroQueue.size() >= DEFAULT_QUEUE_SIZE)
 	{
@@ -456,7 +456,7 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 		//sum *= GRAVITY_MAG/queue.size();
 		//TODO create a ten element running wieghted average of the accelerometer scale.
 		if(scale != 0)
-			ekf.scaleAccelerometer = aWeightedNode; // + (normalize)*ekf.scaleAccelerometer;
+			ekf.scaleAccelerometer = aWeightedNode.accelScale; // + (normalize)*ekf.scaleAccelerometer;
 
 		tf::Vector3 gravity(0,0,GRAVITY_MAG);
 

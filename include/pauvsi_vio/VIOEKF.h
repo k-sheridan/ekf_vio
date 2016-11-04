@@ -15,6 +15,7 @@
 #include <sensor_msgs/Image.h>
 #include "tf2_ros/buffer_client.h"
 #include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 #include <tf/tf.h>
 #include "message_filters/subscriber.h"
 #include <image_transport/image_transport.h>
@@ -26,7 +27,7 @@
 
 class VIOEKF {
 public:
-	VIOEKF(tf2::BufferCore& buff);
+	VIOEKF();
 
 	virtual ~VIOEKF();
 
@@ -89,6 +90,8 @@ protected:
 	 * slight gap it the time that the image is captured and when it is processed
 	 */
 	std::vector<sensor_msgs::Imu> imuMessageBuffer;
+
+	tf2_ros::Buffer tfBuffer;
 
 	double GRAVITY_MAG;
 };

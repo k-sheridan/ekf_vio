@@ -143,7 +143,7 @@ public:
 protected:
 	ros::NodeHandle nh;
 
-	tf2_ros::Buffer tfBuffer;
+	//tf2_ros::Buffer tfBuffer;
 
 	image_transport::CameraSubscriber cameraSub;
 	ros::Subscriber imuSub;
