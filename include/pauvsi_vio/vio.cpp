@@ -138,8 +138,7 @@ void VIO::run()
 		}
 
 		//MOTION ESTIMATION
-
-		double certainty = this->estimateMotion();
+		this->estimateMotion(this->state, this->lastFrame, this->currentFrame);
 	}
 
 	//check the number of 2d features in the current frame
@@ -256,8 +255,9 @@ void VIO::correctOrientation(tf::Quaternion q, double certainty)
  * ROS_DEBUG_STREAM("angle: " << inertialAngleChange.getX() << ", " << inertialAngleChange.getY() << ", " << inertialAngleChange.getZ());
  * ROS_ASSERT(inertialVelocityChange.getX() == inertialVelocityChange.getX() && inertialAngleChange.getX() == inertialAngleChange.getX());
  */
-double VIO::estimateMotion()
+VIOState VIO::estimateMotion(VIOState x, Frame frame1, Frame frame2)
 {
+	// recalibrate
 	static bool consecutiveRecalibration = false;
 	double avgFeatureChange = feature_tracker.averageFeatureChange(lastFrame, currentFrame); // get the feature change between f1 and f2
 
@@ -271,6 +271,8 @@ double VIO::estimateMotion()
 	{
 		consecutiveRecalibration = false;
 	}
+
+	//run ekf process step
 
 }
 

@@ -20,8 +20,14 @@ VIOEKF::~VIOEKF() {
 	// TODO Auto-generated destructor stub
 }
 
+VIOState predict(VIOState lastState, ros::Time predictionTime)
+{
+
+}
+
 VIOState VIOEKF::transitionState(VIOState x, sensor_msgs::Imu imu, double dt)
 {
+	ROS_DEBUG_STREAM("state before: " << x.vector);
 	// get the imu 2 com transform
 	tf::StampedTransform imu2odom;
 	try{
@@ -45,16 +51,54 @@ VIOState VIOEKF::transitionState(VIOState x, sensor_msgs::Imu imu, double dt)
 	omega << omega_tf.getX(), omega_tf.getY(), omega_tf.getZ();
 
 	VIOState xNew;
+
+	// these equations are from matlab's quatrotate function
 	double ax = (alpha(0) * (1 - 2*x.q2()*x.q2() - 2*x.q3()*x.q3()) +
 			alpha(1) * 2 * (x.q1()*x.q2() + x.q0()*x.q3()) + alpha(2) * 2 * (x.q1()*x.q3() - x.q0()*x.q2()));
 	double ay = (alpha(0)*2*(x.q1()*x.q2() - x.q0()*x.q3()) + alpha(1)*(1-2*x.q1()*x.q1() - 2*x.q3()*x.q3())
 			+ alpha(2)*2*(x.q2()*x.q3() + x.q0()*x.q1()));
+	double az = (alpha(0) * 2 * (x.q1()*x.q3() + x.q0()*x.q2()) + alpha(1) * 2 * (x.q2()*x.q3() - x.q0()*x.q1()) +
+			alpha(2) * (1 - 2 * x.q1()*x.q1() - 2 * x.q2()*x.q2()));
+
+	// compute the delta quaternion
+	double w_mag = sqrt(omega(0)*omega(0) + omega(1)*omega(1) + omega(2)*omega(2));
+
+	double dq0 = cos(0.5 * w_mag * dt);
+	double dq1 = (2 * omega(0) / w_mag) * sin(0.5 * w_mag * dt);
+	double dq2 = (2 * omega(1) / w_mag) * sin(0.5 * w_mag * dt);
+	double dq3 = (2 * omega(2) / w_mag) * sin(0.5 * w_mag * dt);
+
+	Eigen::Quaterniond dq(dq0, dq1, dq2, dq3); // the delta quaternion
+	dq.normalize();
+	Eigen::Quaterniond q(x.q0(), x.q1(), x.q2(), x.q3());
+
+	Eigen::Quaterniond newQ = dq * q; // rotate the quaternions
 
 
 	//transition state
 	xNew.vector(0, 0) = x.x() + x.dx()*dt + 0.5 * ax * dt*dt;
 
 	xNew.vector(1, 0) = x.y() + x.dy()*dt + 0.5 * ay * dt*dt;
+
+	xNew.vector(2, 0) = x.z() + x.dz()*dt + 0.5 * az * dt*dt;
+
+	xNew.vector(3, 0) = x.dx() + ax * dt;
+
+	xNew.vector(4, 0) = x.dy() + ay * dt;
+
+	xNew.vector(5, 0) = x.dz() + az * dt;
+
+	xNew.vector(6, 0) = newQ.w();
+
+	xNew.vector(7, 0) = newQ.x();
+
+	xNew.vector(8, 0) = newQ.y();
+
+	xNew.vector(9, 0) = newQ.z();
+
+	ROS_DEBUG_STREAM("state after: " << xNew.vector);
+
+	return xNew;
 }
 
 

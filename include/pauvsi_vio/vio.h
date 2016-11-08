@@ -130,7 +130,7 @@ public:
 
 	ros::Time broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
 
-	double estimateMotion();
+	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
 
 	void run();
 
