@@ -20,6 +20,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/Image.h>
+#include <sensor_msgs/PointCloud.h>
 #include "message_filters/subscriber.h"
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -53,6 +54,8 @@
 #define PI_OVER_180 0.01745329251
 #define DEFAULT_RECALIBRATION_THRESHOLD 0.02
 #define DEFAULT_QUEUE_SIZE 10
+#define DEFAULT_ACTIVE_FEATURES_TOPIC "/pauvsi_vio/activefeatures"
+#define DEFAULT_PUBLISH_ACTIVE_FEATURES true
 
 class VIO
 {
@@ -68,6 +71,8 @@ public:
 	int MIN_NEW_FEATURE_DISTANCE;
 	double GRAVITY_MAG;
 	double RECALIBRATION_THRESHOLD;
+	bool PUBLISH_ACTIVE_FEATURES;
+	std::string ACTIVE_FEATURES_TOPIC;
 
 	//frames
 	std::string imu_frame;
@@ -130,7 +135,11 @@ public:
 
 	ros::Time broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
 
+	void publishActivePoints();
+
 	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
+
+	void update3DFeatures();
 
 	void run();
 
@@ -148,6 +157,8 @@ protected:
 	image_transport::CameraSubscriber cameraSub;
 	ros::Subscriber imuSub;
 
+	ros::Publisher activePointsPub;
+
 	//initialized with default values
 	std::string cameraTopic;
 	std::string imuTopic;
@@ -157,6 +168,7 @@ protected:
 
 	FeatureTracker feature_tracker;
 
+	VIOState lastState;
 	VIOState state;
 	VIOEKF ekf;
 

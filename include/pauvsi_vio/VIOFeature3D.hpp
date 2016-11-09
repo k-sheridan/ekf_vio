@@ -43,8 +43,6 @@ private:
 	int current2DFeatureMatchIndex;
 	int current2DFeatureMatchID;
 
-	std::vector<VIOLine> projectionLines; // the lines that were projected from 2d features.
-
 public:
 
 	VIOFeature3D(){

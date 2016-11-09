@@ -31,6 +31,10 @@ VIO::VIO()
 	ekf.setGravityMagnitude(this->GRAVITY_MAG); // set the gravity mag
 
 	this->broadcastWorldToOdomTF();
+
+	//setup pointcloudPublisher
+	if(PUBLISH_ACTIVE_FEATURES)
+		activePointsPub = nh.advertise<sensor_msgs::PointCloud>("/vio/activefeatures", 100);
 }
 
 VIO::~VIO()
@@ -138,7 +142,11 @@ void VIO::run()
 		}
 
 		//MOTION ESTIMATION
-		this->estimateMotion(this->state, this->lastFrame, this->currentFrame);
+		this->lastState = this->state;
+		this->state = this->estimateMotion(this->lastState, this->lastFrame, this->currentFrame);
+
+		//UPDATE 3D ACTIVE AND INACTIVE FEATURES
+		this->update3DFeatures();
 	}
 
 	//check the number of 2d features in the current frame
@@ -158,6 +166,11 @@ void VIO::run()
 	this->broadcastWorldToOdomTF();
 
 	//ROS_DEBUG_STREAM("imu readings: " << this->imuMessageBuffer.size());
+}
+
+void VIO::update3DFeatures()
+{
+
 }
 
 /*
@@ -202,6 +215,10 @@ void VIO::readROSParameters()
 	ros::param::param<double>("~starting_gravity_mag", GRAVITY_MAG, DEFAULT_GRAVITY_MAGNITUDE);
 
 	ros::param::param<double>("~recalibration_threshold", RECALIBRATION_THRESHOLD, DEFAULT_RECALIBRATION_THRESHOLD);
+
+	ros::param::param<bool>("~publish_active_features", PUBLISH_ACTIVE_FEATURES, DEFAULT_PUBLISH_ACTIVE_FEATURES);
+
+	ros::param::param<std::string>("~active_features_topic", ACTIVE_FEATURES_TOPIC, DEFAULT_ACTIVE_FEATURES_TOPIC);
 }
 
 /*
@@ -244,16 +261,9 @@ void VIO::correctOrientation(tf::Quaternion q, double certainty)
 	state.setQuaternion(state.getTFQuaternion().slerp(q, certainty));
 }
 /*
- * returns the certainty
- * predicts the new rotation and position of the camera.
- * transfroms it to the odometry frame
- * and publishes a pose estimate
- *
- * FOR BACK UP
- * ROS_DEBUG_STREAM("velo: " << inertialVelocityChange.getX() << ", " << inertialVelocityChange.getY() << ", " << inertialVelocityChange.getZ());
- * ROS_DEBUG_STREAM("pos: " << inertialPositionChange.getX() << ", " << inertialPositionChange.getY() << ", " << inertialPositionChange.getZ());
- * ROS_DEBUG_STREAM("angle: " << inertialAngleChange.getX() << ", " << inertialAngleChange.getY() << ", " << inertialAngleChange.getZ());
- * ROS_ASSERT(inertialVelocityChange.getX() == inertialVelocityChange.getX() && inertialAngleChange.getX() == inertialAngleChange.getX());
+ * recalibrates the state using average pixel motion
+ * uses an Extended Kalman Filter to predict and update the state and its
+ * covariance.
  */
 VIOState VIO::estimateMotion(VIOState x, Frame frame1, Frame frame2)
 {
@@ -272,7 +282,9 @@ VIOState VIO::estimateMotion(VIOState x, Frame frame1, Frame frame2)
 		consecutiveRecalibration = false;
 	}
 
-	//run ekf process step
+	//run ekf predict step.
+	//this will update the state using imu measurements
+	//it will also propagate the error throughout the predction step into the states covariance matrix
 
 }
 
