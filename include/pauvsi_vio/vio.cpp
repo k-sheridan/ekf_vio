@@ -168,6 +168,12 @@ void VIO::run()
 	//ROS_DEBUG_STREAM("imu readings: " << this->imuMessageBuffer.size());
 }
 
+/*
+ * this function uses the previous state and the current state
+ * along with the previous frame and current frame to
+ * update each 3d feature and add new 3d features if necessary
+ * If 3d feature is not updated it will be either removed or added to the inactive list.
+ */
 void VIO::update3DFeatures()
 {
 

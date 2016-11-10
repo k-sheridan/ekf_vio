@@ -21,8 +21,8 @@
 #include <cv_bridge/cv_bridge.h>
 
 #include "VIOState.hpp"
-#include "VisualMeasurment.hpp"
 #include <eigen3/Eigen/Dense>
+#include "VisualMeasurement.hpp"
 
 class VIOEKF {
 public:
@@ -45,16 +45,16 @@ public:
 
 	VIOState predict(VIOState lastState, ros::Time predictionTime);
 
-	VIOState update(VIOState lastState, VisualMeasurment z);
+	VIOState update(VIOState lastState, VisualMeasurement z);
 
 	//STATE x STATE
 	Eigen::Matrix<double, 16, 16> formPredictionTransitionJacobian(VIOState x);
 	//MEASUREMENT x STATE
 	Eigen::Matrix<double, 7, 16> formMeasurmentTransitionJacobian(VIOState x);
 
-	VIOState transitionState(VIOState x, sensor_msgs::Imu imu, double dt);
+	VIOState transitionState(VIOState x, double dt);
 
-	VisualMeasurment predictMeasurement();
+	VisualMeasurement predictMeasurement();
 
 	void setGravityMagnitude(double g)
 	{

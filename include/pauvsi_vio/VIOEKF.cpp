@@ -25,7 +25,12 @@ VIOState predict(VIOState lastState, ros::Time predictionTime)
 
 }
 
-VIOState VIOEKF::transitionState(VIOState x, sensor_msgs::Imu imu, double dt)
+/*
+ * this function will use the state's current imu measurment to predict dt seconds into the future
+ * and return the updated state.
+ * NOTE: this function will keep the same imu reading as the last state x
+ */
+VIOState VIOEKF::transitionState(VIOState x, double dt)
 {
 	ROS_DEBUG_STREAM("state before: " << x.vector);
 	// get the imu 2 com transform
@@ -38,9 +43,9 @@ VIOState VIOEKF::transitionState(VIOState x, sensor_msgs::Imu imu, double dt)
 	}
 
 	//convert the imu readings to tf::Vectors and remove their biases
-	tf::Vector3 alpha_tf(imu.linear_acceleration.x, imu.linear_acceleration.y, imu.linear_acceleration.z);
+	tf::Vector3 alpha_tf(x.getAlpha()(0), x.getAlpha()(1), x.getAlpha()(2));
 	alpha_tf = this->scaleAccelerometer * alpha_tf;
-	tf::Vector3 omega_tf(imu.angular_velocity.x - this->gyroBiasX, imu.angular_velocity.y - this->gyroBiasY, imu.angular_velocity.z - this->gyroBiasZ);
+	tf::Vector3 omega_tf(x.getOmega()(0) - this->gyroBiasX, x.getOmega()(0)- this->gyroBiasY, x.getOmega()(0) - this->gyroBiasZ);
 
 	//transform the imu readings into the center of mass frame
 	alpha_tf = imu2odom * alpha_tf - imu2odom * tf::Vector3(0.0, 0.0, 0.0);
@@ -97,6 +102,13 @@ VIOState VIOEKF::transitionState(VIOState x, sensor_msgs::Imu imu, double dt)
 	xNew.vector(9, 0) = newQ.z();
 
 	ROS_DEBUG_STREAM("state after: " << xNew.vector);
+
+	//set the same imu reading
+	xNew.setAlpha(x.getAlpha());
+	xNew.setOmega(x.getOmega());
+
+	//update the new state time
+	xNew.setTime(ros::Time(x.getTime().toSec() + dt));
 
 	return xNew;
 }
