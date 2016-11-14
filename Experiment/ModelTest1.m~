@@ -1,0 +1,17 @@
+%create all variables
+syms x y z dx dy dz q0 q1 q2 q3 bgx bgy bgz bax bay baz ax ay az wx wy wz dt
+
+%create the state
+state = [x; y; z; dx; dy; dz; q0; q1; q2; q3; bgx; bgy; bgz; bax; bay; baz];
+
+newA = [(1-2*q2^2-2*q3^2), 2*(q1*q2+q0*q3), 2*(q1*q3-q0*q2); 
+        2*(q1*q2-q0*q3), (1-2*q1^2-2*q3^2), 2*(q2*q3+q0*q1);
+        2*(q1*q3+q0*q2), 2*(q2*q3-q0*q1), (1-2*q1^2-2*q2^2)] * [(ax+bax); (ay+bay); (az+baz)]
+
+%hx = [x + dx*dt + 0.5* newA(1) *dt*dt;]
+
+quatnormalize([1 1 0 0])
+quatrotate([0.7071 0.7071 0 0], [1 1 1])
+
+subs(newA, [q0;q1;q2;q3;ax;ay;az;bax;bay;baz], [0.7071;0.7071;0;0;1;1;1;0;0;0])
+
