@@ -143,7 +143,7 @@ void VIO::run()
 
 		//MOTION ESTIMATION
 		this->lastState = this->state;
-		this->state = this->estimateMotion(this->lastState, this->lastFrame, this->currentFrame);
+		//this->state = this->estimateMotion(this->lastState, this->lastFrame, this->currentFrame);
 
 		//UPDATE 3D ACTIVE AND INACTIVE FEATURES
 		this->update3DFeatures();
@@ -232,6 +232,7 @@ void VIO::readROSParameters()
  */
 void VIO::broadcastWorldToOdomTF()
 {
+	//ROS_DEBUG_STREAM("state " << this->state.vector);
 	static tf::TransformBroadcaster br;
 	tf::Transform transform;
 	transform.setOrigin(tf::Vector3(state.x(), state.y(), state.z()));
@@ -271,7 +272,7 @@ void VIO::correctOrientation(tf::Quaternion q, double certainty)
  * uses an Extended Kalman Filter to predict and update the state and its
  * covariance.
  */
-VIOState VIO::estimateMotion(VIOState x, Frame frame1, Frame frame2)
+VIOState VIO::estimateMotion(VIOState x, Frame lastFrame, Frame currentFrame)
 {
 	// recalibrate
 	static bool consecutiveRecalibration = false;
@@ -291,6 +292,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame frame1, Frame frame2)
 	//run ekf predict step.
 	//this will update the state using imu measurements
 	//it will also propagate the error throughout the predction step into the states covariance matrix
+	//ekf.predict(x, currentFrame.timeImageCreated);
 
 }
 

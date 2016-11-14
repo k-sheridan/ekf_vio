@@ -35,7 +35,7 @@ catkin_package(
 )
 
 
-add_library(visualmeasurement include/pauvsi_vio/VisualMeasurment.hpp)
+add_library(visualmeasurement include/pauvsi_vio/VisualMeasurement.hpp)
 set_target_properties(visualmeasurement PROPERTIES LINKER_LANGUAGE CXX)
 
 add_library(viostate include/pauvsi_vio/VIOState.hpp)

@@ -21,6 +21,7 @@ public:
 
 	VIOState(){
 		vector << 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0; // initialize the state vector
+		covariance = 0.001 * Eigen::MatrixXd::Identity(16, 16);
 		omega << 0, 0, 0;
 		alpha << 0, 0, 0;
 	}
@@ -123,6 +124,7 @@ public:
 
 	tf::Quaternion getTFQuaternion()
 	{
+		//ROS_DEBUG_STREAM("values " << q1() << ", " << q3() << ", " << q2() << ", " << q0());
 		return tf::Quaternion(q1(), q2(), q3(), q0());
 	}
 
