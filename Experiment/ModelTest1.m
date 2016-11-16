@@ -48,63 +48,16 @@ hx = [x + dx*dt + 0.5*newA(1)*dt*dt;
       bay;
       baz];
   
-% syms omega_mag s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21
-% syms s22 s23 s24 s25 s26 s27 s28 s29 s30 s31 s32 s33 s34 s35 s36 s37 s38 s39 s40 s41 s42
-% H = subs(simplify(jacobian(hx, state)), [bax;bay;baz;bgx;bgy;bgz], [0;0;0;0;0;0]);
-% H = subs(H, (wx^2 + wy^2 + wz^2)^(1/2), omega_mag);
-% H = simplify(subs(H, sin((dt*omega_mag)/2), s1));
-% H = simplify(subs(H, ((dt*omega_mag)/2), s2));
-% H = simplify(subs(H, ((omega_mag^2*cos(s2)^2 + 4*s1^2*wx^2 + 4*s1^2*wy^2 + 4*s1^2*wz^2)/omega_mag^2)^(1/2), s4));
-% H = simplify(subs(H, cos(s2)^3, s5));
-% H = simplify(subs(H, cos(s2), s6));
-% H = simplify(subs(H, dt*s1^2*s6, s7));
-% H = simplify(subs(H, s1*s6^2, s8));
-% H = simplify(subs(H, 2*omega_mag, s9));
-% H = simplify(subs(H, s1^3, s10));
-% H = simplify(subs(H, (omega_mag*s4), s11));
-% H = simplify(subs(H, (2*s1*wx), s12));
-% H = simplify(subs(H, s6/s4, s13));
-% H = simplify(subs(H, 2*dt*omega_mag, s14));
-% H = subs(H, (omega_mag*s11^3), s15);
-% H = simplify(H);
-% H = subs(H, [wx^3;wy^3;wz^3], [s16;s17;s18]);
-% H = simplify(H);
-% H = subs(H, [wx^2;wy^2;wz^2], [s19;s20;s21]);
-% H = simplify(H);
-% H = subs(H, 2*dt*omega_mag, s22);
-% H = simplify(H);
-% H = subs(H, dt*q0, s23);
-% H = simplify(H);
-% H = subs(H, dt*q1, s24);
-% H = simplify(H);
-% H = subs(H, dt*q2, s25);
-% H = simplify(H);
-% H = subs(H, dt*q3, s26);
-% H = simplify(H);
-% H = subs(H, 2*omega_mag*s8, s27);
-% H = simplify(H, 1000);
-% H = subs(H, -2*omega_mag, s28);
-% H = simplify(H);
-% H = subs(H, [q0*s7,q1*s7,q2*s7,q3*s7], [s29,s30,s31,s32]);
-% H = simplify(H);
-% H = subs(H, [s5*s16,s5*s17,s5*s18], [s33,s34,s35]);
-% H = simplify(H);
-% H = subs(H, dt^2, s36);
-% H = simplify(H);
-% H = subs(H, 2*dt, s37);
-% H = simplify(H);
-% H = subs(H, s1^2*s6, s38);
-% H = simplify(H);
-% H = subs(H, [s5*s19,s5*s20,s5*s21], [s39,s40,s41]);
-% H = simplify(H);
-% H = subs(H, s8*s28, s42);
-% H = simplify(H)
+hx = simplify(hx)
+
+
 
 syms s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20
 syms s21 s22 s23 s24 s25 s26 s27 s28 s29 s30 s31 s32 s33 s34 s35 s36 s37 s38
 syms s39 s40 s41 s42 s43 s44 s45 s46 s47 s48 s49 s50
 syms s51 s52 s53 s54 s55 s56 s57 s58 s59 s60 s61 s62 s63 s64 s65 s66 s67 s68 s69 s70
-H = simplify(subs(jacobian(hx, state), [bax;bay;baz;bgx;bgy;bgz], [0;0;0;0;0;0]));
+%H = simplify(subs(jacobian(hx, state), [bax;bay;baz;bgx;bgy;bgz], [0;0;0;0;0;0]));
+H = subs(H, [bax;bay;baz;bgx;bgy;bgz], [0;0;0;0;0;0]);
 [H, s1] = subexpr(H, s1)
 H = simplify(H);
 [H, s2] = subexpr(H, s2)
