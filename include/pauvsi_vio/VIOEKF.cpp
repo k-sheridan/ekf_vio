@@ -68,10 +68,18 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	// compute the delta quaternion
 	double w_mag = sqrt(omega(0)*omega(0) + omega(1)*omega(1) + omega(2)*omega(2));
 
-	double dq0 = cos(0.5 * w_mag * dt);
-	double dq1 = (2 * omega(0) / w_mag) * sin(0.5 * w_mag * dt);
-	double dq2 = (2 * omega(1) / w_mag) * sin(0.5 * w_mag * dt);
-	double dq3 = (2 * omega(2) / w_mag) * sin(0.5 * w_mag * dt);
+	double dq0 = 1;
+	double dq1 = 0;
+	double dq2 = 0;
+	double dq3 = 0;
+	
+	if(w_mag != 0)
+	{
+		dq0 = cos(0.5 * w_mag * dt);
+		dq1 = (2 * omega(0) / w_mag) * sin(0.5 * w_mag * dt);
+		dq2 = (2 * omega(1) / w_mag) * sin(0.5 * w_mag * dt);
+		dq3 = (2 * omega(2) / w_mag) * sin(0.5 * w_mag * dt);
+	}
 
 	Eigen::Quaterniond dq(dq0, dq1, dq2, dq3); // the delta quaternion
 	dq.normalize();
