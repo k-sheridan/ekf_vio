@@ -50,6 +50,8 @@ public:
 	//STATE x STATE
 	Eigen::Matrix<double, 16, 16> stateJacobian(VIOState x, double dt);
 
+	Eigen::Matrix<double, 16, 16> computePredictionError(double dt);
+
 	VIOState transitionState(VIOState x, double dt);
 
 	VisualMeasurement predictMeasurement();

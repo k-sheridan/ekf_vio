@@ -119,15 +119,21 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	//update the new state time
 	xNew.setTime(ros::Time(x.getTime().toSec() + dt));
 
+	Eigen::Matrix<double, 16, 16> F = this->stateJacobian(x, dt); // compute the state transition jacobian
+	Eigen::Matrix<double, 16, 16> predictionError = this->computePredictionError(dt);
+	//propagate the error using the jacobian
+	xNew.covariance = F * x.covariance * F.transpose() + predictionError;
+
+
 	return xNew;
 }
 
 /*
  * this constructs the jacobain of the state transiion function
  */
-Eigen::Matrix<double, 16, 16> stateJacobian(VIOState state, double dt){
+Eigen::Matrix<double, 16, 16> VIOEKF::stateJacobian(VIOState state, double dt){
 
-	Eigen::Matrix<double, 16, 16> H;
+	Eigen::Matrix<double, 16, 16> F;
 
 	double x = state.x();
 	double y = state.y();
@@ -216,7 +222,7 @@ Eigen::Matrix<double, 16, 16> stateJacobian(VIOState state, double dt){
 		double s43 = ax*q2;
 
 
-		H << 1, 0, 0, dt,  0,  0,  s10*(s40 - az*q2),           s10*(s38 + az*q3),  -s10*(s21 - ay*q1 + az*q0),     s10*(s22 + s42 - ax*q3),                      0,                      0,                      0, -s10*(s24 + s26 - 1/2),    s10*(q0*q3 + q1*q2),     -s10*(s27 - q1*q3),
+		F << 1, 0, 0, dt,  0,  0,  s10*(s40 - az*q2),           s10*(s38 + az*q3),  -s10*(s21 - ay*q1 + az*q0),     s10*(s22 + s42 - ax*q3),                      0,                      0,                      0, -s10*(s24 + s26 - 1/2),    s10*(q0*q3 + q1*q2),     -s10*(s27 - q1*q3),
 				0, 1, 0,  0, dt,  0,            s10*s22, s10*(s43 - 2*ay*q1 + az*q0),           s10*(s39 + az*q3),    -s10*(s23 + s41 - az*q2),                      0,                      0,                      0,               -s10*s18, -s10*(s25 + s26 - 1/2),    s10*(q0*q1 + q2*q3),
 				0, 0, 1,  0,  0, dt,  s10*(s43 - ay*q1),      -s10*(s20 + s22 + s42),   s10*(s40 + s41 - 2*az*q2),             s10*(s38 + s39),                      0,                      0,                      0,      s10*(s27 + q1*q3),               -s10*s17, -s10*(s24 + s25 - 1/2),
 				0, 0, 0,  1,  0,  0, dt*(s23 - 2*az*q2),              dt*(s28 + s32), -dt*(s33 + 4*s43 - 2*ay*q1),    dt*(s31 + s36 - 2*ax*q3),                      0,                      0,                      0,    -dt*(s35 + s37 - 1), dt*(2*q0*q3 + 2*q1*q2),    -2*dt*(s27 - q1*q3),
@@ -232,11 +238,38 @@ Eigen::Matrix<double, 16, 16> stateJacobian(VIOState state, double dt){
 	}
 	else
 	{
-		H = Eigen::MatrixXd::Identity(16, 16); // for now just set Identity in this case. TODO
+		F = Eigen::MatrixXd::Identity(16, 16); // for now just set Identity in this case. TODO
 	}
 
-	ROS_DEBUG_STREAM("H = " << H);
-	return H;
+	ROS_DEBUG_STREAM("F = " << F);
+	return F;
+}
+
+/*
+ * this function tells the ekf how prediction error is related to time
+ */
+Eigen::Matrix<double, 16, 16> VIOEKF::computePredictionError(double dt)
+{
+	Eigen::Matrix<double, 16, 16> PE = Eigen::MatrixXd::Identity(16, 16);
+	double dts = dt*dt;
+	PE(0, 0) = dts;
+	PE(1, 1) = dts;
+	PE(2, 2) = dts;
+	PE(3, 3) = 0.01*dts;
+	PE(4, 4) = 0.01*dts;
+	PE(5, 5) = 0.01*dts;
+	PE(6, 6) = dts;
+	PE(7, 7) = dts;
+	PE(8, 8) = dts;
+	PE(9, 9) = dts;
+	PE(10, 10) = 0.03*dts;
+	PE(11, 11) = 0.03*dts;
+	PE(12, 12) = 0.03*dts;
+	PE(13, 13) = 0.03*dts;
+	PE(14, 14) = 0.03*dts;
+	PE(15, 15) = 0.03*dts;
+
+	return PE;
 }
 
 
