@@ -86,6 +86,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	Eigen::Quaterniond q(x.q0(), x.q1(), x.q2(), x.q3());
 
 	Eigen::Quaterniond newQ = dq * q; // rotate the quaternions
+	newQ.normalize(); // normalize the final
 
 
 	//transition state
