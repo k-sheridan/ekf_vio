@@ -20,9 +20,9 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 
-#include "VIOState.hpp"
-#include <eigen3/Eigen/Dense>
-#include "VisualMeasurement.hpp"
+#include "pauvsi_vio/VIOState.hpp"
+#include <eigen3/Eigen/Geometry>
+#include "pauvsi_vio/VisualMeasurement.hpp"
 
 class VIOEKF {
 public:
@@ -48,9 +48,7 @@ public:
 	VIOState update(VIOState lastState, VisualMeasurement z);
 
 	//STATE x STATE
-	Eigen::Matrix<double, 16, 16> formPredictionTransitionJacobian(VIOState x);
-	//MEASUREMENT x STATE
-	Eigen::Matrix<double, 7, 16> formMeasurmentTransitionJacobian(VIOState x);
+	Eigen::Matrix<double, 16, 16> stateJacobian(VIOState x, double dt);
 
 	VIOState transitionState(VIOState x, double dt);
 

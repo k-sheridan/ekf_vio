@@ -8,7 +8,7 @@
 #ifndef PAUVSI_M7_PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIOSTATE_HPP_
 #define PAUVSI_M7_PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIOSTATE_HPP_
 
-#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Geometry>
 #include <iostream>
 
 
@@ -24,14 +24,6 @@ public:
 		covariance = 0.001 * Eigen::MatrixXd::Identity(16, 16);
 		omega << 0, 0, 0;
 		alpha << 0, 0, 0;
-	}
-
-	std::ostream& operator<<(std::ostream& os)
-	{
-	    os << "POS: " << vector(0, 0) << ", " << vector(1, 0) << ", " << vector(2, 0) << " VEL: " << vector(3, 0) << ", "
-	    		<< vector(4, 0) << ", " << vector(5, 0) << " Q: " << vector(6, 0) << ", " << vector(7, 0)
-				<< vector(8, 0) << ", " << vector(9, 0);
-	    return os;
 	}
 
 	double x(){

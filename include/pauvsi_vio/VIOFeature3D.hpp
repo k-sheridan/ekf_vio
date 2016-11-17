@@ -18,7 +18,7 @@
 #include <vector>
 #include <string>
 #include <ros/ros.h>
-#include <eigen3/Eigen/Dense>
+#include <eigen3/Eigen/Geometry>
 
 #include "VIOLine.hpp"
 

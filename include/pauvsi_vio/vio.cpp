@@ -52,8 +52,8 @@ void VIO::cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msg
 	this->setD(cv::Mat(cam->D, false));
 
 	//undistort the image using the fisheye model
-	ROS_ASSERT(cam->distortion_model == "fisheye");
-	cv::fisheye::undistortImage(temp, temp, this->K, this->D, this->K);
+	//ROS_ASSERT(cam->distortion_model == "fisheye");
+	//cv::fisheye::undistortImage(temp, temp, this->K, this->D, this->K);
 
 	// set the current frame
 	this->setCurrentFrame(temp, cv_bridge::toCvCopy(img, "mono8")->header.stamp);
