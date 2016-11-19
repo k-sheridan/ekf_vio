@@ -20,9 +20,27 @@ VIOEKF::~VIOEKF() {
 	// TODO Auto-generated destructor stub
 }
 
-VIOState predict(VIOState lastState, ros::Time predictionTime)
+VIOState VIOEKF::predict(VIOState lastState, ros::Time predictionTime)
 {
+	VIOState state = lastState;
+	std::vector<sensor_msgs::Imu> imuMsgs;
+	int imuMsgsSize = this->getMessagesBetweenTimes(lastState.getTime(), predictionTime, imuMsgs);
 
+	if(imuMsgsSize > 0)
+	{
+		for(int i = 0; i < imuMsgs.size(); i++)
+		{
+			state = this->transitionState(state, imuMsgs.at(i).header.stamp.toSec() - state.getTime().toSec()); // predict and propagate
+			state.setIMU(imuMsgs.at(i)); // set the new alpha and omega
+		}
+
+	}
+
+	//predict to the end
+	state = this->transitionState(state, predictionTime.toSec() - state.getTime().toSec());
+	// this sets the states omega and alpha to the last state's omega and alpha
+
+	return state;
 }
 
 /*
@@ -55,6 +73,8 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	alpha << alpha_tf.getX(), alpha_tf.getY(), alpha_tf.getZ();
 	omega << omega_tf.getX(), omega_tf.getY(), omega_tf.getZ();
 
+	ROS_DEBUG_STREAM("alpha " << alpha << " omega " << omega);
+
 	VIOState xNew;
 
 	// these equations are from matlab's quatrotate function
@@ -68,7 +88,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	// compute the delta quaternion
 	double w_mag = sqrt(omega(0)*omega(0) + omega(1)*omega(1) + omega(2)*omega(2));
 
-	double dq0 = 1;
+	double dq0 = 1.0;
 	double dq1 = 0;
 	double dq2 = 0;
 	double dq3 = 0;
@@ -94,13 +114,13 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 
 	xNew.vector(1, 0) = x.y() + x.dy()*dt + 0.5 * ay * dt*dt;
 
-	xNew.vector(2, 0) = x.z() + x.dz()*dt + 0.5 * az * dt*dt;
+	xNew.vector(2, 0) = x.z() + x.dz()*dt + 0.5 * (az - this->GRAVITY_MAG) * dt*dt;
 
 	xNew.vector(3, 0) = x.dx() + ax * dt;
 
 	xNew.vector(4, 0) = x.dy() + ay * dt;
 
-	xNew.vector(5, 0) = x.dz() + az * dt;
+	xNew.vector(5, 0) = x.dz() + (az - this->GRAVITY_MAG) * dt;
 
 	xNew.vector(6, 0) = newQ.w();
 
@@ -113,8 +133,8 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	ROS_DEBUG_STREAM("state after: " << xNew.vector);
 
 	//set the same imu reading
-	//xNew.setAlpha(x.getAlpha());
-	//xNew.setOmega(x.getOmega());
+	xNew.setAlpha(x.getAlpha());
+	xNew.setOmega(x.getOmega());
 
 	//update the new state time
 	xNew.setTime(ros::Time(x.getTime().toSec() + dt));
@@ -234,14 +254,17 @@ Eigen::Matrix<double, 16, 16> VIOEKF::stateJacobian(VIOState state, double dt){
 				0, 0, 0,  0,  0,  0,                s19,                        -s14,                         s13,                         s15, -2*s3*s8*s9*s11*s16*wx, -2*s3*s8*s9*s11*s16*wy, -2*s3*s8*s9*s11*s16*wz,                      0,                      0,                      0,
 				0, 0, 0,  0,  0,  0,                  0,                           0,                           0,                           0,                      1,                      0,                      0,                      0,                      0,                      0,
 				0, 0, 0,  0,  0,  0,                  0,                           0,                           0,                           0,                      0,                      1,                      0,                      0,                      0,                      0,
-				0, 0, 0,  0,  0,  0,                  0,                           0,                           0,                           0,                      0,                      0,                      1,                      0,                      0,                      0;
+				0, 0, 0,  0,  0,  0,                  0,                           0,                           0,                           0,                      0,                      0,                      1,                      0,                      0,                      0,
+				0, 0, 0,  0,  0,  0,                  0,                           0,                           0,                           0,                      0,                      0,                      0,                      1,                      0,                      0,
+				0, 0, 0,  0,  0,  0,                  0,                           0,                           0,                           0,                      0,                      0,                      0,                      0,                      1,                      0,
+				0, 0, 0,  0,  0,  0,                  0,                           0,                           0,                           0,                      0,                      0,                      0,                      0,                      0,                      1;
 	}
 	else
 	{
 		F = Eigen::MatrixXd::Identity(16, 16); // for now just set Identity in this case. TODO
 	}
 
-	ROS_DEBUG_STREAM("F = " << F);
+	//ROS_DEBUG_STREAM("F = " << F);
 	return F;
 }
 
@@ -272,5 +295,42 @@ Eigen::Matrix<double, 16, 16> VIOEKF::computePredictionError(double dt)
 	return PE;
 }
 
+/*
+ * gets all imu messages between the two times and places them in the returnBuffer
+ * removes all imu messages before the final time
+ * returns size of return buffer
+ */
+int VIOEKF::getMessagesBetweenTimes(ros::Time t0, ros::Time t1, std::vector<sensor_msgs::Imu>& returnBuffer)
+{
+	int originalIMUBufferSize = this->imuMessageBuffer.size();
+	int returnBufferSize = 0;
+
+	std::vector<sensor_msgs::Imu> newImuBuffer;
+
+	double startTime = t0.toSec();
+	double endTime = t1.toSec();
+
+	// if there are messages in the imu buffer
+	if(originalIMUBufferSize > 0)
+	{
+		for(int i = 0; i < originalIMUBufferSize; i++)
+		{
+			double msgTime = this->imuMessageBuffer.at(i).header.stamp.toSec();
+
+			//if this message is useful
+			if(msgTime > startTime && msgTime < endTime)
+			{
+				returnBuffer.push_back(this->imuMessageBuffer.at(i));
+				returnBufferSize++;
+			}
+			if(msgTime > endTime)
+			{
+				newImuBuffer.push_back(this->imuMessageBuffer.at(i));
+			}
+		}
+	}
+
+	return returnBufferSize;
+}
 
 

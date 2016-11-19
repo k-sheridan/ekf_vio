@@ -143,7 +143,7 @@ void VIO::run()
 
 		//MOTION ESTIMATION
 		this->lastState = this->state;
-		//this->state = this->estimateMotion(this->lastState, this->lastFrame, this->currentFrame);
+		this->state = this->estimateMotion(this->lastState, this->lastFrame, this->currentFrame);
 
 		//UPDATE 3D ACTIVE AND INACTIVE FEATURES
 		this->update3DFeatures();
@@ -292,8 +292,9 @@ VIOState VIO::estimateMotion(VIOState x, Frame lastFrame, Frame currentFrame)
 	//run ekf predict step.
 	//this will update the state using imu measurements
 	//it will also propagate the error throughout the predction step into the states covariance matrix
-	//ekf.predict(x, currentFrame.timeImageCreated);
+	x = ekf.predict(x, currentFrame.timeImageCreated);
 
+	return x;
 }
 
 

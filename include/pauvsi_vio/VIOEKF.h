@@ -24,6 +24,8 @@
 #include <eigen3/Eigen/Geometry>
 #include "pauvsi_vio/VisualMeasurement.hpp"
 
+#define PI 3.14156
+
 class VIOEKF {
 public:
 	VIOEKF();
@@ -63,8 +65,13 @@ public:
 
 	void addIMUMessage(sensor_msgs::Imu msg)
 	{
+		msg.angular_velocity.x = PI / 180 * msg.angular_velocity.x;
+		msg.angular_velocity.y = PI / 180 * msg.angular_velocity.y;
+		msg.angular_velocity.z = PI / 180 * msg.angular_velocity.z;
 		this->imuMessageBuffer.push_back(msg);
 	}
+
+	int getMessagesBetweenTimes(ros::Time t0, ros::Time t1, std::vector<sensor_msgs::Imu>& returnBuffer);
 
 	sensor_msgs::Imu getMostRecentImu()
 	{

@@ -10,6 +10,7 @@
 
 #include <eigen3/Eigen/Geometry>
 #include <iostream>
+#include <sensor_msgs/Imu.h>
 
 
 class VIOState
@@ -84,6 +85,12 @@ public:
 	void setAlpha(double x, double y, double z)
 	{
 		this->setAlpha(Eigen::Vector3d(x, y, z));
+	}
+
+	void setIMU(sensor_msgs::Imu msg)
+	{
+		this->setAlpha(msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z);
+		this->setOmega(msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z);
 	}
 
 	void setTime(ros::Time t)
