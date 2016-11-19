@@ -30,10 +30,17 @@ VIOState VIOEKF::predict(VIOState lastState, ros::Time predictionTime)
 	{
 		for(int i = 0; i < imuMsgs.size(); i++)
 		{
+			//this runs once to set the starting time of the system
+			// I had to do this because rosbag time was not working properly
+			if(!state.timeSet)
+			{
+				state.setTime(imuMsgs.at(i).header.stamp);
+			}
+
 			state = this->transitionState(state, imuMsgs.at(i).header.stamp.toSec() - state.getTime().toSec()); // predict and propagate
 			state.setIMU(imuMsgs.at(i)); // set the new alpha and omega
 		}
-
+		this->lastMessageUsed = imuMsgs.at(imuMsgs.size() - 1); //set the last message used to the final message in the buffer
 	}
 
 	//predict to the end
@@ -50,6 +57,7 @@ VIOState VIOEKF::predict(VIOState lastState, ros::Time predictionTime)
  */
 VIOState VIOEKF::transitionState(VIOState x, double dt)
 {
+	ROS_DEBUG_STREAM("transitioning state with dt = " << dt);
 	ROS_DEBUG_STREAM("state before: " << x.vector);
 	// get the imu 2 com transform
 	tf::StampedTransform imu2odom;
@@ -85,8 +93,12 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	double az = (alpha(0) * 2 * (x.q1()*x.q3() + x.q0()*x.q2()) + alpha(1) * 2 * (x.q2()*x.q3() - x.q0()*x.q1()) +
 			alpha(2) * (1 - 2 * x.q1()*x.q1() - 2 * x.q2()*x.q2()));
 
+	ROS_DEBUG_STREAM("newAX: " << ax << " newAY: " << ay << " newAZ: " << az);
+
 	// compute the delta quaternion
 	double w_mag = sqrt(omega(0)*omega(0) + omega(1)*omega(1) + omega(2)*omega(2));
+
+	ROS_DEBUG_STREAM("w_mag: " << w_mag);
 
 	double dq0 = 1.0;
 	double dq1 = 0;
@@ -103,24 +115,29 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 
 	Eigen::Quaterniond dq(dq0, dq1, dq2, dq3); // the delta quaternion
 	dq.normalize();
+	ROS_DEBUG_STREAM("dq: " << dq.w() << ", " << dq.x() << ", " << dq.y() << ", " << dq.z());
+
 	Eigen::Quaterniond q(x.q0(), x.q1(), x.q2(), x.q3());
+	ROS_DEBUG_STREAM("q: " << q.w() << ", " << q.x() << ", " << q.y() << ", " << q.z());
 
 	Eigen::Quaterniond newQ = dq * q; // rotate the quaternions
 	newQ.normalize(); // normalize the final
+	ROS_DEBUG_STREAM("dq * q: " << newQ.w() << ", " << newQ.x() << ", " << newQ.y() << ", " << newQ.z());
 
 
 	//transition state
-	xNew.vector(0, 0) = x.x() + x.dx()*dt + 0.5 * ax * dt*dt;
-
-	xNew.vector(1, 0) = x.y() + x.dy()*dt + 0.5 * ay * dt*dt;
-
-	xNew.vector(2, 0) = x.z() + x.dz()*dt + 0.5 * (az - this->GRAVITY_MAG) * dt*dt;
-
-	xNew.vector(3, 0) = x.dx() + ax * dt;
-
-	xNew.vector(4, 0) = x.dy() + ay * dt;
-
-	xNew.vector(5, 0) = x.dz() + (az - this->GRAVITY_MAG) * dt;
+	//xNew.vector(0, 0) = x.x() + x.dx()*dt + 0.5 * ax * dt*dt;
+	xNew.vector(0, 0) = x.x();
+	//xNew.vector(1, 0) = x.y() + x.dy()*dt + 0.5 * ay * dt*dt;
+	xNew.vector(1, 0) = x.y();
+	//xNew.vector(2, 0) = x.z() + x.dz()*dt + 0.5 * (az - this->GRAVITY_MAG) * dt*dt;
+	xNew.vector(2, 0) = x.z();
+	//xNew.vector(3, 0) = x.dx() + ax * dt;
+	xNew.vector(3, 0) = x.dx();
+	//xNew.vector(4, 0) = x.dy() + ay * dt;
+	xNew.vector(4, 0) = x.dy();
+	//xNew.vector(5, 0) = x.dz() + (az - this->GRAVITY_MAG) * dt;
+	xNew.vector(5, 0) = x.dz();
 
 	xNew.vector(6, 0) = newQ.w();
 

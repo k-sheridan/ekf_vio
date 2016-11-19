@@ -19,12 +19,15 @@ public:
 
 	Eigen::Matrix<double, 16, 1> vector; //x, y, z, dx, dy, dz, q0, q1, q2, q3, bgx, bgy, bgz, bax, bay, baz
 	Eigen::Matrix<double, 16, 16> covariance; // the covariance matrix for this state
+	bool timeSet;
 
 	VIOState(){
 		vector << 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0; // initialize the state vector
 		covariance = 0.001 * Eigen::MatrixXd::Identity(16, 16);
 		omega << 0, 0, 0;
 		alpha << 0, 0, 0;
+		timeSet = false;
+		//t = ros::Time::now();
 	}
 
 	double x(){
@@ -95,6 +98,7 @@ public:
 
 	void setTime(ros::Time t)
 	{
+		timeSet = true;
 		this->t = t;
 	}
 
@@ -146,7 +150,6 @@ private:
 	Eigen::Vector3d omega;
 	Eigen::Vector3d alpha;
 	ros::Time t;
-
 };
 
 
