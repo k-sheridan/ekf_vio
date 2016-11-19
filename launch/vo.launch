@@ -39,6 +39,7 @@
 		<param name="min_eigen_value" value="0.01"/>
 		<param name="num_features" value="50"/>
 		<param name="min_new_feature_distance" value="20"/>
+		<param name="convert2rad" value="true"/>
 	</node>
 	
 	

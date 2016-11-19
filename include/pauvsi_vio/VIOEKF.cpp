@@ -14,6 +14,8 @@ VIOEKF::VIOEKF() {
 	this->scaleAccelerometer = 1.0;
 	this->GRAVITY_MAG = 9.8;
 
+	ros::param::param<bool>("~convert2rad", convert2rad, CONVERT_2_RAD_DEFAULT);
+
 }
 
 VIOEKF::~VIOEKF() {
@@ -72,6 +74,8 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	tf::Vector3 alpha_tf(x.getAlpha()(0), x.getAlpha()(1), x.getAlpha()(2));
 	alpha_tf = this->scaleAccelerometer * alpha_tf;
 	tf::Vector3 omega_tf(x.getOmega()(0) - this->gyroBiasX, x.getOmega()(0)- this->gyroBiasY, x.getOmega()(0) - this->gyroBiasZ);
+
+	ROS_DEBUG_STREAM("original omega " << omega_tf.getX() << ", " << omega_tf.getY() << ", " << omega_tf.getZ());
 
 	//transform the imu readings into the center of mass frame
 	alpha_tf = imu2odom * alpha_tf - imu2odom * tf::Vector3(0.0, 0.0, 0.0);

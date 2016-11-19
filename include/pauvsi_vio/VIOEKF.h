@@ -25,6 +25,7 @@
 #include "pauvsi_vio/VisualMeasurement.hpp"
 
 #define PI 3.14156
+#define CONVERT_2_RAD_DEFAULT false
 
 class VIOEKF {
 public:
@@ -65,9 +66,12 @@ public:
 
 	void addIMUMessage(sensor_msgs::Imu msg)
 	{
-		msg.angular_velocity.x = PI / 180 * msg.angular_velocity.x;
-		msg.angular_velocity.y = PI / 180 * msg.angular_velocity.y;
-		msg.angular_velocity.z = PI / 180 * msg.angular_velocity.z;
+		if(convert2rad)
+		{
+			msg.angular_velocity.x = PI / 180 * msg.angular_velocity.x;
+			msg.angular_velocity.y = PI / 180 * msg.angular_velocity.y;
+			msg.angular_velocity.z = PI / 180 * msg.angular_velocity.z;
+		}
 		this->imuMessageBuffer.push_back(msg);
 	}
 
@@ -105,6 +109,8 @@ protected:
 	std::vector<sensor_msgs::Imu> imuMessageBuffer;
 
 	tf::TransformListener tf_listener;
+
+	bool convert2rad;
 
 	double GRAVITY_MAG;
 };
