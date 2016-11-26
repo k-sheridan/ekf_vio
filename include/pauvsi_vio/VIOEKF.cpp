@@ -89,17 +89,30 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 
 	VIOState xNew;
 
+	//create quaternion to rotate the alpha vector
+	Eigen::Quaterniond q(x.q0(), x.q1(), x.q2(), x.q3());
+	ROS_DEBUG_STREAM("q: " << q.w() << ", " << q.x() << ", " << q.y() << ", " << q.z());
+	alpha = q.toRotationMatrix() * alpha; // rotate alpha into world coordinate frame
+
 	// these equations are from matlab's quatrotate function
-	double ax = (alpha(0) * (1 - 2*x.q2()*x.q2() - 2*x.q3()*x.q3()) +
-			alpha(1) * 2 * (x.q1()*x.q2() + x.q0()*x.q3()) + alpha(2) * 2 * (x.q1()*x.q3() - x.q0()*x.q2()));
-	double ay = (alpha(0)*2*(x.q1()*x.q2() - x.q0()*x.q3()) + alpha(1)*(1-2*x.q1()*x.q1() - 2*x.q3()*x.q3())
-			+ alpha(2)*2*(x.q2()*x.q3() + x.q0()*x.q1()));
-	double az = (alpha(0) * 2 * (x.q1()*x.q3() + x.q0()*x.q2()) + alpha(1) * 2 * (x.q2()*x.q3() - x.q0()*x.q1()) +
-			alpha(2) * (1 - 2 * x.q1()*x.q1() - 2 * x.q2()*x.q2()));
+	double ax = alpha(0);
+	double ay = alpha(1);
+	double az = alpha(2);
 
 	ROS_DEBUG_STREAM("newAX: " << ax << " newAY: " << ay << " newAZ: " << az);
 
-	// compute the delta quaternion
+	Eigen::Vector3d angle = q.toRotationMatrix().eulerAngles(0,1,2);
+	angle = omega * dt + angle;
+
+	ROS_DEBUG_STREAM("angle: " << angle(0) << ", " << angle(1) << ", " << angle(2));
+
+	Eigen::AngleAxisd rollAngle(angle(0),Eigen::Vector3d::UnitX());
+	Eigen::AngleAxisd pitchAngle(angle(1),Eigen::Vector3d::UnitY());
+	Eigen::AngleAxisd yawAngle(angle(2),Eigen::Vector3d::UnitZ());
+
+	Eigen::Quaterniond newQ = rollAngle*pitchAngle*yawAngle;
+
+	/*// compute the delta quaternion
 	double w_mag = sqrt(omega(0)*omega(0) + omega(1)*omega(1) + omega(2)*omega(2));
 
 	ROS_DEBUG_STREAM("w_mag: " << w_mag);
@@ -121,12 +134,11 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	dq.normalize();
 	ROS_DEBUG_STREAM("dq: " << dq.w() << ", " << dq.x() << ", " << dq.y() << ", " << dq.z());
 
-	Eigen::Quaterniond q(x.q0(), x.q1(), x.q2(), x.q3());
-	ROS_DEBUG_STREAM("q: " << q.w() << ", " << q.x() << ", " << q.y() << ", " << q.z());
-
 	Eigen::Quaterniond newQ = dq * q; // rotate the quaternions
 	newQ.normalize(); // normalize the final
-	ROS_DEBUG_STREAM("dq * q: " << newQ.w() << ", " << newQ.x() << ", " << newQ.y() << ", " << newQ.z());
+	ROS_DEBUG_STREAM("dq * q: " << newQ.w() << ", " << newQ.x() << ", " << newQ.y() << ", " << newQ.z());*/
+
+
 
 
 	//transition state
@@ -144,12 +156,13 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	xNew.vector(5, 0) = x.dz();
 
 	xNew.vector(6, 0) = newQ.w();
-
+	//xNew.vector(6, 0) = dq.w();
 	xNew.vector(7, 0) = newQ.x();
-
+	//xNew.vector(7, 0) = dq.x();
 	xNew.vector(8, 0) = newQ.y();
-
+	//xNew.vector(8, 0) = dq.y();
 	xNew.vector(9, 0) = newQ.z();
+	//xNew.vector(9, 0) = dq.z();
 
 	ROS_DEBUG_STREAM("state after: " << xNew.vector);
 
