@@ -73,7 +73,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	//convert the imu readings to tf::Vectors and remove their biases
 	tf::Vector3 alpha_tf(x.getAlpha()(0), x.getAlpha()(1), x.getAlpha()(2));
 	alpha_tf = this->scaleAccelerometer * alpha_tf;
-	tf::Vector3 omega_tf(x.getOmega()(0) - this->gyroBiasX, x.getOmega()(0)- this->gyroBiasY, x.getOmega()(0) - this->gyroBiasZ);
+	tf::Vector3 omega_tf(x.getOmega()(0) - this->gyroBiasX, x.getOmega()(1)- this->gyroBiasY, x.getOmega()(2) - this->gyroBiasZ);
 
 	ROS_DEBUG_STREAM("original omega " << omega_tf.getX() << ", " << omega_tf.getY() << ", " << omega_tf.getZ());
 
@@ -85,7 +85,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	alpha << alpha_tf.getX(), alpha_tf.getY(), alpha_tf.getZ();
 	omega << omega_tf.getX(), omega_tf.getY(), omega_tf.getZ();
 
-	ROS_DEBUG_STREAM("alpha " << alpha << " omega " << omega);
+	ROS_DEBUG_STREAM("alpha " << alpha << "\n omega " << omega);
 
 	VIOState xNew;
 
@@ -94,6 +94,9 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	ROS_DEBUG_STREAM("q: " << q.w() << ", " << q.x() << ", " << q.y() << ", " << q.z());
 	alpha = q.toRotationMatrix() * alpha; // rotate alpha into world coordinate frame
 
+	//experimental
+	omega = q.toRotationMatrix() * omega; // rotate alpha into world coordinate frame
+
 	// these equations are from matlab's quatrotate function
 	double ax = alpha(0);
 	double ay = alpha(1);
@@ -101,18 +104,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 
 	ROS_DEBUG_STREAM("newAX: " << ax << " newAY: " << ay << " newAZ: " << az);
 
-	Eigen::Vector3d angle = q.toRotationMatrix().eulerAngles(0,1,2);
-	angle = omega * dt + angle;
-
-	ROS_DEBUG_STREAM("angle: " << angle(0) << ", " << angle(1) << ", " << angle(2));
-
-	Eigen::AngleAxisd rollAngle(angle(0),Eigen::Vector3d::UnitX());
-	Eigen::AngleAxisd pitchAngle(angle(1),Eigen::Vector3d::UnitY());
-	Eigen::AngleAxisd yawAngle(angle(2),Eigen::Vector3d::UnitZ());
-
-	Eigen::Quaterniond newQ = rollAngle*pitchAngle*yawAngle;
-
-	/*// compute the delta quaternion
+	// compute the delta quaternion
 	double w_mag = sqrt(omega(0)*omega(0) + omega(1)*omega(1) + omega(2)*omega(2));
 
 	ROS_DEBUG_STREAM("w_mag: " << w_mag);
@@ -136,7 +128,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 
 	Eigen::Quaterniond newQ = dq * q; // rotate the quaternions
 	newQ.normalize(); // normalize the final
-	ROS_DEBUG_STREAM("dq * q: " << newQ.w() << ", " << newQ.x() << ", " << newQ.y() << ", " << newQ.z());*/
+	ROS_DEBUG_STREAM("dq * q: " << newQ.w() << ", " << newQ.x() << ", " << newQ.y() << ", " << newQ.z());
 
 
 

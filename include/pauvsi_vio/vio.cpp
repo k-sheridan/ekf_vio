@@ -292,9 +292,9 @@ VIOState VIO::estimateMotion(VIOState x, Frame lastFrame, Frame currentFrame)
 	//run ekf predict step.
 	//this will update the state using imu measurements
 	//it will also propagate the error throughout the predction step into the states covariance matrix
-	x = ekf.predict(x, currentFrame.timeImageCreated);
+	VIOState newX = ekf.predict(x, currentFrame.timeImageCreated);
 
-	return x;
+	return newX;
 }
 
 
