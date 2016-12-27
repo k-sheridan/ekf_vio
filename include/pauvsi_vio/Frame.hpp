@@ -37,6 +37,8 @@ private:
 public:
 	ros::Time timeImageCreated;
 	cv::Mat image;
+	cv::Mat K;
+	cv::Mat D;
 	std::vector<VIOFeature2D> features; //the feature vector for this frame
 	//this ensures that all features have a unique ID
 	int nextFeatureID; // the id of the next feature that is added to this frame

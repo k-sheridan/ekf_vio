@@ -51,10 +51,14 @@ private:
 	bool colorSet;
 	cv::Scalar color; // the color of this point for visualization
 
+public:
+
 	int current2DFeatureMatchIndex;
 	int current2DFeatureMatchID;
 
-public:
+	VIOFeature3D(){
+
+	}
 
 	/*
 	 * NOTE: this should start with a really high variance

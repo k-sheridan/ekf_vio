@@ -49,6 +49,8 @@ VIOState VIOEKF::predict(VIOState lastState, ros::Time predictionTime)
 	state = this->transitionState(state, predictionTime.toSec() - state.getTime().toSec());
 	// this sets the states omega and alpha to the last state's omega and alpha
 
+	//ROS_DEBUG_STREAM("new cov: " << state.covariance);
+
 	return state;
 }
 
@@ -59,8 +61,8 @@ VIOState VIOEKF::predict(VIOState lastState, ros::Time predictionTime)
  */
 VIOState VIOEKF::transitionState(VIOState x, double dt)
 {
-	ROS_DEBUG_STREAM("transitioning state with dt = " << dt);
-	ROS_DEBUG_STREAM("state before: " << x.vector);
+	//ROS_DEBUG_STREAM("transitioning state with dt = " << dt);
+	//ROS_DEBUG_STREAM("state before: " << x.vector);
 	// get the imu 2 com transform
 	tf::StampedTransform imu2odom;
 	try{
@@ -75,7 +77,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	alpha_tf = this->scaleAccelerometer * alpha_tf;
 	tf::Vector3 omega_tf(x.getOmega()(0) - this->gyroBiasX, x.getOmega()(1)- this->gyroBiasY, x.getOmega()(2) - this->gyroBiasZ);
 
-	ROS_DEBUG_STREAM("original omega " << omega_tf.getX() << ", " << omega_tf.getY() << ", " << omega_tf.getZ());
+	//ROS_DEBUG_STREAM("original omega " << omega_tf.getX() << ", " << omega_tf.getY() << ", " << omega_tf.getZ());
 
 	//transform the imu readings into the center of mass frame
 	alpha_tf = imu2odom * alpha_tf - imu2odom * tf::Vector3(0.0, 0.0, 0.0);
@@ -85,7 +87,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	alpha << alpha_tf.getX(), alpha_tf.getY(), alpha_tf.getZ();
 	omega << omega_tf.getX(), omega_tf.getY(), omega_tf.getZ();
 
-	ROS_DEBUG_STREAM("alpha " << alpha << "\n omega " << omega);
+	//ROS_DEBUG_STREAM("alpha " << alpha << "\n omega " << omega);
 
 	VIOState xNew;
 
@@ -102,12 +104,12 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	double ay = alpha(1);
 	double az = alpha(2);
 
-	ROS_DEBUG_STREAM("newAX: " << ax << " newAY: " << ay << " newAZ: " << az);
+	//ROS_DEBUG_STREAM("newAX: " << ax << " newAY: " << ay << " newAZ: " << az);
 
 	// compute the delta quaternion
 	double w_mag = sqrt(omega(0)*omega(0) + omega(1)*omega(1) + omega(2)*omega(2));
 
-	ROS_DEBUG_STREAM("w_mag: " << w_mag);
+	//ROS_DEBUG_STREAM("w_mag: " << w_mag);
 
 	double dq0 = 1.0;
 	double dq1 = 0;
@@ -124,28 +126,28 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 
 	Eigen::Quaterniond dq(dq0, dq1, dq2, dq3); // the delta quaternion
 	dq.normalize();
-	ROS_DEBUG_STREAM("dq: " << dq.w() << ", " << dq.x() << ", " << dq.y() << ", " << dq.z());
+	//ROS_DEBUG_STREAM("dq: " << dq.w() << ", " << dq.x() << ", " << dq.y() << ", " << dq.z());
 
 	Eigen::Quaterniond newQ = dq * q; // rotate the quaternions
 	newQ.normalize(); // normalize the final
-	ROS_DEBUG_STREAM("dq * q: " << newQ.w() << ", " << newQ.x() << ", " << newQ.y() << ", " << newQ.z());
+	//ROS_DEBUG_STREAM("dq * q: " << newQ.w() << ", " << newQ.x() << ", " << newQ.y() << ", " << newQ.z());
 
 
 
 
 	//transition state
-	//xNew.vector(0, 0) = x.x() + x.dx()*dt + 0.5 * ax * dt*dt;
-	xNew.vector(0, 0) = x.x();
-	//xNew.vector(1, 0) = x.y() + x.dy()*dt + 0.5 * ay * dt*dt;
-	xNew.vector(1, 0) = x.y();
-	//xNew.vector(2, 0) = x.z() + x.dz()*dt + 0.5 * (az - this->GRAVITY_MAG) * dt*dt;
-	xNew.vector(2, 0) = x.z();
-	//xNew.vector(3, 0) = x.dx() + ax * dt;
-	xNew.vector(3, 0) = x.dx();
-	//xNew.vector(4, 0) = x.dy() + ay * dt;
-	xNew.vector(4, 0) = x.dy();
-	//xNew.vector(5, 0) = x.dz() + (az - this->GRAVITY_MAG) * dt;
-	xNew.vector(5, 0) = x.dz();
+	xNew.vector(0, 0) = x.x() + x.dx()*dt + 0.5 * ax * dt*dt;
+	//xNew.vector(0, 0) = x.x();
+	xNew.vector(1, 0) = x.y() + x.dy()*dt + 0.5 * ay * dt*dt;
+	//xNew.vector(1, 0) = x.y();
+	xNew.vector(2, 0) = x.z() + x.dz()*dt + 0.5 * (az - this->GRAVITY_MAG) * dt*dt;
+	//xNew.vector(2, 0) = x.z();
+	xNew.vector(3, 0) = x.dx() + ax * dt;
+	//xNew.vector(3, 0) = x.dx();
+	xNew.vector(4, 0) = x.dy() + ay * dt;
+	//xNew.vector(4, 0) = x.dy();
+	xNew.vector(5, 0) = x.dz() + (az - this->GRAVITY_MAG) * dt;
+	//xNew.vector(5, 0) = x.dz();
 
 	xNew.vector(6, 0) = newQ.w();
 	//xNew.vector(6, 0) = dq.w();
@@ -156,7 +158,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	xNew.vector(9, 0) = newQ.z();
 	//xNew.vector(9, 0) = dq.z();
 
-	ROS_DEBUG_STREAM("state after: " << xNew.vector);
+	//ROS_DEBUG_STREAM("state after: " << xNew.vector);
 
 	//set the same imu reading
 	xNew.setAlpha(x.getAlpha());

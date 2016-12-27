@@ -58,6 +58,10 @@ void VIO::cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msg
 	// set the current frame
 	this->setCurrentFrame(temp, cv_bridge::toCvCopy(img, "mono8")->header.stamp);
 
+	//set the current frame's K & D
+	this->currentFrame.K = this->K;
+	this->currentFrame.D = this->D;
+
 	// process the frame correspondences
 	this->run();
 
@@ -146,7 +150,7 @@ void VIO::run()
 		this->state = this->estimateMotion(this->lastState, this->lastFrame, this->currentFrame);
 
 		//UPDATE 3D ACTIVE AND INACTIVE FEATURES
-		this->update3DFeatures();
+		this->update3DFeatures(this->state, this->lastState, this->currentFrame, this->lastFrame);
 	}
 
 	//check the number of 2d features in the current frame
@@ -174,9 +178,51 @@ void VIO::run()
  * update each 3d feature and add new 3d features if necessary
  * If 3d feature is not updated it will be either removed or added to the inactive list.
  */
-void VIO::update3DFeatures()
+void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf)
 {
+	std::vector<VIOFeature3D> inactives = this->active3DFeatures; // set the new inactive features to be the current active features
+	std::vector<VIOFeature3D> actives;
 
+	for(int i = 0; i < cf.features.size(); i++)
+	{
+		if(cf.features.at(i).isMatched()) // if this feature is matched
+		{
+			// store the currentFeature and lastFeature
+			VIOFeature2D current2DFeature = cf.features.at(i);
+			VIOFeature2D last2DFeature = lf.features.at(current2DFeature.getMatchedIndex()); // its matched 2d feature from the last frame
+
+			ROS_ASSERT(current2DFeature.getMatchedID() == last2DFeature.getFeatureID()); // ensure that this is the right feature
+
+			//check if this feature has a matched 3d feature
+			bool match3D = false;
+			VIOFeature3D matched3DFeature;
+			for(int j = 0; j < inactives.size(); j++)
+			{
+				if(inactives.at(j).current2DFeatureMatchIndex == current2DFeature.getMatchedIndex())
+				{
+					matched3DFeature = inactives.at(j); // found a matched feature
+
+					ROS_ASSERT(matched3DFeature.current2DFeatureMatchID == current2DFeature.getMatchedID()); // ensure that everything matches up
+
+					match3D = true; //set the flag for later
+
+					inactives.erase(inactives.begin() + j); // erase the jth feature from inactives
+
+					break;
+				}
+			}
+
+
+			if(match3D) // if this 2d feature has a matching 3d feature
+			{
+
+			}
+			else // if this 2d feature does'nt have a matching 3d feature
+			{
+
+			}
+		}
+	}
 }
 
 /*

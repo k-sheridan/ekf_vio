@@ -139,7 +139,7 @@ public:
 
 	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
 
-	void update3DFeatures();
+	void update3DFeatures(VIOState x, VIOState x_last, Frame currentFrame, Frame lastFrame);
 
 	void run();
 
