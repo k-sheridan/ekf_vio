@@ -172,8 +172,53 @@ void VIO::run()
 	}
 
 	this->broadcastWorldToOdomTF();
+	this->publishActivePoints();
 
 	//ROS_DEBUG_STREAM("imu readings: " << this->imuMessageBuffer.size());
+}
+
+/*
+ * publishes all active points in the list using the publisher if the user has specified
+ */
+void VIO::publishActivePoints()
+{
+	if(this->PUBLISH_ACTIVE_FEATURES)
+	{
+
+		sensor_msgs::PointCloud pc;
+
+		std::vector<geometry_msgs::Point32> point;
+		std::vector<sensor_msgs::ChannelFloat32> colors;
+
+		pc.header.frame_id = this->world_frame;
+
+		for(int i = 0; i < this->active3DFeatures.size(); i++)
+		{
+			std::vector<float> intensity;
+			sensor_msgs::ChannelFloat32 c;
+
+			intensity.push_back(this->active3DFeatures.at(i).color[0]);
+			//intensity.push_back(this->active3DFeatures.at(i).color[1]);
+			//intensity.push_back(this->active3DFeatures.at(i).color[2]);
+
+			c.values = intensity;
+			c.name = "intensity";
+
+			geometry_msgs::Point32 pt;
+			pt.x = this->active3DFeatures.at(i).position[0];
+			pt.y = this->active3DFeatures.at(i).position[1];
+			pt.z = this->active3DFeatures.at(i).position[2];
+
+			point.push_back(pt);
+			colors.push_back(c);
+
+		}
+
+		pc.points = point;
+		pc.channels = colors;
+
+		this->activePointsPub.publish(pc); // publish!
+	}
 }
 
 /*
@@ -261,10 +306,28 @@ void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf)
 			}
 			else // if this 2d feature does'nt have a matching 3d feature
 			{
+				cv::Mat homogenousPoint;
 
+				std::vector<cv::Point2f> proj1, proj2;
+				proj1.push_back(last2DFeature.getUndistorted());
+				proj2.push_back(current2DFeature.getUndistorted());
+
+				cv::triangulatePoints(this->lastFrame.K * this->lastState.getRTMatrix(base2cam), this->currentFrame.K * this->state.getRTMatrix(base2cam), proj1, proj2, homogenousPoint);
+
+				Eigen::Vector3d r = Eigen::Vector3d(homogenousPoint.at<double>(0, 0), homogenousPoint.at<double>(1, 0), homogenousPoint.at<double>(2, 0));
+
+				cv::Scalar color = this->currentFrame.image.at<cv::Scalar>(current2DFeature.getFeature().pt);
+
+				VIOFeature3D newFeat = VIOFeature3D(current2DFeature.getMatchedIndex(), current2DFeature.getMatchedID(), color, cov, r);
+
+				actives.push_back(newFeat);
 			}
 		}
 	}
+
+	//set each of the 3d feature buffers to be published
+	this->active3DFeatures = actives;
+	this->inactive3DFeatures = inactives;
 }
 
 /*

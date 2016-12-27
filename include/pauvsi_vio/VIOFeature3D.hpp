@@ -35,7 +35,8 @@ struct SubFeature{
 
 class VIOFeature3D
 {
-private:
+
+public:
 	double variance; // this is how certain we are of this 3d points location
 	Eigen::Vector3d position;
 
@@ -50,8 +51,6 @@ private:
 
 	bool colorSet;
 	cv::Scalar color; // the color of this point for visualization
-
-public:
 
 	int current2DFeatureMatchIndex;
 	int current2DFeatureMatchID;

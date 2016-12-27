@@ -142,6 +142,7 @@ public:
 
 	cv::Point2f getUndistorted()
 	{
+		ROS_ASSERT(this->undistorted);
 		return this->undistort_feature;
 	}
 
