@@ -46,6 +46,8 @@ public:
 	std::string CoM_frame;
 	std::string world_frame;
 
+	tf::TransformListener tf_listener;
+
 	VIOState predict(VIOState lastState, ros::Time predictionTime);
 
 	VIOState update(VIOState lastState, VisualMeasurement z);
@@ -107,8 +109,6 @@ protected:
 	 * slight gap it the time that the image is captured and when it is processed
 	 */
 	std::vector<sensor_msgs::Imu> imuMessageBuffer;
-
-	tf::TransformListener tf_listener;
 
 	bool convert2rad;
 

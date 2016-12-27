@@ -186,6 +186,20 @@ public:
 	}
 
 	/*
+	 * checks all features and undistorts them if they are not undistorted
+	 */
+	void undistortFeatures()
+	{
+		for(int i = 0; i < this->features.size(); i++)
+		{
+			if(!this->features.at(i).isUndistorted())
+			{
+				this->features.at(i).undistort(this->K, this->D);
+			}
+		}
+	}
+
+	/*
 	 * searches for all features in a the local feature vector that have not been described
 	 * and describes them using the BRIEF algorithm
 	 */

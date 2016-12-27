@@ -143,6 +143,8 @@ void VIO::run()
 			feature_tracker.flowFeaturesToNewFrame(lastFrame, currentFrame);
 			currentFrame.cleanUpFeaturesByKillRadius(this->KILL_RADIUS);
 			//this->checkFeatureConsistency(currentFrame, this->FEATURE_SIMILARITY_THRESHOLD);
+
+			currentFrame.undistortFeatures(); // undistort the new features
 		}
 
 		//MOTION ESTIMATION
@@ -165,6 +167,8 @@ void VIO::run()
 		//ROS_DEBUG("low on features getting more");
 		currentFrame.getAndAddNewFeatures(this->NUM_FEATURES - currentFrame.features.size(), this->FAST_THRESHOLD, this->KILL_RADIUS, this->MIN_NEW_FEATURE_DISTANCE);
 		//currentFrame.describeFeaturesWithBRIEF();
+
+		currentFrame.undistortFeatures(); // undistort the new features
 	}
 
 	this->broadcastWorldToOdomTF();
@@ -212,9 +216,47 @@ void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf)
 				}
 			}
 
+			tf::StampedTransform base2cam;
+			try{
+				this->ekf.tf_listener.lookupTransform(this->camera_frame, this->world_frame, ros::Time(0), base2cam);
+			}
+			catch(tf::TransformException e){
+				ROS_WARN_STREAM(e.what());
+			}
+
+
+			//IMPORTANT TUNING EQUATION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TODO
+			double dx = current2DFeature.getUndistorted().x - last2DFeature.getUndistorted().x;
+			double dy = current2DFeature.getUndistorted().y - last2DFeature.getUndistorted().y;
+			double d = sqrt(dx * dx + dy * dy);
+			if(d == 0)
+				d == 0.0001;
+
+			double r_cov_avg = (state.covariance(0, 0) + state.covariance(1, 1) + state.covariance(2, 2) + lastState.covariance(0, 0) + lastState.covariance(1, 1) + lastState.covariance(2, 2))
+					/ 6.0;
+
+			double cov = r_cov_avg + 1 / d; // this is a very simple way of determining how certian we are of this point's 3d pos
+
 
 			if(match3D) // if this 2d feature has a matching 3d feature
 			{
+				cv::Mat homogenousPoint;
+
+				std::vector<cv::Point2f> proj1, proj2;
+				proj1.push_back(last2DFeature.getUndistorted());
+				proj2.push_back(current2DFeature.getUndistorted());
+
+				cv::triangulatePoints(this->lastFrame.K * this->lastState.getRTMatrix(base2cam), this->currentFrame.K * this->state.getRTMatrix(base2cam), proj1, proj2, homogenousPoint);
+
+				Eigen::Vector3d r = Eigen::Vector3d(homogenousPoint.at<double>(0, 0), homogenousPoint.at<double>(1, 0), homogenousPoint.at<double>(2, 0));
+
+				//update the feature
+				matched3DFeature.update(r, cov);
+				matched3DFeature.current2DFeatureMatchID = current2DFeature.getMatchedID();
+				matched3DFeature.current2DFeatureMatchIndex = current2DFeature.getMatchedIndex();
+
+				// append feature to actives
+				actives.push_back(matched3DFeature);
 
 			}
 			else // if this 2d feature does'nt have a matching 3d feature

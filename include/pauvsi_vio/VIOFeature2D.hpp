@@ -27,9 +27,11 @@ class VIOFeature2D
 private:
 	int id;
 	cv::KeyPoint feature; // response = quality
+	cv::Point2f undistort_feature;
 	cv::Mat description; // vector 1X32
 	bool described;
 	bool matched;
+	bool undistorted;
 	float quality;
 	int matchedFeatureFromLastFrameIndex;
 	int matchedFeatureFromLastFrameID;
@@ -136,6 +138,33 @@ public:
 
 	int getMatchedIndex(){
 		return this->matchedFeatureFromLastFrameIndex;
+	}
+
+	cv::Point2f getUndistorted()
+	{
+		return this->undistort_feature;
+	}
+
+	bool isUndistorted(){
+		return this->undistorted;
+	}
+
+	/*
+	 * undistorts this feature using K and D
+	 * the new K is K
+	 * sets the undistorted feature
+	 */
+	void undistort(cv::Mat K, cv::Mat D)
+	{
+		std::vector<cv::Point2f> in;
+		in.push_back(this->feature.pt);
+
+		std::vector<cv::Point2f> out;
+
+		cv::fisheye::undistortPoints(in, out, K, D, cv::noArray(), K);
+
+		this->undistort_feature = out.at(0);
+		this->undistorted = true;
 	}
 
 	void setQuality(float _quality){

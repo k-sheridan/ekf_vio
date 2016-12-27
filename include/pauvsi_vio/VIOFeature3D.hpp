@@ -89,6 +89,8 @@ public:
 		this->variance = (1 - K) * this->variance;
 	}
 
+
+
 	void process()
 	{
 		this->variance += PROCESS_ERROR;
