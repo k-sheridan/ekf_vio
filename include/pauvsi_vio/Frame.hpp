@@ -149,6 +149,20 @@ public:
 		return kp;
 	}
 
+	std::vector<cv::KeyPoint> getUndistortedKeyPointVectorFromFeatures(){
+		std::vector<cv::KeyPoint> kp;
+		for (int i = 0; i < this->features.size(); i++)
+		{
+			if(this->features.at(i).isUndistorted())
+			{
+				cv::KeyPoint p;
+				p.pt = (this->features.at(i).getUndistorted());
+				kp.push_back(p);
+			}
+		}
+		return kp;
+	}
+
 	/*
 	 * gets the a keypoint vector form the feature vector
 	 */

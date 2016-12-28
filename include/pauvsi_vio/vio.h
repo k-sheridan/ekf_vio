@@ -56,6 +56,9 @@
 #define DEFAULT_QUEUE_SIZE 10
 #define DEFAULT_ACTIVE_FEATURES_TOPIC "/pauvsi_vio/activefeatures"
 #define DEFAULT_PUBLISH_ACTIVE_FEATURES true
+#define DEFAULT_MIN_TRIANGUALTION_DIST 0.5
+#define DEFAULT_MIN_START_DIST 2
+
 
 class VIO
 {
@@ -72,6 +75,11 @@ public:
 	double GRAVITY_MAG;
 	double RECALIBRATION_THRESHOLD;
 	bool PUBLISH_ACTIVE_FEATURES;
+	double MIN_TRIANGUALTION_DIST;
+	double MIN_START_DIST;
+
+	bool started;
+
 	std::string ACTIVE_FEATURES_TOPIC;
 
 	//frames
@@ -95,6 +103,8 @@ public:
 	void readROSParameters();
 
 	void setCurrentFrame(cv::Mat frame, ros::Time t);
+
+	cv::Mat_<double> LinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);
 
 	/*
 	 * gets the most recently added frame
@@ -140,6 +150,8 @@ public:
 	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
 
 	void update3DFeatures(VIOState x, VIOState x_last, Frame currentFrame, Frame lastFrame);
+
+	void debugFeature(VIOFeature3D f);
 
 	void run();
 

@@ -46,6 +46,14 @@ public:
 	std::string CoM_frame;
 	std::string world_frame;
 
+	/*
+	 * this buffer stores IMU messages until they are needed
+	 * for integration
+	 * The reason we don't integrate them right away is because there is a
+	 * slight gap it the time that the image is captured and when it is processed
+	 */
+	std::vector<sensor_msgs::Imu> imuMessageBuffer;
+
 	tf::TransformListener tf_listener;
 
 	VIOState predict(VIOState lastState, ros::Time predictionTime);
@@ -101,14 +109,6 @@ public:
 	}
 
 protected:
-
-	/*
-	 * this buffer stores IMU messages until they are needed
-	 * for integration
-	 * The reason we don't integrate them right away is because there is a
-	 * slight gap it the time that the image is captured and when it is processed
-	 */
-	std::vector<sensor_msgs::Imu> imuMessageBuffer;
 
 	bool convert2rad;
 

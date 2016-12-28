@@ -93,7 +93,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 
 	//create quaternion to rotate the alpha vector
 	Eigen::Quaterniond q(x.q0(), x.q1(), x.q2(), x.q3());
-	ROS_DEBUG_STREAM("q: " << q.w() << ", " << q.x() << ", " << q.y() << ", " << q.z());
+	//ROS_DEBUG_STREAM("q: " << q.w() << ", " << q.x() << ", " << q.y() << ", " << q.z());
 	alpha = q.toRotationMatrix() * alpha; // rotate alpha into world coordinate frame
 
 	//experimental

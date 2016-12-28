@@ -152,7 +152,7 @@ public:
 
 	/*
 	 * undistorts this feature using K and D
-	 * the new K is K
+	 * the new K is identity
 	 * sets the undistorted feature
 	 */
 	void undistort(cv::Mat K, cv::Mat D)
@@ -162,7 +162,7 @@ public:
 
 		std::vector<cv::Point2f> out;
 
-		cv::fisheye::undistortPoints(in, out, K, D, cv::noArray(), K);
+		cv::fisheye::undistortPoints(in, out, K, D);
 
 		this->undistort_feature = out.at(0);
 		this->undistorted = true;

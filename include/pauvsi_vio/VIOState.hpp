@@ -150,7 +150,7 @@ public:
 	 * creates the extrinsic matrix for this state
 	 * takes the transform from base link to camera
 	 */
-	cv::Mat getRTMatrix(tf::StampedTransform base2cam)
+	cv::Matx34d getRTMatrix(tf::StampedTransform base2cam)
 	{
 		tf::StampedTransform world2odom;
 		world2odom.setOrigin(tf::Vector3(this->x(), this->y(), this->z()));
@@ -159,25 +159,29 @@ public:
 		tf::Transform world2cam = world2odom * base2cam;
 
 		tf::Quaternion tf_q = world2cam.getRotation();
-		Eigen::Quaternion<double> q = Eigen::Quaternion<double>(q.w(), q.x(), q.y(), q.z());
+		Eigen::Quaternion<double> q = Eigen::Quaternion<double>(tf_q.w(), tf_q.x(), tf_q.y(), tf_q.z());
 
 		Eigen::Matrix<double,3,3> Rc = q.matrix();
 
-		Eigen::Matrix<double,3,3> R = Rc.transpose();
+		ROS_DEBUG_STREAM(" R: " << Rc);
 
 		Eigen::Vector3cd C;
 		C << world2cam.getOrigin().getX(), world2cam.getOrigin().getY(), world2cam.getOrigin().getZ();
 
-		Eigen::Vector3cd t = -R * C;
+		Eigen::Vector3cd t = -Rc.transpose() * C;
+
+		ROS_DEBUG_STREAM("t: " << t);
 
 		Eigen::Matrix<double,3,4> RT;
-		RT.block(0, 0, 3, 3) = R;
+		RT.block(0, 0, 3, 3) = Rc;
 		RT(0, 3) = t(0).real();
 		RT(1, 3) = t(1).real();
 		RT(2, 3) = t(2).real();
 
-		cv::Mat cv_RT;
+		cv::Matx34d cv_RT;
 		cv::eigen2cv(RT, cv_RT);
+
+		ROS_DEBUG_STREAM("RT: " << cv_RT);
 
 		return cv_RT;
 	}
