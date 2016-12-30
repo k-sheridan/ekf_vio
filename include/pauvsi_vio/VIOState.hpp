@@ -161,19 +161,20 @@ public:
 		tf::Quaternion tf_q = world2cam.getRotation();
 		Eigen::Quaternion<double> q = Eigen::Quaternion<double>(tf_q.w(), tf_q.x(), tf_q.y(), tf_q.z());
 
-		Eigen::Matrix<double,3,3> Rc = q.matrix();
+		q.normalize();
+		Eigen::Matrix<double,3,3> Rc = q.toRotationMatrix();
 
-		ROS_DEBUG_STREAM(" R: " << Rc);
+		//ROS_DEBUG_STREAM(" R: " << Rc);
 
 		Eigen::Vector3cd C;
 		C << world2cam.getOrigin().getX(), world2cam.getOrigin().getY(), world2cam.getOrigin().getZ();
 
 		Eigen::Vector3cd t = -Rc.transpose() * C;
 
-		ROS_DEBUG_STREAM("t: " << t);
+		//ROS_DEBUG_STREAM("t: " << t);
 
 		Eigen::Matrix<double,3,4> RT;
-		RT.block(0, 0, 3, 3) = Rc;
+		RT.block(0, 0, 3, 3) = Rc.transpose();
 		RT(0, 3) = t(0).real();
 		RT(1, 3) = t(1).real();
 		RT(2, 3) = t(2).real();
@@ -181,7 +182,7 @@ public:
 		cv::Matx34d cv_RT;
 		cv::eigen2cv(RT, cv_RT);
 
-		ROS_DEBUG_STREAM("RT: " << cv_RT);
+		//ROS_DEBUG_STREAM("RT: " << cv_RT);
 
 		return cv_RT;
 	}

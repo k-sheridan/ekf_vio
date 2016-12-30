@@ -58,6 +58,8 @@
 #define DEFAULT_PUBLISH_ACTIVE_FEATURES true
 #define DEFAULT_MIN_TRIANGUALTION_DIST 0.5
 #define DEFAULT_MIN_START_DIST 2
+#define DEFAULT_TRIAG_EPSILON 1
+#define DEFAULT_FRAME_BUFFER_LENGTH 10
 
 
 class VIO
@@ -77,6 +79,8 @@ public:
 	bool PUBLISH_ACTIVE_FEATURES;
 	double MIN_TRIANGUALTION_DIST;
 	double MIN_START_DIST;
+	double TRIAG_EPSILON;
+	int FRAME_BUFFER_LENGTH;
 
 	bool started;
 
@@ -103,6 +107,8 @@ public:
 	void readROSParameters();
 
 	void setCurrentFrame(cv::Mat frame, ros::Time t);
+
+	cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);
 
 	cv::Mat_<double> LinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);
 
@@ -149,9 +155,9 @@ public:
 
 	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
 
-	void update3DFeatures(VIOState x, VIOState x_last, Frame currentFrame, Frame lastFrame);
+	void update3DFeatures(VIOState x, VIOState x_last, Frame currentFrame, Frame lastFrame, std::deque<Frame> fb);
 
-	void debugFeature(VIOFeature3D f);
+	void findBestCorresponding2DFeature(VIOFeature2D start, Frame lf, std::deque<Frame> fb, VIOFeature2D& end, int& frameIndex);
 
 	void run();
 
@@ -177,6 +183,8 @@ protected:
 
 	Frame currentFrame; // the current frame
 	Frame lastFrame; //the last frame
+
+	std::deque<Frame> frameBuffer; // holds previous frames
 
 	FeatureTracker feature_tracker;
 

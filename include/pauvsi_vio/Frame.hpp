@@ -21,6 +21,7 @@
 #include <ros/ros.h>
 
 #include "VIOFeature2D.hpp"
+#include "VIOState.hpp"
 
 
 
@@ -40,6 +41,7 @@ public:
 	cv::Mat K;
 	cv::Mat D;
 	std::vector<VIOFeature2D> features; //the feature vector for this frame
+	VIOState state;
 	//this ensures that all features have a unique ID
 	int nextFeatureID; // the id of the next feature that is added to this frame
 
@@ -54,6 +56,7 @@ public:
 		descriptionExtractor = cv::xfeatures2d::BriefDescriptorExtractor::create();
 		frameSet = true;
 		nextFeatureID = 0;
+		state = VIOState();
 	}
 
 	/*
@@ -74,6 +77,7 @@ public:
 		else{
 			nextFeatureID = startingID;
 		}
+		state = VIOState();
 	}
 
 	/*
@@ -85,6 +89,7 @@ public:
 		descriptionExtractor = cv::xfeatures2d::BriefDescriptorExtractor::create();
 		frameSet = false;
 		nextFeatureID = 0; // assume that this frame starts at zero featureID
+		state = VIOState();
 	}
 
 	bool isFrameSet(){
@@ -385,7 +390,7 @@ public:
 			}
 			else
 			{
-				ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << features.at(i).getDistanceFromFrameCenter());
+				//ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << features.at(i).getDistanceFromFrameCenter());
 			}
 		}
 

@@ -70,7 +70,7 @@ target_link_libraries(egoMotionEstimator frame ${catkin_LIBRARIES} ${OpenCV_LIBR
 target_link_libraries(featureTracker frame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 target_link_libraries(vioFeature3d vioLine)
 target_link_libraries(frame vioFeature3d ${Eigen_LIBRARIES})
-target_link_libraries(frame vioFeature2d)
+target_link_libraries(frame vioFeature2d viostate)
 target_link_libraries(vio frame ${catkin_LIBRARIES} featureTracker vioekf egoMotionEstimator viostate visualmeasurement vioFeature3d)
 target_link_libraries(pauvsi_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} vio)
 

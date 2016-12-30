@@ -37,6 +37,10 @@ VIO::VIO()
 		activePointsPub = nh.advertise<sensor_msgs::PointCloud>("/vio/activefeatures", 100);
 
 	started = false; //not intialized yet
+
+	//ensure that both frames have a valid state
+	this->currentFrame.state = this->state;
+	this->lastFrame.state = this->state;
 }
 
 VIO::~VIO()
@@ -123,6 +127,16 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 {
 	if(currentFrame.isFrameSet())
 	{
+		if(lastFrame.isFrameSet() && this->started) // if the last frame has data and the system was initialized
+		{
+			//add the frame to the buffer
+			this->frameBuffer.push_front(lastFrame);
+			// pop back if que is longer than the size
+			if(this->frameBuffer.size() > this->FRAME_BUFFER_LENGTH)
+			{
+				this->frameBuffer.pop_back();
+			}
+		}
 		//first set the last frame to current frame
 		lastFrame = currentFrame;
 	}
@@ -153,11 +167,13 @@ void VIO::run()
 		//MOTION ESTIMATION
 		this->lastState = this->state;
 		this->state = this->estimateMotion(this->lastState, this->lastFrame, this->currentFrame);
+		//set the currentFrames new state
+		this->currentFrame.state = this->state;
 
 		if(this->started) // if initialized
 		{
 			//UPDATE 3D ACTIVE AND INACTIVE FEATURES
-			this->update3DFeatures(this->state, this->lastState, this->currentFrame, this->lastFrame);
+			this->update3DFeatures(this->state, this->lastState, this->currentFrame, this->lastFrame, this->frameBuffer);
 		}
 	}
 
@@ -196,7 +212,7 @@ void VIO::publishActivePoints()
 		std::vector<geometry_msgs::Point32> point;
 		std::vector<sensor_msgs::ChannelFloat32> colors;
 
-		pc.header.frame_id = this->world_frame;
+		pc.header.frame_id = this->camera_frame;
 
 		for(int i = 0; i < this->active3DFeatures.size(); i++)
 		{
@@ -213,9 +229,9 @@ void VIO::publishActivePoints()
 			c.name = "intensity";
 
 			geometry_msgs::Point32 pt;
-			pt.x = this->active3DFeatures.at(i).position[0];
-			pt.y = this->active3DFeatures.at(i).position[1];
-			pt.z = this->active3DFeatures.at(i).position[2];
+			pt.x = this->active3DFeatures.at(i).position(0);
+			pt.y = this->active3DFeatures.at(i).position(1);
+			pt.z = this->active3DFeatures.at(i).position(2);
 
 			point.push_back(pt);
 			colors.push_back(c);
@@ -229,48 +245,13 @@ void VIO::publishActivePoints()
 	}
 }
 
-void VIO::debugFeature(VIOFeature3D f)
-{
-	ROS_DEBUG_STREAM("3D FEATURE:\nX: " << f.position[0] <<"\nY: " << f.position[1] << "\nZ: " <<
-			f.position[2] << "\nLink - ID: " << f.current2DFeatureMatchID << " Index: " << f.current2DFeatureMatchIndex <<
-			"\ncov: " << f.variance << "\ncolor" << f.color.val[0]);
-}
-
-/**
- From "Triangulation", Hartley, R.I. and Sturm, P., Computer vision and image understanding, 1997
- */
-cv::Mat_<double> VIO::LinearLSTriangulation(cv::Point3d u,       //homogenous image point (u,v,1)
-		cv::Matx34d P,       //camera 1 matrix
-		cv::Point3d u1,      //homogenous image point in 2nd camera
-		cv::Matx34d P1       //camera 2 matrix
-)
-{
-	//build matrix A for homogenous equation system Ax = 0
-	//assume X = (x,y,z,1), for Linear-LS method
-	//which turns it into a AX = B system, where A is 4x3, X is 3x1 and B is 4x1
-	cv::Matx43d A(u.x*P(2,0)-P(0,0),    u.x*P(2,1)-P(0,1),      u.x*P(2,2)-P(0,2),
-			u.y*P(2,0)-P(1,0),    u.y*P(2,1)-P(1,1),      u.y*P(2,2)-P(1,2),
-			u1.x*P1(2,0)-P1(0,0), u1.x*P1(2,1)-P1(0,1),   u1.x*P1(2,2)-P1(0,2),
-			u1.y*P1(2,0)-P1(1,0), u1.y*P1(2,1)-P1(1,1),   u1.y*P1(2,2)-P1(1,2)
-	);
-	cv::Mat_<double> B = (cv::Mat_<double>(4,1) <<    -(u.x*P(2,3)    -P(0,3)),
-			-(u.y*P(2,3)  -P(1,3)),
-			-(u1.x*P1(2,3)    -P1(0,3)),
-			-(u1.y*P1(2,3)    -P1(1,3)));
-
-	cv::Mat_<double> X;
-	cv::solve(A,B,X, cv::DECOMP_SVD);
-
-	return X;
-}
-
 /*
- * this function uses the previous state and the current state
+ * this function uses the oldest state possible and the current state
  * along with the previous frame and current frame to
  * update each 3d feature and add new 3d features if necessary
  * If 3d feature is not updated it will be either removed or added to the inactive list.
  */
-void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf)
+void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf, std::deque<Frame> fb)
 {
 	std::vector<VIOFeature3D> inactives = this->active3DFeatures; // set the new inactive features to be the current active features
 	std::vector<VIOFeature3D> actives;
@@ -283,30 +264,58 @@ void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf)
 		ROS_WARN_STREAM(e.what());
 	}
 
-	//compute the rt matrices
-	cv::Matx34d A = this->lastState.getRTMatrix(base2cam);
-	cv::Matx34d B = this->state.getRTMatrix(base2cam);
+	//compute the rt matrices for every frame we have available
+	cv::Matx34d p1 = this->lastState.getRTMatrix(base2cam);
+	cv::Matx34d p2 = this->state.getRTMatrix(base2cam);
+	std::vector<cv::Matx34d> p;
+	for(int i = 0; i < fb.size(); i++)
+	{
+		ROS_DEBUG_STREAM("x at " << i << " : "  << fb.at(i).state.vector.transpose());
+		p.push_back(fb.at(i).state.getRTMatrix(base2cam));
+	}
+
 
 	for(int i = 0; i < cf.features.size(); i++)
 	{
 		if(cf.features.at(i).isMatched()) // if this feature is matched
 		{
+
 			// store the currentFeature and lastFeature
 			VIOFeature2D current2DFeature = cf.features.at(i);
-			VIOFeature2D last2DFeature = lf.features.at(current2DFeature.getMatchedIndex()); // its matched 2d feature from the last frame
+			int frame_index = 0;
+			VIOFeature2D last2DFeature;
+			this->findBestCorresponding2DFeature(current2DFeature, lf, fb, last2DFeature, frame_index); // finds the best corresponding 2d feature
 
-			ROS_ASSERT(current2DFeature.getMatchedID() == last2DFeature.getFeatureID()); // ensure that this is the right feature
+			//set up each of the relavant matrices depending on the frame which the oldest
+			// corresponding feature lies in
+			cv::Matx33d K1;
+			cv::Matx33d K2 = currentFrame.K;
+			cv::Matx34d P1, P2;
+			P2 = p2;
+			if(frame_index == -1)
+			{
+				P1 = p1;
+				K1 = this->lastFrame.K;
+			}
+			else
+			{
+				K1 = fb.at(frame_index).K;
+				P1 = p.at(frame_index);
+			}
+
+			ROS_DEBUG_STREAM(frame_index);
+			ROS_DEBUG_STREAM("P1: " << P1.col(3) << "\nP2: " << P2.col(3));
 
 			//check if this feature has a matched 3d feature
 			bool match3D = false;
 			VIOFeature3D matched3DFeature;
 			for(int j = 0; j < inactives.size(); j++)
 			{
-				if(inactives.at(j).current2DFeatureMatchIndex == last2DFeature.getMatchedIndex())
+				if(inactives.at(j).current2DFeatureMatchIndex == current2DFeature.getMatchedIndex())
 				{
 					matched3DFeature = inactives.at(j); // found a matched feature
 
-					ROS_ASSERT(matched3DFeature.current2DFeatureMatchID == last2DFeature.getMatchedID()); // ensure that everything matches up
+					ROS_ASSERT(matched3DFeature.current2DFeatureMatchID == lf.features.at(current2DFeature.getMatchedIndex()).getFeatureID()); // ensure that everything matches up
 
 					match3D = true; //set the flag for later
 
@@ -317,80 +326,76 @@ void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf)
 			}
 
 			//IMPORTANT TUNING EQUATION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TODO
-			double dx = current2DFeature.getUndistorted().x - last2DFeature.getUndistorted().x;
-			double dy = current2DFeature.getUndistorted().y - last2DFeature.getUndistorted().y;
-			double d = sqrt(dx * dx + dy * dy);
+			cv::Matx31d dr = (P1.col(3) - P2.col(3));
+			double d = sqrt(dr.dot(dr));
 			if(d == 0)
 				d = 0.0001;
-
 			//double r_cov_avg = (state.covariance(0, 0) + state.covariance(1, 1) + state.covariance(2, 2) + lastState.covariance(0, 0) + lastState.covariance(1, 1) + lastState.covariance(2, 2)) / 6.0;
-
 			double cov = (1 / d) * 100000; // this is a very simple way of determining how certain we are of this point's 3d pos
+			//ROS_DEBUG_STREAM("d: " << d);
 
-			//ROS_DEBUG_STREAM("feature delta: " << d << " feature cov: " << cov);
+			//Triangulation of the point
+			cv::Mat_<double> X; // the 3d point
+			cv::Mat_<double> B = (cv::Mat_<double>(6,1) << last2DFeature.getUndistorted().x,
+					last2DFeature.getUndistorted().y,
+					1.0,
+					current2DFeature.getUndistorted().x,
+					current2DFeature.getUndistorted().y,
+					1.0);
 
+			cv::Mat_<double> A;
 
-			//triangulate point
+			cv::vconcat(K1 * P1, K2 * P2, A);
 
-			cv::Point3d pt1, pt2;
-			pt1.x = last2DFeature.getUndistorted().x;
-			pt1.y = last2DFeature.getUndistorted().y;
-			pt1.z = 1;
+			cv::solve(A, B, X, cv::DECOMP_SVD);
 
-			pt2.x = current2DFeature.getUndistorted().x;
-			pt2.y = current2DFeature.getUndistorted().y;
-			pt2.z = 1;
+			//ROS_DEBUG_STREAM("Sol: " << X);
 
-			//ROS_DEBUG_STREAM_ONCE("K Type: " << this->lastFrame.K.type() << " RT Type: " << A.type());
-			ROS_DEBUG_STREAM("RT1 - " << A);
-			ROS_DEBUG_STREAM("RT2 - " << B);
-			ROS_DEBUG_STREAM("pt1 - " << pt1);
-			ROS_DEBUG_STREAM("pt2 - " << pt2);
-
-			cv::Mat_<double> X = this->LinearLSTriangulation(pt1, A, pt2, B);
-
-			ROS_DEBUG_STREAM("homo point: " << X);
-
-			Eigen::Vector3d r = Eigen::Vector3d(X(0) / X(3), X(1) / X(3), X(2) / X(3));
-
-
-			if(match3D) // if this 2d feature has a matching 3d feature
-			{
-				//ROS_DEBUG_STREAM("matched 3d point");
-
-				//ROS_DEBUG_STREAM("point pos: " << r);
-
-				//update the feature
-				matched3DFeature.update(r, cov);
-
-				matched3DFeature.current2DFeatureMatchID = current2DFeature.getMatchedID();
-				matched3DFeature.current2DFeatureMatchIndex = current2DFeature.getMatchedIndex();
-
-				// append feature to actives
-				actives.push_back(matched3DFeature);
-
-			}
-			else // if this 2d feature does'nt have a matching 3d feature
-			{
-				//ROS_DEBUG_STREAM("new 3d point");
-
-				//ROS_DEBUG_STREAM("point pos: " << r);
-
-				cv::Scalar color = this->currentFrame.image.at<cv::Scalar>(current2DFeature.getFeature().pt);
-
-				//ROS_DEBUG_STREAM("intensity: " << color[0]);
-
-				VIOFeature3D newFeat = VIOFeature3D(current2DFeature.getMatchedIndex(), current2DFeature.getMatchedID(), color, cov, r);
-
-				actives.push_back(newFeat);
-
-			}
 		}
 	}
 
 	//set each of the 3d feature buffers to be published
 	this->active3DFeatures = actives;
 	this->inactive3DFeatures = inactives;
+}
+
+void VIO::findBestCorresponding2DFeature(VIOFeature2D start, Frame lf, std::deque<Frame> fb, VIOFeature2D& end, int& frameIndex)
+{
+	if(!start.isMatched()) ROS_ERROR("feature has no match!");
+
+
+	VIOFeature2D temp = lf.features.at(start.getMatchedIndex());
+	ROS_ASSERT(temp.getFeatureID() == start.getMatchedID());
+	end = temp;
+
+	//ROS_DEBUG_STREAM("fb size: " << fb.size());
+
+	if(end.isMatched() && fb.size() > 0)
+	{
+		for(int i = 0; i < fb.size() - 1; i++)
+		{
+			temp = fb.at(i).features.at(end.getMatchedIndex());
+			ROS_ASSERT(temp.getFeatureID() == end.getMatchedID());
+			end = temp;
+
+			//ROS_DEBUG_STREAM("end match " << end.getMatchedID());
+			//ROS_DEBUG_STREAM("this frame: " << fb.at(i).nextFeatureID);
+			//ROS_DEBUG_STREAM("next frame: " << fb.at(i+1).nextFeatureID);
+
+			if(!end.isMatched())
+			{
+				frameIndex = i;
+				break;
+			}
+			frameIndex = i;
+		}
+	}
+	else
+	{
+		frameIndex = -1;
+	}
+
+	//ROS_DEBUG_STREAM("frame index: " << frameIndex);
 }
 
 /*
@@ -443,6 +448,10 @@ void VIO::readROSParameters()
 	ros::param::param<double>("~min_triangualtion_dist", MIN_TRIANGUALTION_DIST, DEFAULT_MIN_TRIANGUALTION_DIST);
 
 	ros::param::param<double>("~min_start_dist", MIN_START_DIST, DEFAULT_MIN_START_DIST);
+
+	ros::param::param<double>("~triangulation_epsilon", TRIAG_EPSILON, DEFAULT_TRIAG_EPSILON);
+
+	ros::param::param<int>("frame_buffer_length", FRAME_BUFFER_LENGTH, DEFAULT_FRAME_BUFFER_LENGTH);
 }
 
 /*
@@ -511,7 +520,8 @@ VIOState VIO::estimateMotion(VIOState x, Frame lastFrame, Frame currentFrame)
 
 	//if the camera moves more than the minimum START distance
 	//start the motion estimate
-	if(avgFeatureChange > this->MIN_START_DIST)
+	//set the system to initialized
+	if(this->started == true || avgFeatureChange > this->MIN_START_DIST)
 	{
 		this->started = true; // this is the initialize step
 
@@ -746,6 +756,82 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 	lastImu = currentImu;
 	lastNormalize = normalize;
 	return;
+}
+
+/**
+ From "Triangulation", Hartley, R.I. and Sturm, P., Computer vision and image understanding, 1997
+ */
+cv::Mat_<double> VIO::IterativeLinearLSTriangulation(cv::Point3d u,    //homogenous image point (u,v,1)
+		cv::Matx34d P,          //camera 1 matrix
+		cv::Point3d u1,         //homogenous image point in 2nd camera
+		cv::Matx34d P1          //camera 2 matrix
+) {
+	double error;
+	double wi = 1, wi1 = 1;
+	cv::Mat_<double> X(4,1);
+	for (int i=0; i<10; i++) { //Hartley suggests 10 iterations at most
+		cv::Mat_<double> X_ = this->LinearLSTriangulation(u,P,u1,P1);
+		X(0) = X_(0); X(1) = X_(1); X(2) = X_(2);
+		//X(3) = 1.0;
+
+		//recalculate weights
+		double p2x = cv::Mat_<double>(cv::Mat_<double>(P).row(2)*X)(0);
+		double p2x1 = cv::Mat_<double>(cv::Mat_<double>(P1).row(2)*X)(0);
+
+		//breaking point
+		error = fabsf(wi - p2x) + fabsf(wi1 - p2x1);
+		if(fabsf(wi - p2x) <= TRIAG_EPSILON && fabsf(wi1 - p2x1) <= TRIAG_EPSILON) break;
+
+		wi = p2x;
+		wi1 = p2x1;
+
+		//reweight equations and solve
+		cv::Matx43d A((u.x*P(2,0)-P(0,0))/wi,       (u.x*P(2,1)-P(0,1))/wi,         (u.x*P(2,2)-P(0,2))/wi,
+				(u.y*P(2,0)-P(1,0))/wi,       (u.y*P(2,1)-P(1,1))/wi,         (u.y*P(2,2)-P(1,2))/wi,
+				(u1.x*P1(2,0)-P1(0,0))/wi1,   (u1.x*P1(2,1)-P1(0,1))/wi1,     (u1.x*P1(2,2)-P1(0,2))/wi1,
+				(u1.y*P1(2,0)-P1(1,0))/wi1,   (u1.y*P1(2,1)-P1(1,1))/wi1,     (u1.y*P1(2,2)-P1(1,2))/wi1
+		);
+		cv::Mat_<double> B = (cv::Mat_<double>(4,1) <<    -(u.x*P(2,3)    -P(0,3))/wi,
+				-(u.y*P(2,3)  -P(1,3))/wi,
+				-(u1.x*P1(2,3)    -P1(0,3))/wi1,
+				-(u1.y*P1(2,3)    -P1(1,3))/wi1
+		);
+
+		cv::solve(A,B,X_,cv::DECOMP_SVD);
+		X(0) = X_(0); X(1) = X_(1); X(2) = X_(2);
+		//X(3) = 1.0;
+	}
+
+	//ROS_DEBUG_STREAM("triag error: " << error);
+	return X;
+}
+
+/**
+ From "Triangulation", Hartley, R.I. and Sturm, P., Computer vision and image understanding, 1997
+ */
+cv::Mat_<double> VIO::LinearLSTriangulation(cv::Point3d u,       //homogenous image point (u,v,1)
+		cv::Matx34d P,       //camera 1 matrix
+		cv::Point3d u1,      //homogenous image point in 2nd camera
+		cv::Matx34d P1       //camera 2 matrix
+)
+{
+	//build matrix A for homogenous equation system Ax = 0
+	//assume X = (x,y,z,1), for Linear-LS method
+	//which turns it into a AX = B system, where A is 4x3, X is 3x1 and B is 4x1
+	cv::Matx43d A(u.x*P(2,0)-P(0,0),    u.x*P(2,1)-P(0,1),      u.x*P(2,2)-P(0,2),
+			u.y*P(2,0)-P(1,0),    u.y*P(2,1)-P(1,1),      u.y*P(2,2)-P(1,2),
+			u1.x*P1(2,0)-P1(0,0), u1.x*P1(2,1)-P1(0,1),   u1.x*P1(2,2)-P1(0,2),
+			u1.y*P1(2,0)-P1(1,0), u1.y*P1(2,1)-P1(1,1),   u1.y*P1(2,2)-P1(1,2)
+	);
+	cv::Mat_<double> B = (cv::Mat_<double>(4,1) <<    -(u.x*P(2,3)    -P(0,3)),
+			-(u.y*P(2,3)  -P(1,3)),
+			-(u1.x*P1(2,3)    -P1(0,3)),
+			-(u1.y*P1(2,3)    -P1(1,3)));
+
+	cv::Mat_<double> X;
+	cv::solve(A,B,X, cv::DECOMP_SVD);
+
+	return X;
 }
 
 
