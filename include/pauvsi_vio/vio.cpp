@@ -212,7 +212,7 @@ void VIO::publishActivePoints()
 		std::vector<geometry_msgs::Point32> point;
 		std::vector<sensor_msgs::ChannelFloat32> colors;
 
-		pc.header.frame_id = this->camera_frame;
+		pc.header.frame_id = this->world_frame;
 
 		for(int i = 0; i < this->active3DFeatures.size(); i++)
 		{
@@ -221,7 +221,7 @@ void VIO::publishActivePoints()
 			std::vector<float> intensity;
 			sensor_msgs::ChannelFloat32 c;
 
-			intensity.push_back(this->active3DFeatures.at(i).color[0]);
+			intensity.push_back(this->active3DFeatures.at(i).color.val[0]);
 			//intensity.push_back(this->active3DFeatures.at(i).color[1]);
 			//intensity.push_back(this->active3DFeatures.at(i).color[2]);
 
@@ -229,9 +229,9 @@ void VIO::publishActivePoints()
 			c.name = "intensity";
 
 			geometry_msgs::Point32 pt;
-			pt.x = this->active3DFeatures.at(i).position(0);
-			pt.y = this->active3DFeatures.at(i).position(1);
-			pt.z = this->active3DFeatures.at(i).position(2);
+			pt.x = this->active3DFeatures.at(i).position.x();
+			pt.y = this->active3DFeatures.at(i).position.y();
+			pt.z = this->active3DFeatures.at(i).position.z();
 
 			point.push_back(pt);
 			colors.push_back(c);
@@ -242,6 +242,132 @@ void VIO::publishActivePoints()
 		pc.channels = colors;
 
 		this->activePointsPub.publish(pc); // publish!
+	}
+}
+
+/*
+ * triangulates 3d points and reprojects them giving an error
+ * if false the point is invalid
+ */
+bool VIO::triangulateAndCheck(cv::Point2f pt1, cv::Point2f pt2, cv::Matx33d K1, cv::Matx33d K2, VIOState x1_b, VIOState x2_b, double& error, cv::Matx31d& r, tf::Transform base2cam)
+{
+
+	VIOState x1_c, x2_c;
+
+	Eigen::Quaterniond q1_b = Eigen::Quaterniond(x1_b.q1(), x1_b.q2(), x1_b.q3(), x1_b.q0());
+	Eigen::Quaterniond q2_b = Eigen::Quaterniond(x2_b.q1(), x2_b.q2(), x2_b.q3(), x2_b.q0());
+
+	tf::Quaternion temp_q = base2cam.getRotation();
+	Eigen::Quaterniond q_b_c = Eigen::Quaterniond(temp_q.getX(), temp_q.getY(), temp_q.getZ(), temp_q.getW());
+
+	base2cam * base2cam;
+
+	Eigen::Quaterniond q1_c = q1_b * q_b_c;
+	Eigen::Quaterniond q2_c = q2_b * q_b_c;
+
+	//q1 * diff = q2 => inv(q1)* q2 = diff
+	Eigen::Quaterniond diff = q1_c.inverse() * q2_c; // the relative rotation quaternion
+
+	Eigen::Vector3d r1_b = Eigen::Vector3d(x1_b.x(), x1_b.y(), x1_b.z());
+	Eigen::Vector3d r2_b = Eigen::Vector3d(x2_b.x(), x2_b.y(), x2_b.z());
+
+	Eigen::Vector3d r_b_c = Eigen::Vector3d(base2cam.getOrigin().getX(), base2cam.getOrigin().getY(), base2cam.getOrigin().getZ());
+
+	Eigen::Vector3d r1_c = (q1_b * r_b_c + r1_b);
+	Eigen::Matrix<double, 3, 1> dr = (q2_b * r_b_c + r2_b) - r1_c;
+
+	cv::Matx34d P1;
+	cv::hconcat(cv::Mat::eye(3, 3, CV_64F), cv::Mat::zeros(3, 1, CV_64F), P1);
+
+	//this creates a transformation from the first camera to the second
+	Eigen::Matrix<double, 3, 3> R_ = diff.inverse().toRotationMatrix();
+	Eigen::Matrix<double, 3, 1> t_ = R_ * -dr;
+
+	cv::Mat R_cv, t_cv;
+	cv::eigen2cv(R_, R_cv);
+	cv::eigen2cv(t_, t_cv);
+
+	cv::Matx34d P2;
+	cv::hconcat(R_cv, t_cv, P2);
+
+	//ROS_DEBUG_STREAM("P1: " << P1);
+	//ROS_DEBUG_STREAM("P2: " << P2);
+	//now P1 and P2 are made
+	//results will be in camera 1 coordinate system
+
+	cv::Matx41d X;
+	cv::Matx61d b;
+	cv::Mat_<double> A = cv::Mat_<double>(6, 4);
+
+	b(0) = pt1.x;
+	b(1) = pt1.y;
+	b(2) = 1.0;
+	b(3) = pt2.x;
+	b(4) = pt2.y;
+	b(5) = 1.0;
+
+	cv::vconcat(K1 * P1, K2 * P2, A);
+
+	//ROS_DEBUG_STREAM("K1: " << K1);
+	//ROS_DEBUG_STREAM("K2: " << K2);
+	//ROS_DEBUG_STREAM("A: " << A);
+	//ROS_DEBUG_STREAM("b: " << b);
+
+	//now we can triangulate
+	cv::solve(A, b, X, cv::DECOMP_SVD);
+
+	r(0) = X(0) / X(3);
+	r(1) = X(1) / X(3);
+	r(2) = X(2) / X(3);
+
+	X(0) = r(0);
+	X(1) = r(1);
+	X(2) = r(2);
+	X(3) = r(3);
+
+	//reproject
+
+	cv::Matx31d b1 = K1 * P1 * X;
+	b1(0) = b1(0) / b1(2);
+	b1(1) = b1(1) / b1(2);
+	b1(2) = 1.0;
+
+	cv::Matx31d b2 = K2 * P2 * X;
+	b2(0) = b2(0) / b2(2);
+	b2(1) = b2(1) / b2(2);
+	b2(2) = 1.0;
+
+	cv::Matx61d b_;
+	cv::vconcat(b1, b2, b_);
+
+	error = (b_ - b).dot(b_ - b);
+
+	if(r(2) > 0 && error < 2000)
+	{
+		ROS_DEBUG_STREAM("r: " << r);
+		ROS_DEBUG_STREAM("error: " << error);
+		ROS_DEBUG_STREAM("du: " << (b_ - b).t());
+	}
+
+	if(r(2) > MIN_TRIAG_Z && error < MAX_TRIAG_ERROR)
+	{
+		//transform the point into world coordinates
+		tf::Quaternion tf_q1_c = tf::Quaternion(q1_c.x(), q1_c.y(), q1_c.z(), q1_c.w());
+		tf::Vector3 tf_r1_c = tf::Vector3(r1_c.x(), r1_c.y(), r1_c.z());
+		tf::Transform tf_w2c = tf::Transform(tf_q1_c, tf_r1_c);
+
+		tf::Vector3 tf_r = tf::Vector3(r(0), r(1), r(2));
+
+		tf::Vector3 tf_r_w = tf_w2c.inverse() * tf_r;
+
+		r(0) = tf_r_w.getX();
+		r(1) = tf_r_w.getY();
+		r(2) = tf_r_w.getZ();
+		return true;
+	}
+	else
+	{
+		return false;
 	}
 }
 
@@ -264,16 +390,6 @@ void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf, std:
 		ROS_WARN_STREAM(e.what());
 	}
 
-	//compute the rt matrices for every frame we have available
-	cv::Matx34d p1 = this->lastState.getRTMatrix(base2cam);
-	cv::Matx34d p2 = this->state.getRTMatrix(base2cam);
-	std::vector<cv::Matx34d> p;
-	for(int i = 0; i < fb.size(); i++)
-	{
-		ROS_DEBUG_STREAM("x at " << i << " : "  << fb.at(i).state.vector.transpose());
-		p.push_back(fb.at(i).state.getRTMatrix(base2cam));
-	}
-
 
 	for(int i = 0; i < cf.features.size(); i++)
 	{
@@ -290,21 +406,17 @@ void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf, std:
 			// corresponding feature lies in
 			cv::Matx33d K1;
 			cv::Matx33d K2 = currentFrame.K;
-			cv::Matx34d P1, P2;
-			P2 = p2;
 			if(frame_index == -1)
 			{
-				P1 = p1;
 				K1 = this->lastFrame.K;
 			}
 			else
 			{
 				K1 = fb.at(frame_index).K;
-				P1 = p.at(frame_index);
 			}
 
-			ROS_DEBUG_STREAM(frame_index);
-			ROS_DEBUG_STREAM("P1: " << P1.col(3) << "\nP2: " << P2.col(3));
+			//ROS_DEBUG_STREAM(frame_index);
+			//ROS_DEBUG_STREAM("P1: " << P1.col(3) << "\nP2: " << P2.col(3));
 
 			//check if this feature has a matched 3d feature
 			bool match3D = false;
@@ -325,32 +437,60 @@ void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf, std:
 				}
 			}
 
-			//IMPORTANT TUNING EQUATION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! TODO
-			cv::Matx31d dr = (P1.col(3) - P2.col(3));
-			double d = sqrt(dr.dot(dr));
-			if(d == 0)
-				d = 0.0001;
-			//double r_cov_avg = (state.covariance(0, 0) + state.covariance(1, 1) + state.covariance(2, 2) + lastState.covariance(0, 0) + lastState.covariance(1, 1) + lastState.covariance(2, 2)) / 6.0;
-			double cov = (1 / d) * 100000; // this is a very simple way of determining how certain we are of this point's 3d pos
-			//ROS_DEBUG_STREAM("d: " << d);
+			//TRIANGULATION
 
-			//Triangulation of the point
-			cv::Mat_<double> X; // the 3d point
-			cv::Mat_<double> B = (cv::Mat_<double>(6,1) << last2DFeature.getUndistorted().x,
-					last2DFeature.getUndistorted().y,
-					1.0,
-					current2DFeature.getUndistorted().x,
-					current2DFeature.getUndistorted().y,
-					1.0);
+			VIOState x1, x2;
+			x2 = this->state;
+			if(frame_index == -1)
+				x1 = this->lastState;
+			else
+				x1 = fb.at(frame_index).state;
+			//ROS_DEBUG_STREAM("x1: " << x1.vector.transpose());
+			//ROS_DEBUG_STREAM("x2: " << x2.vector.transpose());
+			//ROS_DEBUG_STREAM("pt1: " << last2DFeature.getUndistorted());
+			//ROS_DEBUG_STREAM("pt2: " << current2DFeature.getUndistorted() << "\n");
 
-			cv::Mat_<double> A;
+			cv::Matx31d r; //resulting point
+			double error; //error in pixels
 
-			cv::vconcat(K1 * P1, K2 * P2, A);
+			bool successful = this->triangulateAndCheck(last2DFeature.getUndistorted(), current2DFeature.getUndistorted(), K1, K2, x1, x2, error, r, base2cam); // triangulate the points if possible
 
-			cv::solve(A, B, X, cv::DECOMP_SVD);
+			if(successful)
+			{
+				if(match3D)
+				{
+					double d = (x2.getr() - x1.getr()).norm();
 
-			//ROS_DEBUG_STREAM("Sol: " << X);
+					matched3DFeature.update(Eigen::Vector3d(r(0), r(1), r(2)), error + 1/d);
+					matched3DFeature.current2DFeatureMatchID = current2DFeature.getFeatureID();
+					matched3DFeature.current2DFeatureMatchIndex = i;
 
+					ROS_DEBUG_STREAM("updating feature new cov: " << matched3DFeature.variance);
+
+					actives.push_back(matched3DFeature);
+				}
+				else
+				{
+					double d = (x2.getr() - x1.getr()).norm();
+
+					ROS_DEBUG_STREAM("adding feature");
+					VIOFeature3D newFeat;
+					newFeat.color = cv::Scalar(255, 255, 255);
+					newFeat.current2DFeatureMatchID = current2DFeature.getFeatureID();
+					newFeat.current2DFeatureMatchIndex = i;
+					newFeat.position = Eigen::Vector3d(r(0), r(1), r(2));
+					newFeat.variance = error + 1/d;
+					newFeat.colorSet = true;
+
+					actives.push_back(newFeat);
+				}
+			}
+			else if(match3D)
+			{
+				matched3DFeature.current2DFeatureMatchID = current2DFeature.getFeatureID();
+				matched3DFeature.current2DFeatureMatchIndex = i;
+				actives.push_back(matched3DFeature);
+			}
 		}
 	}
 
@@ -372,7 +512,7 @@ void VIO::findBestCorresponding2DFeature(VIOFeature2D start, Frame lf, std::dequ
 
 	if(end.isMatched() && fb.size() > 0)
 	{
-		for(int i = 0; i < fb.size() - 1; i++)
+		for(int i = 0; i < fb.size(); i++)
 		{
 			temp = fb.at(i).features.at(end.getMatchedIndex());
 			ROS_ASSERT(temp.getFeatureID() == end.getMatchedID());
@@ -449,9 +589,10 @@ void VIO::readROSParameters()
 
 	ros::param::param<double>("~min_start_dist", MIN_START_DIST, DEFAULT_MIN_START_DIST);
 
-	ros::param::param<double>("~triangulation_epsilon", TRIAG_EPSILON, DEFAULT_TRIAG_EPSILON);
-
 	ros::param::param<int>("frame_buffer_length", FRAME_BUFFER_LENGTH, DEFAULT_FRAME_BUFFER_LENGTH);
+
+	ros::param::param<double>("max_triangulation_error", MAX_TRIAG_ERROR, DEFAULT_MAX_TRIAG_ERROR);
+	ros::param::param<double>("min_triangulation_z", MIN_TRIAG_Z, DEFAULT_MIN_TRIAG_Z);
 }
 
 /*
@@ -766,21 +907,21 @@ cv::Mat_<double> VIO::IterativeLinearLSTriangulation(cv::Point3d u,    //homogen
 		cv::Point3d u1,         //homogenous image point in 2nd camera
 		cv::Matx34d P1          //camera 2 matrix
 ) {
-	double error;
+	//double error;
 	double wi = 1, wi1 = 1;
 	cv::Mat_<double> X(4,1);
 	for (int i=0; i<10; i++) { //Hartley suggests 10 iterations at most
 		cv::Mat_<double> X_ = this->LinearLSTriangulation(u,P,u1,P1);
 		X(0) = X_(0); X(1) = X_(1); X(2) = X_(2);
-		//X(3) = 1.0;
+		X(3) = X_(3);
 
 		//recalculate weights
 		double p2x = cv::Mat_<double>(cv::Mat_<double>(P).row(2)*X)(0);
 		double p2x1 = cv::Mat_<double>(cv::Mat_<double>(P1).row(2)*X)(0);
 
 		//breaking point
-		error = fabsf(wi - p2x) + fabsf(wi1 - p2x1);
-		if(fabsf(wi - p2x) <= TRIAG_EPSILON && fabsf(wi1 - p2x1) <= TRIAG_EPSILON) break;
+		//error = fabsf(wi - p2x) + fabsf(wi1 - p2x1);
+		if(fabsf(wi - p2x) <= 1.0 && fabsf(wi1 - p2x1) <= 1.0) break;
 
 		wi = p2x;
 		wi1 = p2x1;
@@ -799,7 +940,7 @@ cv::Mat_<double> VIO::IterativeLinearLSTriangulation(cv::Point3d u,    //homogen
 
 		cv::solve(A,B,X_,cv::DECOMP_SVD);
 		X(0) = X_(0); X(1) = X_(1); X(2) = X_(2);
-		//X(3) = 1.0;
+		X(3) = X_(3);
 	}
 
 	//ROS_DEBUG_STREAM("triag error: " << error);

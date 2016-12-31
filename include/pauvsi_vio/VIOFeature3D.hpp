@@ -22,7 +22,7 @@
 
 #include "VIOLine.hpp"
 
-#define PROCESS_ERROR 0.1
+#define PROCESS_ERROR 0.0
 
 /*
  * subfeature is a 3d point and certainty associated with a 3d feature in space
@@ -77,9 +77,9 @@ public:
 	 */
 	void update(Eigen::Vector3d measurement, double variance)
 	{
-		this->process(); // process the previous state
-
-		double K = this->variance / (this->variance - variance);
+		//this->process(); // process the previous state
+		ROS_ASSERT(this->variance > 0 || variance > 0);
+		double K = this->variance / (this->variance + variance);
 
 		this->position(0) = this->position(0) + K * (measurement(0) - this->position(0));
 		this->position(1) = this->position(1) + K * (measurement(1) - this->position(1));

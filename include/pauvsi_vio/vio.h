@@ -57,9 +57,10 @@
 #define DEFAULT_ACTIVE_FEATURES_TOPIC "/pauvsi_vio/activefeatures"
 #define DEFAULT_PUBLISH_ACTIVE_FEATURES true
 #define DEFAULT_MIN_TRIANGUALTION_DIST 0.5
-#define DEFAULT_MIN_START_DIST 2
-#define DEFAULT_TRIAG_EPSILON 1
+#define DEFAULT_MIN_START_DIST 1
 #define DEFAULT_FRAME_BUFFER_LENGTH 10
+#define DEFAULT_MAX_TRIAG_ERROR 2000
+#define DEFAULT_MIN_TRIAG_Z 0.02
 
 
 class VIO
@@ -79,8 +80,9 @@ public:
 	bool PUBLISH_ACTIVE_FEATURES;
 	double MIN_TRIANGUALTION_DIST;
 	double MIN_START_DIST;
-	double TRIAG_EPSILON;
 	int FRAME_BUFFER_LENGTH;
+	double MAX_TRIAG_ERROR;
+	double MIN_TRIAG_Z;
 
 	bool started;
 
@@ -156,6 +158,8 @@ public:
 	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
 
 	void update3DFeatures(VIOState x, VIOState x_last, Frame currentFrame, Frame lastFrame, std::deque<Frame> fb);
+
+	bool triangulateAndCheck(cv::Point2f pt1, cv::Point2f pt2, cv::Matx33d K1, cv::Matx33d K2, VIOState x1, VIOState x2, double& error, cv::Matx31d& r, tf::Transform base2cam);
 
 	void findBestCorresponding2DFeature(VIOFeature2D start, Frame lf, std::deque<Frame> fb, VIOFeature2D& end, int& frameIndex);
 
