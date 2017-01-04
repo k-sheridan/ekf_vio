@@ -252,7 +252,7 @@ void VIO::publishActivePoints()
 bool VIO::triangulateAndCheck(cv::Point2f pt1, cv::Point2f pt2, cv::Matx33d K1, cv::Matx33d K2, VIOState x1_b, VIOState x2_b, double& error, cv::Matx31d& r, tf::Transform base2cam)
 {
 
-	VIOState x1_c, x2_c;
+	/*VIOState x1_c, x2_c;
 
 	Eigen::Quaterniond q1_b = Eigen::Quaterniond(x1_b.q1(), x1_b.q2(), x1_b.q3(), x1_b.q0());
 	Eigen::Quaterniond q2_b = Eigen::Quaterniond(x2_b.q1(), x2_b.q2(), x2_b.q3(), x2_b.q0());
@@ -293,7 +293,63 @@ bool VIO::triangulateAndCheck(cv::Point2f pt1, cv::Point2f pt2, cv::Matx33d K1, 
 	//ROS_DEBUG_STREAM("P1: " << P1);
 	//ROS_DEBUG_STREAM("P2: " << P2);
 	//now P1 and P2 are made
-	//results will be in camera 1 coordinate system
+	//results will be in camera 1 coordinate system*/
+
+	//using tf to compute P2
+
+	tf::Quaternion q1_b, q2_b;
+	q1_b = tf::Quaternion(x1_b.q1(), x1_b.q2(), x1_b.q3(), x1_b.q0());
+	q2_b = tf::Quaternion(x2_b.q1(), x2_b.q2(), x2_b.q3(), x2_b.q0());
+
+	tf::Vector3 r1_b, r2_b;
+	r1_b = tf::Vector3(x1_b.x(), x1_b.y(), x1_b.z());
+	r2_b = tf::Vector3(x2_b.x(), x2_b.y(), x2_b.z());
+
+	tf::Transform t1_b, t2_b;
+	t1_b = tf::Transform(q1_b, r1_b);
+	t2_b = tf::Transform(q2_b, r2_b);
+
+	tf::Transform t1_c, t2_c;
+	t1_c = t1_b * base2cam;
+	t2_c = t2_b * base2cam;
+
+	tf::Quaternion q1_c, q2_c;
+	q1_c = t1_c.getRotation();
+	q2_c = t2_c.getRotation();
+
+	//q1 * diff = q2 => diff = q1.inv * q2
+
+	tf::Transform temp = tf::Transform(q1_c.inverse() * q2_c, t2_c.getOrigin() - t1_c.getOrigin());
+	tf::Transform tf_p2 = temp.inverse();
+
+	cv::Matx34d P2;
+	P2(0, 0) = tf_p2.getBasis().getRow(0).x();
+	P2(0, 1) = tf_p2.getBasis().getRow(0).y();
+	P2(0, 2) = tf_p2.getBasis().getRow(0).z();
+	P2(1, 0) = tf_p2.getBasis().getRow(1).x();
+	P2(1, 1) = tf_p2.getBasis().getRow(1).y();
+	P2(1, 2) = tf_p2.getBasis().getRow(1).z();
+	P2(2, 0) = tf_p2.getBasis().getRow(2).x();
+	P2(2, 1) = tf_p2.getBasis().getRow(2).y();
+	P2(2, 2) = tf_p2.getBasis().getRow(2).z();
+
+	P2(0, 3) = tf_p2.getOrigin().x();
+	P2(1, 3) = tf_p2.getOrigin().y();
+	P2(2, 3) = tf_p2.getOrigin().z();
+
+	//break if not moved enough
+
+	double d = sqrt(P2.col(3).dot(P2.col(3)));
+	if(d < MIN_TRIANGUALTION_DIST){
+		ROS_DEBUG_STREAM("d too small: " << d);
+		return false;
+	}
+
+	//ROS_DEBUG_STREAM(P2);
+
+	cv::Matx34d P1;
+	cv::hconcat(cv::Mat::eye(3, 3, CV_64F), cv::Mat::zeros(3, 1, CV_64F), P1);
+
 
 	cv::Matx41d X;
 	cv::Matx61d b;
@@ -314,6 +370,7 @@ bool VIO::triangulateAndCheck(cv::Point2f pt1, cv::Point2f pt2, cv::Matx33d K1, 
 	//ROS_DEBUG_STREAM("b: " << b);
 
 	//now we can triangulate
+
 	cv::solve(A, b, X, cv::DECOMP_SVD);
 
 	r(0) = X(0) / X(3);
@@ -342,27 +399,23 @@ bool VIO::triangulateAndCheck(cv::Point2f pt1, cv::Point2f pt2, cv::Matx33d K1, 
 
 	error = (b_ - b).dot(b_ - b);
 
-	if(r(2) > 0 && error < 2000)
+	if(r(2) > MIN_TRIAG_Z && error < MAX_TRIAG_ERROR)
 	{
 		ROS_DEBUG_STREAM("r: " << r);
 		ROS_DEBUG_STREAM("error: " << error);
-		ROS_DEBUG_STREAM("du: " << (b_ - b).t());
-	}
-
-	if(r(2) > MIN_TRIAG_Z && error < MAX_TRIAG_ERROR)
-	{
+		ROS_DEBUG_STREAM("pt: " << pt2);
+		//ROS_DEBUG_STREAM("du: " << (b_ - b).t());
 		//transform the point into world coordinates
-		tf::Quaternion tf_q1_c = tf::Quaternion(q1_c.x(), q1_c.y(), q1_c.z(), q1_c.w());
-		tf::Vector3 tf_r1_c = tf::Vector3(r1_c.x(), r1_c.y(), r1_c.z());
-		tf::Transform tf_w2c = tf::Transform(tf_q1_c, tf_r1_c);
 
 		tf::Vector3 tf_r = tf::Vector3(r(0), r(1), r(2));
 
-		tf::Vector3 tf_r_w = tf_w2c.inverse() * tf_r;
+		tf::Vector3 tf_r_w = t1_c.inverse() * tf_r;
 
 		r(0) = tf_r_w.getX();
 		r(1) = tf_r_w.getY();
 		r(2) = tf_r_w.getZ();
+
+		ROS_DEBUG_STREAM("r world: " << r);
 		return true;
 	}
 	else
@@ -450,6 +503,8 @@ void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf, std:
 			//ROS_DEBUG_STREAM("pt1: " << last2DFeature.getUndistorted());
 			//ROS_DEBUG_STREAM("pt2: " << current2DFeature.getUndistorted() << "\n");
 
+
+
 			cv::Matx31d r; //resulting point
 			double error; //error in pixels
 
@@ -457,21 +512,29 @@ void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf, std:
 
 			if(successful)
 			{
+				double d = (x2.getr() - x1.getr()).norm();
+				double r_cov_sum = (x1.covariance(0, 0) + x1.covariance(1, 1) + x1.covariance(2, 2) + x2.covariance(0, 0) + x2.covariance(1, 1) + x2.covariance(1, 1));
+
+				ROS_DEBUG_STREAM("frame used: " << frame_index);
+				ROS_DEBUG_STREAM("dist traveled: " << d);
+				ROS_DEBUG_STREAM("r_cov_sum: " << r_cov_sum);
+
 				if(match3D)
 				{
-					double d = (x2.getr() - x1.getr()).norm();
 
-					matched3DFeature.update(Eigen::Vector3d(r(0), r(1), r(2)), error + 1/d);
+
+					matched3DFeature.update(Eigen::Vector3d(r(0), r(1), r(2)), error + (1/d) + r_cov_sum);
 					matched3DFeature.current2DFeatureMatchID = current2DFeature.getFeatureID();
 					matched3DFeature.current2DFeatureMatchIndex = i;
 
 					ROS_DEBUG_STREAM("updating feature new cov: " << matched3DFeature.variance);
+					ROS_DEBUG_STREAM("after pos: " << matched3DFeature.position);
 
 					actives.push_back(matched3DFeature);
 				}
 				else
 				{
-					double d = (x2.getr() - x1.getr()).norm();
+
 
 					ROS_DEBUG_STREAM("adding feature");
 					VIOFeature3D newFeat;
@@ -479,7 +542,7 @@ void VIO::update3DFeatures(VIOState x, VIOState x_last, Frame cf, Frame lf, std:
 					newFeat.current2DFeatureMatchID = current2DFeature.getFeatureID();
 					newFeat.current2DFeatureMatchIndex = i;
 					newFeat.position = Eigen::Vector3d(r(0), r(1), r(2));
-					newFeat.variance = error + 1/d;
+					newFeat.variance = 10000; // starting cov
 					newFeat.colorSet = true;
 
 					actives.push_back(newFeat);
@@ -585,14 +648,14 @@ void VIO::readROSParameters()
 
 	ros::param::param<std::string>("~active_features_topic", ACTIVE_FEATURES_TOPIC, DEFAULT_ACTIVE_FEATURES_TOPIC);
 
-	ros::param::param<double>("~min_triangualtion_dist", MIN_TRIANGUALTION_DIST, DEFAULT_MIN_TRIANGUALTION_DIST);
+	ros::param::param<double>("~min_triag_dist", MIN_TRIANGUALTION_DIST, DEFAULT_MIN_TRIANGUALTION_DIST);
 
 	ros::param::param<double>("~min_start_dist", MIN_START_DIST, DEFAULT_MIN_START_DIST);
 
-	ros::param::param<int>("frame_buffer_length", FRAME_BUFFER_LENGTH, DEFAULT_FRAME_BUFFER_LENGTH);
+	ros::param::param<int>("~frame_buffer_length", FRAME_BUFFER_LENGTH, DEFAULT_FRAME_BUFFER_LENGTH);
 
-	ros::param::param<double>("max_triangulation_error", MAX_TRIAG_ERROR, DEFAULT_MAX_TRIAG_ERROR);
-	ros::param::param<double>("min_triangulation_z", MIN_TRIAG_Z, DEFAULT_MIN_TRIAG_Z);
+	ros::param::param<double>("~max_triangulation_error", MAX_TRIAG_ERROR, DEFAULT_MAX_TRIAG_ERROR);
+	ros::param::param<double>("~min_triangulation_z", MIN_TRIAG_Z, DEFAULT_MIN_TRIAG_Z);
 }
 
 /*
@@ -635,6 +698,75 @@ void VIO::correctOrientation(tf::Quaternion q, double certainty)
 	//Takes orientation and rotates it towards q.
 	state.setQuaternion(state.getTFQuaternion().slerp(q, certainty));
 }
+
+double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf, Eigen::Matrix<double, 7, 1>& Z, bool& pass)
+{
+	if(actives.size() < 4)
+	{
+		pass = false;
+		return 0;
+	}
+
+	std::vector<cv::Point3f> objectPoints;
+	std::vector<cv::Point2f> imagePoints;
+
+	cv::Mat tvec, rvec;
+
+	double cov_sum = 0;
+
+	for(int i = 0; i < actives.size(); i++)
+	{
+		if(lf.features.at(actives.at(i).current2DFeatureMatchIndex).forwardMatched)
+		{
+			objectPoints.push_back(cv::Point3f(actives.at(i).position(0), actives.at(i).position(1), actives.at(i).position(2)));
+
+			VIOFeature2D pt = cf.features.at(lf.features.at(actives.at(i).current2DFeatureMatchIndex).forwardMatchIndex);
+
+			ROS_ASSERT(pt.getFeatureID() == lf.features.at(actives.at(i).current2DFeatureMatchIndex).forwardMatchID);
+			ROS_ASSERT(pt.getMatchedID() == lf.features.at(actives.at(i).current2DFeatureMatchIndex).getFeatureID());
+			ROS_ASSERT(actives.at(i).current2DFeatureMatchID = lf.features.at(actives.at(i).current2DFeatureMatchIndex).getFeatureID());
+			ROS_ASSERT(pt.getMatchedID() == actives.at(i).current2DFeatureMatchID);
+
+			imagePoints.push_back(pt.getUndistorted());
+
+			cov_sum += actives.at(i).variance;
+		}
+	}
+
+	if(objectPoints.size() < 4)
+	{
+		pass = false;
+		return 0;
+	}
+
+	cv::solvePnP(objectPoints, imagePoints, lf.K, cv::noArray(), rvec, tvec);
+
+	cv::Mat cv_R;
+
+	cv::Rodrigues(rvec, cv_R);
+
+	Eigen::Vector3cd t;
+	cv::cv2eigen(tvec, t);
+
+	Eigen::Matrix<double, 3, 3> R;
+	cv::cv2eigen(cv_R, R);
+
+	Eigen::Quaterniond q(R.transpose());
+	Eigen::Vector3cd r = -R * t;
+
+	Z(0, 0) = r(0).real();
+	Z(1, 0) = r(1).real();
+	Z(2, 0) = r(2).real();
+
+	Z(3, 0) = q.w();
+	Z(4, 0) = q.x();
+	Z(5, 0) = q.y();
+	Z(6, 0) = q.z();
+
+	pass = true;
+	return cov_sum / actives.size();
+}
+
 /*
  * recalibrates the state using average pixel motion
  * uses an Extended Kalman Filter to predict and update the state and its
@@ -669,8 +801,27 @@ VIOState VIO::estimateMotion(VIOState x, Frame lastFrame, Frame currentFrame)
 		//run ekf predict step.
 		//this will update the state using imu measurements
 		//it will also propagate the error throughout the predction step into the states covariance matrix
-		newX = ekf.predict(x, currentFrame.timeImageCreated);
+		VIOState pred = ekf.predict(x, currentFrame.timeImageCreated);
 
+		Eigen::Matrix<double, 7, 1> meas;
+		double meas_error;
+		bool pass = false;
+
+		meas_error = this->poseFromPoints(this->active3DFeatures, lastFrame, currentFrame, meas, pass);
+
+		if(pass)
+		{
+			ROS_DEBUG_STREAM("updating with: " << meas.transpose());
+
+			VisualMeasurement z = VisualMeasurement(meas, meas_error * Eigen::MatrixXd::Identity(7, 7));
+
+			newX = ekf.update(pred, z);
+		}
+		else
+		{
+			ROS_DEBUG_STREAM("pose estimate did not pass");
+			newX = pred;
+		}
 
 	}
 	else

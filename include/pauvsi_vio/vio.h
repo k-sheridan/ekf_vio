@@ -56,9 +56,9 @@
 #define DEFAULT_QUEUE_SIZE 10
 #define DEFAULT_ACTIVE_FEATURES_TOPIC "/pauvsi_vio/activefeatures"
 #define DEFAULT_PUBLISH_ACTIVE_FEATURES true
-#define DEFAULT_MIN_TRIANGUALTION_DIST 0.5
+#define DEFAULT_MIN_TRIANGUALTION_DIST 0.1
 #define DEFAULT_MIN_START_DIST 1
-#define DEFAULT_FRAME_BUFFER_LENGTH 10
+#define DEFAULT_FRAME_BUFFER_LENGTH 20
 #define DEFAULT_MAX_TRIAG_ERROR 2000
 #define DEFAULT_MIN_TRIAG_Z 0.02
 
@@ -167,6 +167,8 @@ public:
 
 	bool visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction, tf::Vector3& rotationInference,
 			tf::Vector3& unitVelocityInference, double& averageMovement);
+
+	double poseFromPoints(std::vector<VIOFeature3D> points3d, Frame lf, Frame cf, Eigen::Matrix<double, 7, 1>& Z, bool& pass);
 
 
 	void recalibrateState(double avgPixelChange, double threshold, bool consecutive);

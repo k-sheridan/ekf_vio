@@ -85,6 +85,11 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 			}
 
 			newFrame.addFeature(feat); // add this feature to the new frame
+
+			//set the forward match for the old feature
+			oldFrame.features.at(i).forwardMatched = true;
+			oldFrame.features.at(i).forwardMatchIndex = newFrame.features.size() - 1;
+			oldFrame.features.at(i).forwardMatchID = newFrame.features.at(newFrame.features.size() - 1).getFeatureID();
 		}
 		else
 		{

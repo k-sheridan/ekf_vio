@@ -39,6 +39,10 @@ private:
 
 public:
 
+	bool forwardMatched;
+	int forwardMatchIndex;
+	int forwardMatchID;
+
 	VIOFeature2D()
 	{
 

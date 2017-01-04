@@ -22,6 +22,32 @@ VIOEKF::~VIOEKF() {
 	// TODO Auto-generated destructor stub
 }
 
+VIOState VIOEKF::update(VIOState in, VisualMeasurement z)
+{
+	VIOState out = in;
+
+	Eigen::Matrix<double, 7, 16> H;
+	H << 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0;
+
+	Eigen::Matrix<double, 7, 1> y = z.z - H*in.vector;
+
+	Eigen::Matrix<double, 7, 7> S = H * in.covariance * H.transpose() + z.covariance;
+
+	Eigen::Matrix<double, 16, 7> K = in.covariance * H.transpose() * S.inverse();
+
+	out.vector = in.vector + K * y;
+
+	out.covariance = (Eigen::MatrixXd::Identity(16, 16) - K*H) * in.covariance;
+
+	return out;
+}
+
 VIOState VIOEKF::predict(VIOState lastState, ros::Time predictionTime)
 {
 	VIOState state = lastState;
@@ -48,6 +74,13 @@ VIOState VIOEKF::predict(VIOState lastState, ros::Time predictionTime)
 	//predict to the end
 	state = this->transitionState(state, predictionTime.toSec() - state.getTime().toSec());
 	// this sets the states omega and alpha to the last state's omega and alpha
+
+	//compute the full covariance for the entire pred step
+
+	Eigen::Matrix<double, 16, 16> F = this->stateJacobian(lastState, predictionTime.toSec() - lastState.getTime().toSec()); // compute the state transition jacobian
+	Eigen::Matrix<double, 16, 16> predictionError = this->computePredictionError(predictionTime.toSec() - lastState.getTime().toSec());
+	//propagate the error using the jacobian
+	state.covariance = F * state.covariance * F.transpose() + predictionError;
 
 	//ROS_DEBUG_STREAM("new cov: " << state.covariance);
 
@@ -167,17 +200,12 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	//update the new state time
 	xNew.setTime(ros::Time(x.getTime().toSec() + dt));
 
-	Eigen::Matrix<double, 16, 16> F = this->stateJacobian(x, dt); // compute the state transition jacobian
-	Eigen::Matrix<double, 16, 16> predictionError = this->computePredictionError(dt);
-	//propagate the error using the jacobian
-	xNew.covariance = F * x.covariance * F.transpose() + predictionError;
-
 
 	return xNew;
 }
 
 /*
- * this constructs the jacobain of the state transiion function
+ * this constructs the jacobain of the state transition function
  */
 Eigen::Matrix<double, 16, 16> VIOEKF::stateJacobian(VIOState state, double dt){
 

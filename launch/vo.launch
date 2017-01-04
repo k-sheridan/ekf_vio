@@ -40,6 +40,10 @@
 		<param name="num_features" value="50"/>
 		<param name="min_new_feature_distance" value="20"/>
 		<param name="convert2rad" value="true"/>
+		<param name="min_triag_dist" value="0.03"/>
+		<param name="min_start_dist" value="0.2"/>
+		<param name="max_triangulation_error" value="100"/>
+		<param name="frame_buffer_length" value="50"/>
 	</node>
 	
 	
