@@ -171,7 +171,7 @@ public:
 
 		std::vector<cv::Point2f> out;
 
-		cv::fisheye::undistortPoints(in, out, K, D, cv::noArray(), K);
+		cv::fisheye::undistortPoints(in, out, K, D);
 
 		this->undistort_feature = out.at(0);
 		this->undistorted = true;

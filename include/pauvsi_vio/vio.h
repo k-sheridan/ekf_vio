@@ -84,7 +84,7 @@ public:
 	double MAX_TRIAG_ERROR;
 	double MIN_TRIAG_Z;
 
-	bool started;
+	bool initialized;
 
 	std::string ACTIVE_FEATURES_TOPIC;
 
@@ -110,22 +110,18 @@ public:
 
 	void setCurrentFrame(cv::Mat frame, ros::Time t);
 
-	cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);
-
-	cv::Mat_<double> LinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);
-
 	/*
 	 * gets the most recently added frame
 	 */
-	Frame getCurrentFrame(){
-		return currentFrame;
+	Frame& currentFrame(){
+		return this->frameBuffer.at(0);
 	}
 
 	/*
 	 * gets the last frame
 	 */
-	Frame getLastFrame(){
-		return lastFrame;
+	Frame& lastFrame(){
+		return this->frameBuffer.at(1);
 	}
 
 	/*
@@ -159,19 +155,22 @@ public:
 
 	void update3DFeatures(VIOState x, VIOState x_last, Frame currentFrame, Frame lastFrame, std::deque<Frame> fb);
 
-	bool triangulateAndCheck(cv::Point2f pt1, cv::Point2f pt2, cv::Matx33d K1, cv::Matx33d K2, VIOState x1, VIOState x2, double& error, cv::Matx31d& r, tf::Transform base2cam);
-
 	void findBestCorresponding2DFeature(VIOFeature2D start, Frame lf, std::deque<Frame> fb, VIOFeature2D& end, int& frameIndex);
 
 	void run();
-
-	bool visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction, tf::Vector3& rotationInference,
-			tf::Vector3& unitVelocityInference, double& averageMovement);
 
 	double poseFromPoints(std::vector<VIOFeature3D> points3d, Frame lf, Frame cf, Eigen::Matrix<double, 7, 1>& Z, bool& pass);
 
 
 	void recalibrateState(double avgPixelChange, double threshold, bool consecutive);
+
+
+
+/*	bool visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction, tf::Vector3& rotationInference,
+				tf::Vector3& unitVelocityInference, double& averageMovement);
+	cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);
+	cv::Mat_<double> LinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);
+	bool triangulateAndCheck(cv::Point2f pt1, cv::Point2f pt2, cv::Matx33d K1, cv::Matx33d K2, VIOState x1, VIOState x2, double& error, cv::Matx31d& r, tf::Transform base2cam);*/
 
 protected:
 	ros::NodeHandle nh;
@@ -187,10 +186,10 @@ protected:
 	std::string cameraTopic;
 	std::string imuTopic;
 
-	Frame currentFrame; // the current frame
-	Frame lastFrame; //the last frame
+	//Frame currentFrame; // the current frame
+	//Frame lastFrame; //the last frame
 
-	std::deque<Frame> frameBuffer; // holds previous frames
+	std::deque<Frame> frameBuffer; // holds frames
 
 	FeatureTracker feature_tracker;
 
