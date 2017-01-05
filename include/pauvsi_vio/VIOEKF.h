@@ -105,6 +105,13 @@ public:
 		q.setW(sqrt(v1.length()*v1.length()*v2.length()*v2.length()) + v1.dot(v2));
 		q.normalize();
 
+		if(abs(v1.dot(v2)) > 0.9999999)
+		{
+			q.setValue(0, 0, 0);
+			q.setW(1);
+			ROS_DEBUG_STREAM("fixing quat");
+		}
+
 		return q;
 	}
 

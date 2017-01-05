@@ -411,8 +411,8 @@ public:
 	/*
 	 * uses manhattan method to find distance between two pixels
 	 */
-	int manhattan(cv::Point2f p1, cv::Point2f p2){
-		return abs((int)p2.x - (int) p1.x) + abs((int)p2.y - (int)p1.y);
+	float manhattan(cv::Point2f p1, cv::Point2f p2){
+		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
 	}
 
 	/*

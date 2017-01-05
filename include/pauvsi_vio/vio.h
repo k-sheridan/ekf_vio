@@ -57,10 +57,13 @@
 #define DEFAULT_ACTIVE_FEATURES_TOPIC "/pauvsi_vio/activefeatures"
 #define DEFAULT_PUBLISH_ACTIVE_FEATURES true
 #define DEFAULT_MIN_TRIANGUALTION_DIST 0.1
-#define DEFAULT_MIN_START_DIST 1
+#define DEFAULT_INIT_PXL_DELTA 1
 #define DEFAULT_FRAME_BUFFER_LENGTH 20
 #define DEFAULT_MAX_TRIAG_ERROR 2000
 #define DEFAULT_MIN_TRIAG_Z 0.02
+#define DEFAULT_MIN_TRIAG_FEATURES 40
+#define DEFAULT_IDEAL_FUNDAMENTAL_PXL_DELTA 0.3
+#define DEFAULT_MIN_FUNDAMENTAL_PXL_DELTA 0.3
 
 
 class VIO
@@ -79,10 +82,14 @@ public:
 	double RECALIBRATION_THRESHOLD;
 	bool PUBLISH_ACTIVE_FEATURES;
 	double MIN_TRIANGUALTION_DIST;
-	double MIN_START_DIST;
+	double INIT_PXL_DELTA;
 	int FRAME_BUFFER_LENGTH;
 	double MAX_TRIAG_ERROR;
 	double MIN_TRIAG_Z;
+
+	int MIN_TRIAG_FEATURES;
+	double IDEAL_FUNDAMENTAL_PXL_DELTA;
+	double MIN_FUNDAMENTAL_PXL_DELTA;
 
 	bool initialized;
 
@@ -144,6 +151,7 @@ public:
 
 	void viewImage(cv::Mat img);
 	void viewImage(Frame frame);
+	void viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new);
 
 	void broadcastWorldToOdomTF();
 
@@ -153,7 +161,13 @@ public:
 
 	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
 
-	void update3DFeatures(VIOState x, VIOState x_last, Frame currentFrame, Frame lastFrame, std::deque<Frame> fb);
+	void update3DFeatures();
+
+	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2, bool& pass);
+
+	void getBestCorrespondences(double& pixel_delta,  std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, VIOState& x1, VIOState& x2, int& match_index);
+
+	VIOFeature2D getCorrespondingFeature(VIOFeature2D currFeature, Frame lastFrame);
 
 	void findBestCorresponding2DFeature(VIOFeature2D start, Frame lf, std::deque<Frame> fb, VIOFeature2D& end, int& frameIndex);
 
@@ -164,9 +178,16 @@ public:
 
 	void recalibrateState(double avgPixelChange, double threshold, bool consecutive);
 
+	/*
+	 * uses manhattan method to find distance between two pixels
+	 */
+	float manhattan(cv::Point2f p1, cv::Point2f p2){
+		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
+	}
 
 
-/*	bool visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction, tf::Vector3& rotationInference,
+
+	/*	bool visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction, tf::Vector3& rotationInference,
 				tf::Vector3& unitVelocityInference, double& averageMovement);
 	cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);
 	cv::Mat_<double> LinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);

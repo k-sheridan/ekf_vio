@@ -76,9 +76,9 @@ void VIO::cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msg
 	this->run();
 
 	//get the run time
-	ROS_DEBUG_STREAM_THROTTLE(0.5, (ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime");
+	ROS_DEBUG_STREAM((ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime");
 
-	this->viewImage(this->currentFrame());
+	//this->viewImage(this->currentFrame());
 }
 
 void VIO::imuCallback(const sensor_msgs::ImuConstPtr& msg)
@@ -100,6 +100,47 @@ cv::Mat VIO::get3x3FromVector(boost::array<double, 9> vec)
 
 	ROS_DEBUG_STREAM_ONCE("K = " << mat);
 	return mat;
+}
+
+void VIO::viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new)
+{
+	cv::Mat img1 = f1.image;
+	cv::Mat img2 = f2.image;
+
+	cv::cvtColor(img1, img1, CV_GRAY2BGR);
+	cv::cvtColor(img2, img2, CV_GRAY2BGR);
+
+	for(int i = 0; i < f1.features.size(); i++)
+	{
+		cv::drawMarker(img1, f1.features.at(i).getFeaturePosition(), cv::Scalar(255, 0, 0), cv::MARKER_DIAMOND, 4);
+	}
+
+	for(int i = 0; i < f2.features.size(); i++)
+	{
+		cv::drawMarker(img2, f2.features.at(i).getFeaturePosition(), cv::Scalar(255, 0, 0), cv::MARKER_DIAMOND, 4);
+	}
+
+	for(int i = 0; i < ft1.size(); i++)
+	{
+		cv::drawMarker(img1, ft1.at(i).getFeaturePosition(), cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 10);
+	}
+
+	for(int i = 0; i < ft2.size(); i++)
+	{
+		cv::drawMarker(img2, ft2.at(i).getFeaturePosition(), cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 10);
+	}
+
+	for(int i = 0; i < pt1_new.size(); i++)
+		cv::drawMarker(img1, pt1_new.at(i), cv::Scalar(0, 0, 255), cv::MARKER_TRIANGLE_UP, 8);
+
+	for(int i = 0; i < pt2_new.size(); i++)
+		cv::drawMarker(img2, pt2_new.at(i), cv::Scalar(0, 0, 255), cv::MARKER_TRIANGLE_UP, 8);
+
+	cv::Mat img;
+	cv::vconcat(img2, img1, img);
+
+	cv::imshow("matches", img);
+	cv::waitKey(30);
 }
 
 /*
@@ -160,14 +201,14 @@ void VIO::run()
 
 		//MOTION ESTIMATION
 		this->lastState = this->state;
-		//this->state = this->estimateMotion(this->lastState, this->lastFrame(), this->currentFrame());
+		this->state = this->estimateMotion(this->lastState, this->lastFrame(), this->currentFrame());
 		//set the currentFrames new state
 		this->currentFrame().state = this->state;
 
 		if(this->initialized) // if initialized
 		{
 			//UPDATE 3D ACTIVE AND INACTIVE FEATURES
-			//this->update3DFeatures(this->state, this->lastState, this->currentFrame(), this->lastFrame(), this->frameBuffer);
+			this->update3DFeatures();
 		}
 	}
 
@@ -191,6 +232,7 @@ void VIO::run()
 	this->publishActivePoints();
 
 	//ROS_DEBUG_STREAM("imu readings: " << this->imuMessageBuffer.size());
+	ROS_DEBUG_STREAM("frame: " << this->frameBuffer.size() << " init: " << initialized);
 }
 
 
@@ -216,12 +258,14 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 		consecutiveRecalibration = false;
 	}
 
+	//MOTION ESTIMATION
+
 	VIOState newX = x; // set newX to last x
 
 	//if the camera moves more than the minimum START distance
 	//start the motion estimate
 	//set the system to initialized
-	if(this->initialized == true || avgFeatureChange > this->MIN_START_DIST)
+	if(this->initialized == true || avgFeatureChange > this->INIT_PXL_DELTA)
 	{
 		this->initialized = true; // this is the initialize step
 
@@ -234,11 +278,12 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 		double meas_error;
 		bool pass = false;
 
-		meas_error = this->poseFromPoints(this->active3DFeatures, lf, cf, meas, pass);
+		//meas_error = this->poseFromPoints(this->active3DFeatures, lf, cf, meas, pass);
 
 		if(pass)
 		{
 			ROS_DEBUG_STREAM("updating with: " << meas.transpose());
+			ROS_DEBUG_STREAM("meas cov: " << meas_error);
 
 			VisualMeasurement z = VisualMeasurement(meas, meas_error * Eigen::MatrixXd::Identity(7, 7));
 
@@ -268,6 +313,188 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 	}
 
 	return newX;
+}
+
+void VIO::update3DFeatures()
+{
+	cv::Mat F;
+	cv::Matx33f R;
+	cv::Matx31f t;
+	std::vector<cv::Point2f> pt1, pt2;
+	bool pass;
+	double error;
+
+	error = this->computeFundamentalMatrix(F, R, t, pt1, pt2, pass);
+}
+
+double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1_out, std::vector<cv::Point2f>& pt2_out, bool& pass)
+{
+	double pixel_delta = 0;
+	VIOState x1, x2;
+	std::vector<VIOFeature2D> ft1, ft2;
+	int match_index;
+
+	double error;
+
+	std::vector<cv::Point2f> pt1_new, pt2_new;
+
+	this->getBestCorrespondences(pixel_delta, ft1, ft2, x1, x2, match_index);
+
+	if(pixel_delta > MIN_FUNDAMENTAL_PXL_DELTA)
+	{
+		pass = true;
+
+		std::vector<cv::Point2f> pt1, pt2;
+		for(int i = 0; i < ft1.size(); i++)
+		{
+			pt1.push_back(ft1.at(i).getUndistorted());
+			pt2.push_back(ft2.at(i).getUndistorted());
+		}
+
+		cv::Mat E = cv::findEssentialMat(pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::RANSAC);
+
+		cv::correctMatches(E, pt1, pt2, pt1_new, pt2_new);
+
+		for(int i = 0; i < pt1_new.size(); i++)
+		{
+			cv::Matx31f u1, u2;
+
+			u1(0) = pt1_new.at(i).x;
+			u1(1) = pt1_new.at(i).y;
+			u1(2) = 1.0;
+
+			u2(0) = pt2_new.at(i).x;
+			u2(1) = pt2_new.at(i).y;
+			u2(2) = 1.0;
+
+			Eigen::Matrix<float, 3, 1> u1_eig, u2_eig;
+			Eigen::Matrix<float, 3, 3> E_eig;
+
+			cv::cv2eigen(u1, u1_eig);
+			cv::cv2eigen(u2, u2_eig);
+			cv::cv2eigen(E, E_eig);
+
+			error += abs((u2_eig.transpose() * E_eig * u1_eig)(0, 0));
+
+		}
+
+		ROS_DEBUG_STREAM("error: " << error);
+	}
+	else
+	{
+		ROS_DEBUG_STREAM("pixel delta too small for fundamental mat computation");
+		pass = false;
+	}
+
+	this->viewMatches(ft1, ft2, this->frameBuffer.at(match_index), currentFrame(), pt1_new, pt2_new);
+}
+
+void VIO::getBestCorrespondences(double& pixel_delta, std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, VIOState& x1, VIOState& x2, int& match_index)
+{
+	ros::Time start = ros::Time::now();
+
+	int bestFtIndex = 0;
+	match_index = 0;
+
+	double bestPxlDelta = 0;
+
+	std::deque<std::deque<VIOFeature2D> > temp_ft1;
+	std::deque<std::deque<VIOFeature2D> > temp_ft2;
+
+	std::deque<VIOFeature2D> dq;
+	for(int i = 0; i < currentFrame().features.size(); i++)
+		dq.push_back(currentFrame().features.at(i));
+
+	temp_ft1.push_back(dq);
+	temp_ft2.push_back(dq);
+
+	for(int i = 1; i < this->frameBuffer.size(); i++)
+	{
+		float pxlSum = 0;
+
+		//ROS_DEBUG("t0");
+
+		//ROS_DEBUG_STREAM("last vec size: " << temp_ft1.at(i - 1).size());
+
+		std::deque<VIOFeature2D> t1, t2;
+
+		temp_ft1.push_back(t1);
+		temp_ft2.push_back(t2);
+
+		ros::Time start2 = ros::Time::now();
+
+		for(int j = 0; j < temp_ft1.at(i - 1).size(); j++)
+		{
+			if(temp_ft1.at(i - 1).at(j).isMatched())
+			{
+				temp_ft2.at(i).push_back(temp_ft2.at(i - 1).at(j));
+
+				temp_ft1.at(i).push_back(this->getCorrespondingFeature(temp_ft1.at(i - 1).at(j), this->frameBuffer.at(i)));
+
+				pxlSum += this->manhattan(temp_ft1.at(i).at(temp_ft1[i].size() - 1).getUndistorted(), temp_ft2.at(i - 1).at(j).getUndistorted());
+
+			}
+		}
+
+		//pxlSum = i;
+
+		ROS_DEBUG_STREAM((ros::Time::now().toSec() - start2.toSec()) * 1000 << " milliseconds runtime (feature correspondence inner loop)");
+
+		//ROS_DEBUG("t1");
+
+		if(temp_ft1.at(i).size() < MIN_TRIAG_FEATURES)
+		{
+			ROS_DEBUG_STREAM("too few features break");
+			break;
+		}
+
+		if(pxlSum / temp_ft1.at(i).size() > IDEAL_FUNDAMENTAL_PXL_DELTA)
+		{
+			ROS_DEBUG_STREAM("ideal pxl delta break");
+
+			bestFtIndex = i;
+
+			bestPxlDelta = pxlSum / temp_ft1.at(i).size();
+
+			match_index = i;
+			break;
+		}
+
+		if(pxlSum / temp_ft1.size() > bestPxlDelta)
+		{
+			ROS_DEBUG_STREAM("better pxlDelta");
+
+			bestFtIndex = i;
+
+			bestPxlDelta = pxlSum / temp_ft1.at(i).size();
+
+			match_index = i;
+		}
+
+		//ROS_DEBUG("t2");
+
+	}
+
+	std::copy(temp_ft1.at(bestFtIndex).begin(), temp_ft1.at(bestFtIndex).end(), std::back_inserter(ft1));
+	std::copy(temp_ft2.at(bestFtIndex).begin(), temp_ft2.at(bestFtIndex).end(), std::back_inserter(ft2));
+	x1 = frameBuffer.at(bestFtIndex).state;
+	x2 = frameBuffer.at(bestFtIndex).state;
+	pixel_delta = bestPxlDelta;
+
+	ROS_DEBUG_STREAM("best pixel delta " << pixel_delta);
+	ROS_DEBUG_STREAM("match index: " << match_index);
+	ROS_DEBUG_STREAM((ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime (feature correspondence)");
+}
+
+VIOFeature2D VIO::getCorrespondingFeature(VIOFeature2D currFeature, Frame lastFrame)
+{
+	//ROS_ASSERT(currFeature.isMatched());
+
+	VIOFeature2D lastFeature = lastFrame.features.at(currFeature.getMatchedIndex());
+
+	ROS_ASSERT(lastFeature.getFeatureID() == currFeature.getMatchedID());
+
+	return lastFeature;
 }
 
 /*
@@ -366,12 +593,17 @@ void VIO::readROSParameters()
 
 	ros::param::param<double>("~min_triag_dist", MIN_TRIANGUALTION_DIST, DEFAULT_MIN_TRIANGUALTION_DIST);
 
-	ros::param::param<double>("~min_start_dist", MIN_START_DIST, DEFAULT_MIN_START_DIST);
+	ros::param::param<double>("~pixel_delta_init_thresh", INIT_PXL_DELTA, DEFAULT_INIT_PXL_DELTA);
 
 	ros::param::param<int>("~frame_buffer_length", FRAME_BUFFER_LENGTH, DEFAULT_FRAME_BUFFER_LENGTH);
 
 	ros::param::param<double>("~max_triangulation_error", MAX_TRIAG_ERROR, DEFAULT_MAX_TRIAG_ERROR);
 	ros::param::param<double>("~min_triangulation_z", MIN_TRIAG_Z, DEFAULT_MIN_TRIAG_Z);
+
+	ros::param::param<double>("~ideal_fundamental_matrix_pxl_delta", IDEAL_FUNDAMENTAL_PXL_DELTA, DEFAULT_IDEAL_FUNDAMENTAL_PXL_DELTA);
+	ros::param::param<double>("~min_fundamental_matrix_pxl_delta", MIN_FUNDAMENTAL_PXL_DELTA, DEFAULT_MIN_FUNDAMENTAL_PXL_DELTA);
+
+	ros::param::param<int>("~min_triag_features", MIN_TRIAG_FEATURES, DEFAULT_MIN_TRIAG_FEATURES);
 }
 
 /*
@@ -455,7 +687,9 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 		return 0;
 	}
 
-	cv::solvePnP(objectPoints, imagePoints, lf.K, cv::noArray(), rvec, tvec);
+	float reprojError;
+
+	cv::solvePnPRansac(objectPoints, imagePoints, lf.K, cv::Mat::eye(cv::Size(3, 3), CV_32F), rvec, tvec, false);
 
 	cv::Mat cv_R;
 
@@ -624,9 +858,9 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 		if(scale != 0)
 			ekf.scaleAccelerometer = aWeightedNode.accelScale; // + (normalize)*ekf.scaleAccelerometer;
 
-		tf::Vector3 gravity(0,0,GRAVITY_MAG);
+		//tf::Vector3 gravity(0,0,GRAVITY_MAG);
 
-		correctOrientation(ekf.getDifferenceQuaternion(gravity, accel), (1-normalize));
+		//correctOrientation(ekf.getDifferenceQuaternion(gravity, accel), (1-normalize));
 
 		//ROS_DEBUG_STREAM("new acceleration after scaling " << ekf.scaleAccelerometer * accel);
 	}
