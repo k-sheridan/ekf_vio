@@ -33,6 +33,9 @@ public:
 
 	virtual ~VIOEKF();
 
+	bool stillPredicting;
+	VIOState x_start_state;
+
 	double gyroBiasX;
 	double gyroBiasY;
 	double gyroBiasZ;

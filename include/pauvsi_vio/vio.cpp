@@ -102,6 +102,78 @@ cv::Mat VIO::get3x3FromVector(boost::array<double, 9> vec)
 	return mat;
 }
 
+template <typename T1, typename T2>
+void VIO::drawEpipolarLines(const std::string& title, const cv::Matx<T1,3,3> F,
+		const cv::Mat& img1, const cv::Mat& img2,
+		const std::vector<cv::Point_<T2> > points1,
+		const std::vector<cv::Point_<T2> > points2,
+		const float inlierDistance)
+{
+	CV_Assert(img1.size() == img2.size() && img1.type() == img2.type());
+	cv::Mat outImg(img1.rows, img1.cols*2, CV_8UC3);
+	cv::Rect rect1(0,0, img1.cols, img1.rows);
+	cv::Rect rect2(img1.cols, 0, img1.cols, img1.rows);
+	/*
+	 * Allow color drawing
+	 */
+	if (img1.type() == CV_8U)
+	{
+		cv::cvtColor(img1, outImg(rect1), CV_GRAY2BGR);
+		cv::cvtColor(img2, outImg(rect2), CV_GRAY2BGR);
+	}
+	else
+	{
+		img1.copyTo(outImg(rect1));
+		img2.copyTo(outImg(rect2));
+	}
+	std::vector<cv::Vec<T2,3> > epilines1, epilines2;
+	cv::computeCorrespondEpilines(points1, 1, F, epilines1); //Index starts with 1
+	cv::computeCorrespondEpilines(points2, 2, F, epilines2);
+
+	CV_Assert(points1.size() == points2.size() &&
+			points2.size() == epilines1.size() &&
+			epilines1.size() == epilines2.size());
+
+	cv::RNG rng(0);
+	for(size_t i=0; i<points1.size(); i++)
+	{
+		if(inlierDistance > 0)
+		{
+			if(distancePointLine(points1[i], epilines2[i]) > inlierDistance ||
+					distancePointLine(points2[i], epilines1[i]) > inlierDistance)
+			{
+				//The point match is no inlier
+				continue;
+			}
+		}
+		/*
+		 * Epipolar lines of the 1st point set are drawn in the 2nd image and vice-versa
+		 */
+		cv::Scalar color(rng(256),rng(256),rng(256));
+
+		cv::line(outImg(rect2),
+				cv::Point(0,-epilines1[i][2]/epilines1[i][1]),
+				cv::Point(img1.cols,-(epilines1[i][2]+epilines1[i][0]*img1.cols)/epilines1[i][1]),
+				color);
+		cv::circle(outImg(rect1), points1[i], 3, color, -1, CV_AA);
+
+		cv::line(outImg(rect1),
+				cv::Point(0,-epilines2[i][2]/epilines2[i][1]),
+				cv::Point(img2.cols,-(epilines2[i][2]+epilines2[i][0]*img2.cols)/epilines2[i][1]),
+				color);
+		cv::circle(outImg(rect2), points2[i], 3, color, -1, CV_AA);
+	}
+	cv::imshow(title, outImg);
+	cv::waitKey(1);
+}
+
+template <typename T>
+float VIO::distancePointLine(const cv::Point_<T> point, const cv::Vec<T,3>& line)
+{
+	//Line is given as a*x + b*y + c = 0
+	return abs(line(0)*point.x + line(1)*point.y + line(2)) / sqrt(line(0)*line(0)+line(1)*line(1));
+}
+
 void VIO::viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new)
 {
 	cv::Mat img1 = f1.image;
@@ -110,14 +182,28 @@ void VIO::viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> f
 	cv::cvtColor(img1, img1, CV_GRAY2BGR);
 	cv::cvtColor(img2, img2, CV_GRAY2BGR);
 
+	cv::Matx33f tK = currentFrame().K;
+
 	for(int i = 0; i < f1.features.size(); i++)
 	{
-		cv::drawMarker(img1, f1.features.at(i).getFeaturePosition(), cv::Scalar(255, 0, 0), cv::MARKER_DIAMOND, 4);
+		cv::Matx31f u;
+		u(0) = f1.features.at(i).getUndistorted().x;
+		u(1) = f1.features.at(i).getUndistorted().y;
+		u(2) = 1.0;
+		u = tK * u;
+
+		cv::drawMarker(img1, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(255, 0, 0), cv::MARKER_DIAMOND, 4);
 	}
 
 	for(int i = 0; i < f2.features.size(); i++)
 	{
-		cv::drawMarker(img2, f2.features.at(i).getFeaturePosition(), cv::Scalar(255, 0, 0), cv::MARKER_DIAMOND, 4);
+		cv::Matx31f u;
+		u(0) = f2.features.at(i).getUndistorted().x;
+		u(1) = f2.features.at(i).getUndistorted().y;
+		u(2) = 1.0;
+		u = tK * u;
+
+		cv::drawMarker(img2, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(255, 0, 0), cv::MARKER_DIAMOND, 4);
 	}
 
 	for(int i = 0; i < ft1.size(); i++)
@@ -131,10 +217,26 @@ void VIO::viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> f
 	}
 
 	for(int i = 0; i < pt1_new.size(); i++)
-		cv::drawMarker(img1, pt1_new.at(i), cv::Scalar(0, 0, 255), cv::MARKER_TRIANGLE_UP, 8);
+	{
+		cv::Matx31f u;
+		u(0) = pt1_new.at(i).x;
+		u(1) = pt1_new.at(i).y;
+		u(2) = 1.0;
+		u = tK * u;
+
+		cv::drawMarker(img1, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(0, 0, 255), cv::MARKER_TRIANGLE_UP, 8);
+	}
 
 	for(int i = 0; i < pt2_new.size(); i++)
-		cv::drawMarker(img2, pt2_new.at(i), cv::Scalar(0, 0, 255), cv::MARKER_TRIANGLE_UP, 8);
+	{
+		cv::Matx31f u;
+		u(0) = pt2_new.at(i).x;
+		u(1) = pt2_new.at(i).y;
+		u(2) = 1.0;
+		u = tK * u;
+
+		cv::drawMarker(img2, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(0, 0, 255), cv::MARKER_TRIANGLE_UP, 8);
+	}
 
 	cv::Mat img;
 	cv::vconcat(img2, img1, img);
@@ -321,20 +423,87 @@ void VIO::update3DFeatures()
 	cv::Matx33f R;
 	cv::Matx31f t;
 	std::vector<cv::Point2f> pt1, pt2;
+	std::vector<VIOFeature2D> ft1, ft2;
 	bool pass;
 	double error;
 
-	error = this->computeFundamentalMatrix(F, R, t, pt1, pt2, pass);
+	error = this->computeFundamentalMatrix(F, R, t, pt1, pt2, pass, ft1, ft2);
+
+	if(pass && error < MAXIMUM_FUNDAMENTAL_ERROR)
+	{
+
+		cv::Matx34f P1, P2;
+		//cv::Mat X_;
+		cv::Matx<float, 6, 4> A;
+
+		cv::hconcat(cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::Mat::zeros(cv::Size(1, 3), CV_32F), P1);
+		cv::hconcat(R, t, P2);
+		cv::vconcat(P1, P2, A);
+
+		//cv::triangulatePoints(P1, P2, pt1, pt2, X_);
+		//cv::Mat_<float> X = cv::Mat_<float>(4, pt1.size());
+		//X_.copyTo(X);
+		//ROS_ASSERT(ft2.size() == pt2.size() && ft2.size() == X.cols);
+
+		std::vector<VIOFeature3D> inactives, actives;
+
+		inactives = this->active3DFeatures;
+
+		for(int i = 0; i < ft2.size(); i++)
+		{
+			VIOFeature3D matched3dFeature;
+			bool matched3d = false;
+
+			for(int j = 0; j < inactives.size(); j++)
+			{
+				if(inactives.at(j).current2DFeatureMatchIndex == ft2.at(i).getMatchedIndex())
+				{
+					ROS_ASSERT(inactives.at(j).current2DFeatureMatchID == ft2.at(i).getMatchedID());
+					matched3d = true;
+					matched3dFeature = inactives.at(j);
+
+					inactives.erase(inactives.begin() + j);
+
+					break;
+				}
+			}
+
+			cv::Matx41f X;
+			cv::Matx61f b;
+
+			b(0) = pt1.at(i).x;
+			b(1) = pt1.at(i).y;
+			b(2) = 1.0;
+			b(3) = pt2.at(i).x;
+			b(4) = pt2.at(i).y;
+			b(5) = 1.0;
+
+			cv::solve(A, b, X, cv::DECOMP_SVD);
+
+			double reprojError = cv::norm(A*X - b);
+
+			tf::Vector3 r_c = tf::Vector3(X(0) / X(3), X(1) / X(3), X(2) / X(3));
+
+			ROS_DEBUG_STREAM("point: " << r_c.x() << ", " << r_c.y() << ", " << r_c.z());
+			ROS_DEBUG_STREAM("reproj error: " << reprojError);
+
+		}
+	}
 }
 
-double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1_out, std::vector<cv::Point2f>& pt2_out, bool& pass)
+/*
+ * computes the F mat
+ * gets scales translation
+ */
+
+double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1_out, std::vector<cv::Point2f>& pt2_out, bool& pass, std::vector<VIOFeature2D>& ft1_out, std::vector<VIOFeature2D>& ft2_out)
 {
 	double pixel_delta = 0;
 	VIOState x1, x2;
 	std::vector<VIOFeature2D> ft1, ft2;
 	int match_index;
 
-	double error;
+	double error = 0;
 
 	std::vector<cv::Point2f> pt1_new, pt2_new;
 
@@ -351,9 +520,14 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 			pt2.push_back(ft2.at(i).getUndistorted());
 		}
 
-		cv::Mat E = cv::findEssentialMat(pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::RANSAC);
+		cv::Mat mask;
+		cv::Mat E = cv::findEssentialMat(pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::RANSAC, 0.999, 1.0, mask);
 
-		cv::correctMatches(E, pt1, pt2, pt1_new, pt2_new);
+		std::vector<cv::Point2f> pt1_copy, pt2_copy;
+		pt1_copy = pt1;
+		pt2_copy = pt2;
+
+		cv::correctMatches(E, pt1_copy, pt2_copy, pt1_new, pt2_new);
 
 		for(int i = 0; i < pt1_new.size(); i++)
 		{
@@ -377,16 +551,42 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 			error += abs((u2_eig.transpose() * E_eig * u1_eig)(0, 0));
 
 		}
+		//error = 0;
+
+		cv::Mat R_temp, t_hat;
+
+		int goodPoints = cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask);
 
 		ROS_DEBUG_STREAM("error: " << error);
+		ROS_DEBUG_STREAM("good points: "  << ((double)goodPoints / pt1_new.size()) * 100 << "%");
+
+		R_temp.convertTo(R_temp,  R.type);
+		R_temp.copyTo(R);
+		t_hat.convertTo(t_hat,  t.type);
+		t_hat.copyTo(t);
+		t = ((currentFrame().state.getr() - frameBuffer.at(match_index).state.getr()).norm() * t); // return the scaled translation using the two frames states
+
+		ft1_out = ft1;
+		ft2_out = ft2;
+
+		pt1_out = pt1_new;
+		pt2_out = pt2_new;
+
+		F = E;
+
+		ROS_DEBUG_STREAM("t: " << t);
+
 	}
 	else
 	{
 		ROS_DEBUG_STREAM("pixel delta too small for fundamental mat computation");
+		error = 1e9;
 		pass = false;
 	}
 
 	this->viewMatches(ft1, ft2, this->frameBuffer.at(match_index), currentFrame(), pt1_new, pt2_new);
+
+	return error;
 }
 
 void VIO::getBestCorrespondences(double& pixel_delta, std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, VIOState& x1, VIOState& x2, int& match_index)
@@ -421,7 +621,7 @@ void VIO::getBestCorrespondences(double& pixel_delta, std::vector<VIOFeature2D>&
 		temp_ft1.push_back(t1);
 		temp_ft2.push_back(t2);
 
-		ros::Time start2 = ros::Time::now();
+		//ros::Time start2 = ros::Time::now();
 
 		for(int j = 0; j < temp_ft1.at(i - 1).size(); j++)
 		{
@@ -438,19 +638,19 @@ void VIO::getBestCorrespondences(double& pixel_delta, std::vector<VIOFeature2D>&
 
 		//pxlSum = i;
 
-		ROS_DEBUG_STREAM((ros::Time::now().toSec() - start2.toSec()) * 1000 << " milliseconds runtime (feature correspondence inner loop)");
+		//ROS_DEBUG_STREAM((ros::Time::now().toSec() - start2.toSec()) * 1000 << " milliseconds runtime (feature correspondence inner loop)");
 
 		//ROS_DEBUG("t1");
 
 		if(temp_ft1.at(i).size() < MIN_TRIAG_FEATURES)
 		{
-			ROS_DEBUG_STREAM("too few features break");
+			//ROS_DEBUG_STREAM("too few features break");
 			break;
 		}
 
 		if(pxlSum / temp_ft1.at(i).size() > IDEAL_FUNDAMENTAL_PXL_DELTA)
 		{
-			ROS_DEBUG_STREAM("ideal pxl delta break");
+			//ROS_DEBUG_STREAM("ideal pxl delta break");
 
 			bestFtIndex = i;
 
@@ -462,7 +662,7 @@ void VIO::getBestCorrespondences(double& pixel_delta, std::vector<VIOFeature2D>&
 
 		if(pxlSum / temp_ft1.size() > bestPxlDelta)
 		{
-			ROS_DEBUG_STREAM("better pxlDelta");
+			//ROS_DEBUG_STREAM("better pxlDelta");
 
 			bestFtIndex = i;
 
@@ -478,7 +678,7 @@ void VIO::getBestCorrespondences(double& pixel_delta, std::vector<VIOFeature2D>&
 	std::copy(temp_ft1.at(bestFtIndex).begin(), temp_ft1.at(bestFtIndex).end(), std::back_inserter(ft1));
 	std::copy(temp_ft2.at(bestFtIndex).begin(), temp_ft2.at(bestFtIndex).end(), std::back_inserter(ft2));
 	x1 = frameBuffer.at(bestFtIndex).state;
-	x2 = frameBuffer.at(bestFtIndex).state;
+	x2 = frameBuffer.at(0).state;
 	pixel_delta = bestPxlDelta;
 
 	ROS_DEBUG_STREAM("best pixel delta " << pixel_delta);
@@ -602,6 +802,7 @@ void VIO::readROSParameters()
 
 	ros::param::param<double>("~ideal_fundamental_matrix_pxl_delta", IDEAL_FUNDAMENTAL_PXL_DELTA, DEFAULT_IDEAL_FUNDAMENTAL_PXL_DELTA);
 	ros::param::param<double>("~min_fundamental_matrix_pxl_delta", MIN_FUNDAMENTAL_PXL_DELTA, DEFAULT_MIN_FUNDAMENTAL_PXL_DELTA);
+	ros::param::param<double>("~max_fundamental_error", MAXIMUM_FUNDAMENTAL_ERROR, DEFAULT_MAX_FUNDAMENTAL_ERROR);
 
 	ros::param::param<int>("~min_triag_features", MIN_TRIAG_FEATURES, DEFAULT_MIN_TRIAG_FEATURES);
 }

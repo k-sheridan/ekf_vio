@@ -64,6 +64,7 @@
 #define DEFAULT_MIN_TRIAG_FEATURES 40
 #define DEFAULT_IDEAL_FUNDAMENTAL_PXL_DELTA 0.3
 #define DEFAULT_MIN_FUNDAMENTAL_PXL_DELTA 0.3
+#define DEFAULT_MAX_FUNDAMENTAL_ERROR 5e-7
 
 
 class VIO
@@ -90,6 +91,7 @@ public:
 	int MIN_TRIAG_FEATURES;
 	double IDEAL_FUNDAMENTAL_PXL_DELTA;
 	double MIN_FUNDAMENTAL_PXL_DELTA;
+	double MAXIMUM_FUNDAMENTAL_ERROR;
 
 	bool initialized;
 
@@ -149,9 +151,20 @@ public:
 		D = _D;
 	}
 
+	template <typename T>
+	float distancePointLine(const cv::Point_<T> point, const cv::Vec<T,3>& line);
+
+	template <typename T1, typename T2>
+	void drawEpipolarLines(const std::string& title, const cv::Matx<T1,3,3> F,
+			const cv::Mat& img1, const cv::Mat& img2,
+			const std::vector<cv::Point_<T2> > points1,
+			const std::vector<cv::Point_<T2> > points2,
+			const float inlierDistance = -1);
+
 	void viewImage(cv::Mat img);
 	void viewImage(Frame frame);
 	void viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new);
+	//void viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new, cv::Matx33f F);
 
 	void broadcastWorldToOdomTF();
 
@@ -163,7 +176,7 @@ public:
 
 	void update3DFeatures();
 
-	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2, bool& pass);
+	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2, bool& pass, std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2);
 
 	void getBestCorrespondences(double& pixel_delta,  std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, VIOState& x1, VIOState& x2, int& match_index);
 

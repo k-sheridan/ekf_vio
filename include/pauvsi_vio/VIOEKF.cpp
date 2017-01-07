@@ -16,6 +16,8 @@ VIOEKF::VIOEKF() {
 
 	ros::param::param<bool>("~convert2rad", convert2rad, CONVERT_2_RAD_DEFAULT);
 
+	stillPredicting = false;
+
 }
 
 VIOEKF::~VIOEKF() {
@@ -24,6 +26,19 @@ VIOEKF::~VIOEKF() {
 
 VIOState VIOEKF::update(VIOState in, VisualMeasurement z)
 {
+	//compute the full covariance for the entire pred step
+
+	Eigen::Matrix<double, 16, 16> F = this->stateJacobian(x_start_state, in.getTime().toSec() - x_start_state.getTime().toSec()); // compute the state transition jacobian
+	Eigen::Matrix<double, 16, 16> predictionError = this->computePredictionError(in.getTime().toSec() - x_start_state.getTime().toSec());
+	//propagate the error using the jacobian
+	in.covariance = F * in.covariance * F.transpose() + predictionError;
+
+	//ROS_DEBUG_STREAM("new cov: " << in.covariance);
+	ROS_DEBUG_STREAM("used t: " << in.getTime().toSec() - x_start_state.getTime().toSec() << " for pred cov");
+
+	stillPredicting = false;
+
+
 	VIOState out = in;
 
 	Eigen::Matrix<double, 7, 16> H;
@@ -50,6 +65,12 @@ VIOState VIOEKF::update(VIOState in, VisualMeasurement z)
 
 VIOState VIOEKF::predict(VIOState lastState, ros::Time predictionTime)
 {
+	if(!stillPredicting)
+	{
+		x_start_state = lastState;
+		stillPredicting = true;
+	}
+
 	VIOState state = lastState;
 	std::vector<sensor_msgs::Imu> imuMsgs;
 	int imuMsgsSize = this->getMessagesBetweenTimes(lastState.getTime(), predictionTime, imuMsgs);
@@ -75,14 +96,6 @@ VIOState VIOEKF::predict(VIOState lastState, ros::Time predictionTime)
 	state = this->transitionState(state, predictionTime.toSec() - state.getTime().toSec());
 	// this sets the states omega and alpha to the last state's omega and alpha
 
-	//compute the full covariance for the entire pred step
-
-	Eigen::Matrix<double, 16, 16> F = this->stateJacobian(lastState, predictionTime.toSec() - lastState.getTime().toSec()); // compute the state transition jacobian
-	Eigen::Matrix<double, 16, 16> predictionError = this->computePredictionError(predictionTime.toSec() - lastState.getTime().toSec());
-	//propagate the error using the jacobian
-	state.covariance = F * state.covariance * F.transpose() + predictionError;
-
-	//ROS_DEBUG_STREAM("new cov: " << state.covariance);
 
 	return state;
 }
@@ -331,16 +344,16 @@ Eigen::Matrix<double, 16, 16> VIOEKF::computePredictionError(double dt)
 {
 	Eigen::Matrix<double, 16, 16> PE = Eigen::MatrixXd::Identity(16, 16);
 	double dts = dt*dt;
-	PE(0, 0) = dts;
-	PE(1, 1) = dts;
-	PE(2, 2) = dts;
-	PE(3, 3) = 0.01*dts;
-	PE(4, 4) = 0.01*dts;
-	PE(5, 5) = 0.01*dts;
-	PE(6, 6) = dts;
-	PE(7, 7) = dts;
-	PE(8, 8) = dts;
-	PE(9, 9) = dts;
+	PE(0, 0) = dts + dt;
+	PE(1, 1) = dts + dt;
+	PE(2, 2) = dts + dt;
+	PE(3, 3) = dt;
+	PE(4, 4) = dt;
+	PE(5, 5) = dt;
+	PE(6, 6) = dt;
+	PE(7, 7) = dt;
+	PE(8, 8) = dt;
+	PE(9, 9) = dt;
 	PE(10, 10) = 0.03*dts;
 	PE(11, 11) = 0.03*dts;
 	PE(12, 12) = 0.03*dts;
