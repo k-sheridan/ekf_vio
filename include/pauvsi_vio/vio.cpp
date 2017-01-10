@@ -445,6 +445,14 @@ void VIO::update3DFeatures()
 		//X_.copyTo(X);
 		//ROS_ASSERT(ft2.size() == pt2.size() && ft2.size() == X.cols);
 
+		tf::StampedTransform base2cam;
+		try{
+			this->ekf.tf_listener.lookupTransform(this->camera_frame, this->CoM_frame, ros::Time(0), base2cam);
+		}
+		catch(tf::TransformException& e){
+			ROS_WARN_STREAM(e.what());
+		}
+
 		std::vector<VIOFeature3D> inactives, actives;
 
 		inactives = this->active3DFeatures;
@@ -480,14 +488,97 @@ void VIO::update3DFeatures()
 
 			cv::solve(A, b, X, cv::DECOMP_SVD);
 
-			double reprojError = cv::norm(A*X - b);
+			cv::Matx61f b_ = A*X;
+			b_(0) /= b_(2);
+			b_(1) /= b_(2);
+			b_(2) = 1.0;
+			b_(3) /= b_(5);
+			b_(4) /= b_(5);
+			b_(5) = 1.0;
+
+			double reprojError = cv::norm(b_ - b);
 
 			tf::Vector3 r_c = tf::Vector3(X(0) / X(3), X(1) / X(3), X(2) / X(3));
+
+			tf::Vector3 r_b = tf::Vector3(currentFrame().state.x(), currentFrame().state.y(), currentFrame().state.z());
+			tf::Quaternion q_b = tf::Quaternion(currentFrame().state.q1(), currentFrame().state.q2(), currentFrame().state.q3(), currentFrame().state.q0());
+			tf::Transform w2b = tf::Transform(q_b, r_b);
+
+			tf::Transform w2c = w2b * base2cam;
+
+			tf::Vector3 r_w = w2c.inverse() * r_c;
 
 			ROS_DEBUG_STREAM("point: " << r_c.x() << ", " << r_c.y() << ", " << r_c.z());
 			ROS_DEBUG_STREAM("reproj error: " << reprojError);
 
+			if(r_c.z() > MIN_TRIAG_Z && reprojError < MAX_TRIAG_ERROR)
+			{
+				if(matched3d)
+				{
+					matched3dFeature.current2DFeatureMatchID = ft2.at(i).getFeatureID();
+					matched3dFeature.current2DFeatureMatchIndex = i;
+					matched3dFeature.update(Eigen::Vector3d(r_w.x(), r_w.y(), r_w.z()), error + reprojError);
+					actives.push_back(matched3dFeature);
+				}
+				else
+				{
+					VIOFeature3D ft3d;
+					ft3d.current2DFeatureMatchID = ft2.at(i).getFeatureID();
+					ft3d.current2DFeatureMatchIndex = i;
+					ft3d.position = Eigen::Vector3d(r_w.x(), r_w.y(), r_w.z());
+					ft3d.variance = error + reprojError;
+					actives.push_back(ft3d);
+				}
+			}
+			else
+			{
+				if(matched3d)
+				{
+					matched3dFeature.current2DFeatureMatchID = ft2.at(i).getFeatureID();
+					matched3dFeature.current2DFeatureMatchIndex = i;
+					actives.push_back(matched3dFeature);
+				}
+			}
+
 		}
+		this->active3DFeatures = actives;
+		this->inactive3DFeatures = inactives;
+	}
+	else
+	{
+		std::vector<VIOFeature3D> inactives, actives;
+
+		inactives = this->active3DFeatures;
+
+		for(int i = 0; i < ft2.size(); i++)
+		{
+			VIOFeature3D matched3dFeature;
+			bool matched3d = false;
+
+			for(int j = 0; j < inactives.size(); j++)
+			{
+				if(inactives.at(j).current2DFeatureMatchIndex == ft2.at(i).getMatchedIndex())
+				{
+					ROS_ASSERT(inactives.at(j).current2DFeatureMatchID == ft2.at(i).getMatchedID());
+					matched3d = true;
+					matched3dFeature = inactives.at(j);
+
+					inactives.erase(inactives.begin() + j);
+
+					break;
+				}
+			}
+
+			if(matched3d)
+			{
+				matched3dFeature.current2DFeatureMatchIndex = i;
+				matched3dFeature.current2DFeatureMatchID = ft2.at(i).getFeatureID();
+				actives.push_back(matched3dFeature);
+			}
+		}
+
+		this->active3DFeatures = actives;
+		this->inactive3DFeatures = inactives;
 	}
 }
 
@@ -526,8 +617,10 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 		std::vector<cv::Point2f> pt1_copy, pt2_copy;
 		pt1_copy = pt1;
 		pt2_copy = pt2;
-
 		cv::correctMatches(E, pt1_copy, pt2_copy, pt1_new, pt2_new);
+
+		//pt1_new = pt1;
+		//pt2_new = pt2;
 
 		for(int i = 0; i < pt1_new.size(); i++)
 		{
