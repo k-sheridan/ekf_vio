@@ -238,8 +238,8 @@ void VIO::viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> f
 		cv::drawMarker(img2, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(0, 0, 255), cv::MARKER_TRIANGLE_UP, 8);
 	}
 
-	img1 = this->reproject3dPoints(img1, f1.state);
-	img2 = this->reproject3dPoints(img2, f2.state);
+	//img1 = this->reproject3dPoints(img1, f1.state);
+	//img2 = this->reproject3dPoints(img2, f2.state);
 
 	cv::Mat img;
 	cv::vconcat(img2, img1, img);
@@ -258,7 +258,7 @@ cv::Mat VIO::reproject3dPoints(cv::Mat img_in, VIOState x)
 		ROS_WARN_STREAM(e.what());
 	}
 
-	tf::Transform cam2world = (tf::Transform(x.getTFQuaternion(), tf::Vector3(x.x(), x.y(), x.z())) * base2cam);
+	tf::Transform cam2world = (tf::Transform(x.getTFQuaternion(), tf::Vector3(x.x(), x.y(), x.z())) * base2cam).inverse();
 
 	tf::Quaternion tf_q = cam2world.getRotation();
 	cv::Mat temp = img_in;
@@ -280,7 +280,7 @@ cv::Mat VIO::reproject3dPoints(cv::Mat img_in, VIOState x)
 	t(2) = cam2world.getOrigin().getZ();
 
 	cv::Matx34f P;
-	cv::hconcat(R.t(), -R.t() * t, P);
+	cv::hconcat(R, t, P);
 
 	//ROS_DEBUG_STREAM(active3DFeatures.begin() << " and " << active3DFeatures.end());
 
@@ -436,7 +436,8 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 		double meas_error;
 		bool pass = false;
 
-		//meas_error = this->poseFromPoints(this->active3DFeatures, lf, cf, meas, pass);
+		meas_error = this->poseFromPoints(this->active3DFeatures, lf, cf, meas, pass);
+
 
 		if(pass)
 		{
@@ -445,7 +446,8 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 
 			VisualMeasurement z = VisualMeasurement(meas, meas_error * Eigen::MatrixXd::Identity(7, 7));
 
-			newX = ekf.update(pred, z);
+			//newX = ekf.update(pred, z);
+			newX = pred;
 		}
 		else
 		{
@@ -1269,7 +1271,10 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 			ROS_ASSERT(actives.at(i).current2DFeatureMatchID = lf.features.at(actives.at(i).current2DFeatureMatchIndex).getFeatureID());
 			ROS_ASSERT(pt.getMatchedID() == actives.at(i).current2DFeatureMatchID);
 
-			imagePoints.push_back(pt.getUndistorted());
+			imagePoints.push_back(pt.getFeaturePosition());
+
+			ROS_DEBUG_STREAM("3D Point: " << cv::Point3f(actives.at(i).position(0), actives.at(i).position(1), actives.at(i).position(2)) << " \nCorresponding to: " << pt.getFeaturePosition()
+					<< "\nwith cov: " << actives.at(i).variance << "\n");
 
 			cov_sum += actives.at(i).variance;
 			totalMatches++;
@@ -1292,7 +1297,9 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 
 	float reprojError;
 
-	cv::solvePnP(objectPoints, imagePoints, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::noArray(), rvec, tvec, false);
+	//cv::Mat::eye(cv::Size(3, 3), CV_32F)
+	//cv::solvePnP(objectPoints, imagePoints, cf.K, cv::noArray(), rvec, tvec, false);
+	cv::solvePnPRansac(objectPoints, imagePoints, cf.K, cv::noArray(), rvec, tvec, false, 100, 0.5, 0.99);
 
 	cv::Mat cv_R;
 
