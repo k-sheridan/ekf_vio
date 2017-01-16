@@ -250,13 +250,24 @@ void VIO::viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> f
 
 cv::Mat VIO::reproject3dPoints(cv::Mat img_in, VIOState x)
 {
+	tf::StampedTransform base2cam;
+	try{
+		this->ekf.tf_listener.lookupTransform(this->camera_frame, this->CoM_frame, ros::Time(0), base2cam);
+	}
+	catch(tf::TransformException& e){
+		ROS_WARN_STREAM(e.what());
+	}
+
+	tf::Transform cam2world = (tf::Transform(x.getTFQuaternion(), tf::Vector3(x.x(), x.y(), x.z())) * base2cam);
+
+	tf::Quaternion tf_q = cam2world.getRotation();
 	cv::Mat temp = img_in;
 
 	Eigen::Quaternionf q;
-	q.w() = x.q0();
-	q.x() = x.q1();
-	q.y() = x.q2();
-	q.z() = x.q3();
+	q.w() = tf_q.w();
+	q.x() = tf_q.x();
+	q.y() = tf_q.y();
+	q.z() = tf_q.z();
 
 	cv::Matx33f tK = currentFrame().K;
 
@@ -264,9 +275,9 @@ cv::Mat VIO::reproject3dPoints(cv::Mat img_in, VIOState x)
 	cv::eigen2cv(q.matrix(), R);
 
 	cv::Matx31f t;
-	t(0) = x.x();
-	t(1) = x.y();
-	t(2) = x.z();
+	t(0) = cam2world.getOrigin().getX();
+	t(1) = cam2world.getOrigin().getY();
+	t(2) = cam2world.getOrigin().getZ();
 
 	cv::Matx34f P;
 	cv::hconcat(R.t(), -R.t() * t, P);
@@ -283,7 +294,7 @@ cv::Mat VIO::reproject3dPoints(cv::Mat img_in, VIOState x)
 
 		cv::Matx31f u = tK * P * X;
 
-		cv::drawMarker(temp, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(0, 255, 255), cv::MARKER_CROSS, 6, 3);
+		cv::drawMarker(temp, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(0, 255, 255), cv::MARKER_CROSS, 6, 1);
 		ROS_DEBUG_STREAM("reproj Pt: " << u(0)/u(2) << ", " << u(1)/u(2));
 	}
 
@@ -471,8 +482,9 @@ void VIO::update3DFeatures()
 	std::vector<VIOFeature2D> ft1, ft2;
 	bool pass;
 	double error;
+	int match_frame_index;
 
-	error = this->computeFundamentalMatrix(F, R, t, pt1, pt2, pass, ft1, ft2);
+	error = this->computeFundamentalMatrix(F, R, t, pt1, pt2, pass, ft1, ft2, match_frame_index);
 
 	if(pass && error < MAXIMUM_FUNDAMENTAL_ERROR)
 	{
@@ -543,10 +555,14 @@ void VIO::update3DFeatures()
 
 			double reprojError = cv::norm(b_ - b);
 
+
+			//CONVERT THE POINT INTO THE WORLD COORDINATE FRAME
+			VIOState centerState = this->frameBuffer.at(match_frame_index).state;
+
 			tf::Vector3 r_c = tf::Vector3(X(0) / X(3), X(1) / X(3), X(2) / X(3));
 
-			tf::Vector3 r_b = tf::Vector3(currentFrame().state.x(), currentFrame().state.y(), currentFrame().state.z());
-			tf::Quaternion q_b = tf::Quaternion(currentFrame().state.q1(), currentFrame().state.q2(), currentFrame().state.q3(), currentFrame().state.q0());
+			tf::Vector3 r_b = tf::Vector3(centerState.x(), centerState.y(), centerState.z());
+			tf::Quaternion q_b = tf::Quaternion(centerState.q1(), centerState.q2(), centerState.q3(), centerState.q0());
 			tf::Transform w2b = tf::Transform(q_b, r_b);
 
 			tf::Transform w2c = w2b * base2cam;
@@ -555,6 +571,8 @@ void VIO::update3DFeatures()
 
 			ROS_DEBUG_STREAM("point: " << r_c.x() << ", " << r_c.y() << ", " << r_c.z());
 			ROS_DEBUG_STREAM("reproj error: " << reprojError);
+
+			//UPDATE THE 3d POINT OR ADD IT
 
 			if(r_c.z() > MIN_TRIAG_Z && reprojError < MAX_TRIAG_ERROR)
 			{
@@ -586,6 +604,19 @@ void VIO::update3DFeatures()
 					matched3dFeature.current2DFeatureMatchIndex = i;
 					actives.push_back(matched3dFeature);
 				}
+			}
+
+			if(matched3d)
+			{
+				tf::Vector3 pos = w2c * tf::Vector3(matched3dFeature.position(0), matched3dFeature.position(1), matched3dFeature.position(2));
+				cv::Matx41f X_;
+				X_(0) = pos.x();
+				X_(1) = pos.y();
+				X_(2) = pos.z();
+				X_(3) = 1.0;
+				cv::Matx31f b2 = P1 * X_;
+
+				ROS_DEBUG_STREAM("Projected 3d Point Error: " << tf::Vector3(b2(0)/b2(2) - b(0), b2(1)/b2(2) - b(1), 0).length());
 			}
 
 		}
@@ -636,7 +667,7 @@ void VIO::update3DFeatures()
  * gets scales translation
  */
 
-double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1_out, std::vector<cv::Point2f>& pt2_out, bool& pass, std::vector<VIOFeature2D>& ft1_out, std::vector<VIOFeature2D>& ft2_out)
+double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1_out, std::vector<cv::Point2f>& pt2_out, bool& pass, std::vector<VIOFeature2D>& ft1_out, std::vector<VIOFeature2D>& ft2_out, int& match_frame_index)
 {
 	double pixel_delta = 0;
 	VIOState x1, x2;
@@ -648,6 +679,8 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 	std::vector<cv::Point2f> pt1_new, pt2_new;
 
 	this->getBestCorrespondences(pixel_delta, ft1, ft2, x1, x2, match_index);
+
+	match_frame_index = match_index;
 
 	if(pixel_delta > MIN_FUNDAMENTAL_PXL_DELTA)
 	{
@@ -697,8 +730,8 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 
 		cv::Mat R_temp, t_hat;
 
-		double goodProb = this->recoverPoseV2(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask, frameBuffer.at(match_index).state, currentFrame().state);
-		//int goodPoints = cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask);
+		//double goodProb = this->recoverPoseV2(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask, frameBuffer.at(match_index).state, currentFrame().state);
+		int goodPoints = cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask);
 
 		ROS_DEBUG_STREAM("error: " << error);
 
@@ -707,7 +740,7 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 		t_hat.convertTo(t_hat,  t.type);
 		t_hat.copyTo(t);
 
-		//t = ((currentFrame().state.getr() - frameBuffer.at(match_index).state.getr()).norm() * t); // return the scaled translation using the two frames states
+		t = ((currentFrame().state.getr() - frameBuffer.at(match_index).state.getr()).norm() * t); // return the scaled translation using the two frames states
 
 		ft1_out = ft1;
 		ft2_out = ft2;
@@ -1221,6 +1254,7 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 	cv::Mat tvec, rvec;
 
 	double cov_sum = 0;
+	int totalMatches = 0;
 
 	for(int i = 0; i < actives.size(); i++)
 	{
@@ -1238,6 +1272,7 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 			imagePoints.push_back(pt.getUndistorted());
 
 			cov_sum += actives.at(i).variance;
+			totalMatches++;
 		}
 	}
 
@@ -1247,34 +1282,48 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 		return 0;
 	}
 
+	tf::StampedTransform base2cam;
+	try{
+		this->ekf.tf_listener.lookupTransform(this->camera_frame, this->CoM_frame, ros::Time(0), base2cam);
+	}
+	catch(tf::TransformException& e){
+		ROS_WARN_STREAM(e.what());
+	}
+
 	float reprojError;
 
-	cv::solvePnPRansac(objectPoints, imagePoints, lf.K, cv::Mat::eye(cv::Size(3, 3), CV_32F), rvec, tvec, false);
+	cv::solvePnP(objectPoints, imagePoints, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::noArray(), rvec, tvec, false);
 
 	cv::Mat cv_R;
 
 	cv::Rodrigues(rvec, cv_R);
 
-	Eigen::Vector3cd t;
-	cv::cv2eigen(tvec, t);
+	tf::Vector3 t = tf::Vector3(tvec.at<float>(0), tvec.at<float>(1), tvec.at<float>(2));
 
-	Eigen::Matrix<double, 3, 3> R;
+	Eigen::Matrix<float, 3, 3> R;
 	cv::cv2eigen(cv_R, R);
 
-	Eigen::Quaterniond q(R.transpose());
-	Eigen::Vector3cd r = -R * t;
+	Eigen::Quaternionf q_eig(R.transpose());
+	tf::Quaternion q = tf::Quaternion(q_eig.x(), q_eig.y(), q_eig.z(), q_eig.w());
 
-	Z(0, 0) = r(0).real();
-	Z(1, 0) = r(1).real();
-	Z(2, 0) = r(2).real();
+	tf::Transform world2base = tf::Transform(q, t).inverse() * base2cam.inverse();
 
-	Z(3, 0) = q.w();
-	Z(4, 0) = q.x();
-	Z(5, 0) = q.y();
-	Z(6, 0) = q.z();
+	Z(0, 0) = world2base.getOrigin().x();
+	Z(1, 0) = world2base.getOrigin().y();
+	Z(2, 0) = world2base.getOrigin().z();
+
+	tf::Quaternion newQ = world2base.getRotation();
+
+	Z(3, 0) = newQ.w();
+	Z(4, 0) = newQ.x();
+	Z(5, 0) = newQ.y();
+	Z(6, 0) = newQ.z();
+
+	ROS_DEBUG_STREAM("PNP: r: " << Z(0) << ", " << Z(1) << ", " << Z(2) << " q: " << Z(3) << ", " << Z(4) << ", " << Z(5) << ", " << Z(6));
+	ROS_DEBUG_STREAM("PNP COV: " << cov_sum / totalMatches);
 
 	pass = true;
-	return cov_sum / actives.size();
+	return cov_sum / totalMatches;
 }
 
 
