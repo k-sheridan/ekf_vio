@@ -102,223 +102,6 @@ cv::Mat VIO::get3x3FromVector(boost::array<double, 9> vec)
 	return mat;
 }
 
-template <typename T1, typename T2>
-void VIO::drawEpipolarLines(const std::string& title, const cv::Matx<T1,3,3> F,
-		const cv::Mat& img1, const cv::Mat& img2,
-		const std::vector<cv::Point_<T2> > points1,
-		const std::vector<cv::Point_<T2> > points2,
-		const float inlierDistance)
-{
-	CV_Assert(img1.size() == img2.size() && img1.type() == img2.type());
-	cv::Mat outImg(img1.rows, img1.cols*2, CV_8UC3);
-	cv::Rect rect1(0,0, img1.cols, img1.rows);
-	cv::Rect rect2(img1.cols, 0, img1.cols, img1.rows);
-	/*
-	 * Allow color drawing
-	 */
-	if (img1.type() == CV_8U)
-	{
-		cv::cvtColor(img1, outImg(rect1), CV_GRAY2BGR);
-		cv::cvtColor(img2, outImg(rect2), CV_GRAY2BGR);
-	}
-	else
-	{
-		img1.copyTo(outImg(rect1));
-		img2.copyTo(outImg(rect2));
-	}
-	std::vector<cv::Vec<T2,3> > epilines1, epilines2;
-	cv::computeCorrespondEpilines(points1, 1, F, epilines1); //Index starts with 1
-	cv::computeCorrespondEpilines(points2, 2, F, epilines2);
-
-	CV_Assert(points1.size() == points2.size() &&
-			points2.size() == epilines1.size() &&
-			epilines1.size() == epilines2.size());
-
-	cv::RNG rng(0);
-	for(size_t i=0; i<points1.size(); i++)
-	{
-		if(inlierDistance > 0)
-		{
-			if(distancePointLine(points1[i], epilines2[i]) > inlierDistance ||
-					distancePointLine(points2[i], epilines1[i]) > inlierDistance)
-			{
-				//The point match is no inlier
-				continue;
-			}
-		}
-		/*
-		 * Epipolar lines of the 1st point set are drawn in the 2nd image and vice-versa
-		 */
-		cv::Scalar color(rng(256),rng(256),rng(256));
-
-		cv::line(outImg(rect2),
-				cv::Point(0,-epilines1[i][2]/epilines1[i][1]),
-				cv::Point(img1.cols,-(epilines1[i][2]+epilines1[i][0]*img1.cols)/epilines1[i][1]),
-				color);
-		cv::circle(outImg(rect1), points1[i], 3, color, -1, CV_AA);
-
-		cv::line(outImg(rect1),
-				cv::Point(0,-epilines2[i][2]/epilines2[i][1]),
-				cv::Point(img2.cols,-(epilines2[i][2]+epilines2[i][0]*img2.cols)/epilines2[i][1]),
-				color);
-		cv::circle(outImg(rect2), points2[i], 3, color, -1, CV_AA);
-	}
-	cv::imshow(title, outImg);
-	cv::waitKey(1);
-}
-
-template <typename T>
-float VIO::distancePointLine(const cv::Point_<T> point, const cv::Vec<T,3>& line)
-{
-	//Line is given as a*x + b*y + c = 0
-	return abs(line(0)*point.x + line(1)*point.y + line(2)) / sqrt(line(0)*line(0)+line(1)*line(1));
-}
-
-void VIO::viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new)
-{
-	cv::Mat img1 = f1.image;
-	cv::Mat img2 = f2.image;
-
-	cv::cvtColor(img1, img1, CV_GRAY2BGR);
-	cv::cvtColor(img2, img2, CV_GRAY2BGR);
-
-	cv::Matx33f tK = currentFrame().K;
-
-	for(int i = 0; i < f1.features.size(); i++)
-	{
-		cv::Matx31f u;
-		u(0) = f1.features.at(i).getUndistorted().x;
-		u(1) = f1.features.at(i).getUndistorted().y;
-		u(2) = 1.0;
-		u = tK * u;
-
-		cv::drawMarker(img1, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(255, 0, 0), cv::MARKER_DIAMOND, 4);
-	}
-
-	for(int i = 0; i < f2.features.size(); i++)
-	{
-		cv::Matx31f u;
-		u(0) = f2.features.at(i).getUndistorted().x;
-		u(1) = f2.features.at(i).getUndistorted().y;
-		u(2) = 1.0;
-		u = tK * u;
-
-		cv::drawMarker(img2, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(255, 0, 0), cv::MARKER_DIAMOND, 4);
-	}
-
-	for(int i = 0; i < ft1.size(); i++)
-	{
-		cv::drawMarker(img1, ft1.at(i).getFeaturePosition(), cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 10);
-	}
-
-	for(int i = 0; i < ft2.size(); i++)
-	{
-		cv::drawMarker(img2, ft2.at(i).getFeaturePosition(), cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 10);
-	}
-
-	for(int i = 0; i < pt1_new.size(); i++)
-	{
-		cv::Matx31f u;
-		u(0) = pt1_new.at(i).x;
-		u(1) = pt1_new.at(i).y;
-		u(2) = 1.0;
-		u = tK * u;
-
-		cv::drawMarker(img1, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(0, 0, 255), cv::MARKER_TRIANGLE_UP, 8);
-	}
-
-	for(int i = 0; i < pt2_new.size(); i++)
-	{
-		cv::Matx31f u;
-		u(0) = pt2_new.at(i).x;
-		u(1) = pt2_new.at(i).y;
-		u(2) = 1.0;
-		u = tK * u;
-
-		cv::drawMarker(img2, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(0, 0, 255), cv::MARKER_TRIANGLE_UP, 8);
-	}
-
-	//img1 = this->reproject3dPoints(img1, f1.state);
-	//img2 = this->reproject3dPoints(img2, f2.state);
-
-	cv::Mat img;
-	cv::vconcat(img2, img1, img);
-
-	cv::imshow("matches", img);
-	cv::waitKey(30);
-}
-
-cv::Mat VIO::reproject3dPoints(cv::Mat img_in, VIOState x)
-{
-	tf::StampedTransform base2cam;
-	try{
-		this->ekf.tf_listener.lookupTransform(this->camera_frame, this->CoM_frame, ros::Time(0), base2cam);
-	}
-	catch(tf::TransformException& e){
-		ROS_WARN_STREAM(e.what());
-	}
-
-	tf::Transform cam2world = (tf::Transform(x.getTFQuaternion(), tf::Vector3(x.x(), x.y(), x.z())) * base2cam).inverse();
-
-	tf::Quaternion tf_q = cam2world.getRotation();
-	cv::Mat temp = img_in;
-
-	Eigen::Quaternionf q;
-	q.w() = tf_q.w();
-	q.x() = tf_q.x();
-	q.y() = tf_q.y();
-	q.z() = tf_q.z();
-
-	cv::Matx33f tK = currentFrame().K;
-
-	cv::Matx33f R;
-	cv::eigen2cv(q.matrix(), R);
-
-	cv::Matx31f t;
-	t(0) = cam2world.getOrigin().getX();
-	t(1) = cam2world.getOrigin().getY();
-	t(2) = cam2world.getOrigin().getZ();
-
-	cv::Matx34f P;
-	cv::hconcat(R, t, P);
-
-	//ROS_DEBUG_STREAM(active3DFeatures.begin() << " and " << active3DFeatures.end());
-
-	for(int i = 0; i < active3DFeatures.size(); i++)
-	{
-		cv::Matx41f X;
-		X(0) = active3DFeatures.at(i).position(0);
-		X(1) = active3DFeatures.at(i).position(1);
-		X(2) = active3DFeatures.at(i).position(2);
-		X(3) = 1.0;
-
-		cv::Matx31f u = tK * P * X;
-
-		cv::drawMarker(temp, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(0, 255, 255), cv::MARKER_CROSS, 6, 1);
-		ROS_DEBUG_STREAM("reproj Pt: " << u(0)/u(2) << ", " << u(1)/u(2));
-	}
-
-	return temp;
-}
-
-/*
- * shows cv::Mat
- */
-void VIO::viewImage(cv::Mat img){
-	cv::imshow("test", img);
-	cv::waitKey(30);
-}
-
-/*
- * draws frame with its features
- */
-void VIO::viewImage(Frame frame){
-	cv::Mat img;
-	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img, cv::Scalar(0, 0, 255));
-	cv::drawKeypoints(img, frame.getUndistortedKeyPointVectorFromFeatures(), img, cv::Scalar(255, 0, 0));
-	this->viewImage(img);
-
-}
 
 /*
  * sets the current frame and computes important
@@ -475,195 +258,6 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 	return newX;
 }
 
-void VIO::update3DFeatures()
-{
-	cv::Mat F;
-	cv::Matx33f R;
-	cv::Matx31f t;
-	std::vector<cv::Point2f> pt1, pt2;
-	std::vector<VIOFeature2D> ft1, ft2;
-	bool pass;
-	double error;
-	int match_frame_index;
-
-	error = this->computeFundamentalMatrix(F, R, t, pt1, pt2, pass, ft1, ft2, match_frame_index);
-
-	if(pass && error < MAXIMUM_FUNDAMENTAL_ERROR)
-	{
-
-		cv::Matx34f P1, P2;
-		//cv::Mat X_;
-		cv::Matx<float, 6, 4> A;
-
-		cv::hconcat(cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::Mat::zeros(cv::Size(1, 3), CV_32F), P1);
-		cv::hconcat(R, t, P2);
-		cv::vconcat(P1, P2, A);
-
-		//cv::triangulatePoints(P1, P2, pt1, pt2, X_);
-		//cv::Mat_<float> X = cv::Mat_<float>(4, pt1.size());
-		//X_.copyTo(X);
-		//ROS_ASSERT(ft2.size() == pt2.size() && ft2.size() == X.cols);
-
-		tf::StampedTransform base2cam;
-		try{
-			this->ekf.tf_listener.lookupTransform(this->camera_frame, this->CoM_frame, ros::Time(0), base2cam);
-		}
-		catch(tf::TransformException& e){
-			ROS_WARN_STREAM(e.what());
-		}
-
-		std::vector<VIOFeature3D> inactives, actives;
-
-		inactives = this->active3DFeatures;
-
-		for(int i = 0; i < ft2.size(); i++)
-		{
-			VIOFeature3D matched3dFeature;
-			bool matched3d = false;
-
-			for(int j = 0; j < inactives.size(); j++)
-			{
-				if(inactives.at(j).current2DFeatureMatchIndex == ft2.at(i).getMatchedIndex())
-				{
-					ROS_ASSERT(inactives.at(j).current2DFeatureMatchID == ft2.at(i).getMatchedID());
-					matched3d = true;
-					matched3dFeature = inactives.at(j);
-
-					inactives.erase(inactives.begin() + j);
-
-					break;
-				}
-			}
-
-			cv::Matx41f X;
-			cv::Matx61f b;
-
-			b(0) = pt1.at(i).x;
-			b(1) = pt1.at(i).y;
-			b(2) = 1.0;
-			b(3) = pt2.at(i).x;
-			b(4) = pt2.at(i).y;
-			b(5) = 1.0;
-
-			cv::solve(A, b, X, cv::DECOMP_SVD);
-
-			cv::Matx61f b_ = A*X;
-			b_(0) /= b_(2);
-			b_(1) /= b_(2);
-			b_(2) = 1.0;
-			b_(3) /= b_(5);
-			b_(4) /= b_(5);
-			b_(5) = 1.0;
-
-			double reprojError = cv::norm(b_ - b);
-
-
-			//CONVERT THE POINT INTO THE WORLD COORDINATE FRAME
-			VIOState centerState = this->frameBuffer.at(match_frame_index).state;
-
-			tf::Vector3 r_c = tf::Vector3(X(0) / X(3), X(1) / X(3), X(2) / X(3));
-
-			tf::Vector3 r_b = tf::Vector3(centerState.x(), centerState.y(), centerState.z());
-			tf::Quaternion q_b = tf::Quaternion(centerState.q1(), centerState.q2(), centerState.q3(), centerState.q0());
-			tf::Transform w2b = tf::Transform(q_b, r_b);
-
-			tf::Transform w2c = w2b * base2cam;
-
-			tf::Vector3 r_w = w2c.inverse() * r_c;
-
-			ROS_DEBUG_STREAM("point: " << r_c.x() << ", " << r_c.y() << ", " << r_c.z());
-			ROS_DEBUG_STREAM("reproj error: " << reprojError);
-
-			//UPDATE THE 3d POINT OR ADD IT
-
-			if(r_c.z() > MIN_TRIAG_Z && reprojError < MAX_TRIAG_ERROR)
-			{
-				if(matched3d)
-				{
-					ROS_DEBUG_STREAM("updating 3d feature");
-					matched3dFeature.current2DFeatureMatchID = ft2.at(i).getFeatureID();
-					matched3dFeature.current2DFeatureMatchIndex = i;
-					matched3dFeature.update(Eigen::Vector3d(r_w.x(), r_w.y(), r_w.z()), reprojError);
-					actives.push_back(matched3dFeature);
-				}
-				else
-				{
-					ROS_DEBUG_STREAM("adding new 3d feature");
-					VIOFeature3D ft3d;
-					ft3d.current2DFeatureMatchID = ft2.at(i).getFeatureID();
-					ft3d.current2DFeatureMatchIndex = i;
-					ft3d.position = Eigen::Vector3d(r_w.x(), r_w.y(), r_w.z());
-					ft3d.variance = reprojError;
-					actives.push_back(ft3d);
-				}
-			}
-			else
-			{
-				if(matched3d)
-				{
-					ROS_DEBUG_STREAM("bad triag, preserving 3d point without update");
-					matched3dFeature.current2DFeatureMatchID = ft2.at(i).getFeatureID();
-					matched3dFeature.current2DFeatureMatchIndex = i;
-					actives.push_back(matched3dFeature);
-				}
-			}
-
-			if(matched3d)
-			{
-				tf::Vector3 pos = w2c * tf::Vector3(matched3dFeature.position(0), matched3dFeature.position(1), matched3dFeature.position(2));
-				cv::Matx41f X_;
-				X_(0) = pos.x();
-				X_(1) = pos.y();
-				X_(2) = pos.z();
-				X_(3) = 1.0;
-				cv::Matx31f b2 = P1 * X_;
-
-				ROS_DEBUG_STREAM("Projected 3d Point Error: " << tf::Vector3(b2(0)/b2(2) - b(0), b2(1)/b2(2) - b(1), 0).length());
-			}
-
-		}
-		this->active3DFeatures = actives;
-		this->inactive3DFeatures = inactives;
-	}
-	else
-	{
-		std::vector<VIOFeature3D> inactives, actives;
-
-		inactives = this->active3DFeatures;
-
-		for(int i = 0; i < ft2.size(); i++)
-		{
-			VIOFeature3D matched3dFeature;
-			bool matched3d = false;
-
-			for(int j = 0; j < inactives.size(); j++)
-			{
-				if(inactives.at(j).current2DFeatureMatchIndex == ft2.at(i).getMatchedIndex())
-				{
-					ROS_ASSERT(inactives.at(j).current2DFeatureMatchID == ft2.at(i).getMatchedID());
-					matched3d = true;
-					matched3dFeature = inactives.at(j);
-
-					inactives.erase(inactives.begin() + j);
-
-					break;
-				}
-			}
-
-			if(matched3d)
-			{
-				ROS_DEBUG_STREAM("preserving 3d point without update");
-				matched3dFeature.current2DFeatureMatchIndex = i;
-				matched3dFeature.current2DFeatureMatchID = ft2.at(i).getFeatureID();
-				actives.push_back(matched3dFeature);
-			}
-		}
-
-		this->active3DFeatures = actives;
-		this->inactive3DFeatures = inactives;
-	}
-}
-
 /*
  * computes the F mat
  * gets scales translation
@@ -678,7 +272,8 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 
 	double error = 0;
 
-	std::vector<cv::Point2f> pt1_new, pt2_new;
+	//std::vector<cv::Point2f> pt1_new, pt2_new;
+	std::vector<cv::Point2f> pt1, pt2;
 
 	this->getBestCorrespondences(pixel_delta, ft1, ft2, x1, x2, match_index);
 
@@ -688,7 +283,6 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 	{
 		pass = true;
 
-		std::vector<cv::Point2f> pt1, pt2;
 		for(int i = 0; i < ft1.size(); i++)
 		{
 			pt1.push_back(ft1.at(i).getUndistorted());
@@ -698,24 +292,24 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 		cv::Mat mask;
 		cv::Mat E = cv::findEssentialMat(pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::RANSAC, 0.999, 1.0, mask);
 
-		std::vector<cv::Point2f> pt1_copy, pt2_copy;
-		pt1_copy = pt1;
-		pt2_copy = pt2;
-		cv::correctMatches(E, pt1_copy, pt2_copy, pt1_new, pt2_new);
+		//std::vector<cv::Point2f> pt1_copy, pt2_copy;
+		//pt1_copy = pt1;
+		//pt2_copy = pt2;
+		//cv::correctMatches(E, pt1_copy, pt2_copy, pt1_new, pt2_new);
 
 		//pt1_new = pt1;
 		//pt2_new = pt2;
 
-		for(int i = 0; i < pt1_new.size(); i++)
+		for(int i = 0; i < pt1.size(); i++)
 		{
 			cv::Matx31f u1, u2;
 
-			u1(0) = pt1_new.at(i).x;
-			u1(1) = pt1_new.at(i).y;
+			u1(0) = pt1.at(i).x;
+			u1(1) = pt1.at(i).y;
 			u1(2) = 1.0;
 
-			u2(0) = pt2_new.at(i).x;
-			u2(1) = pt2_new.at(i).y;
+			u2(0) = pt2.at(i).x;
+			u2(1) = pt2.at(i).y;
 			u2(2) = 1.0;
 
 			Eigen::Matrix<float, 3, 1> u1_eig, u2_eig;
@@ -732,8 +326,8 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 
 		cv::Mat R_temp, t_hat;
 
-		//double goodProb = this->recoverPoseV2(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask, frameBuffer.at(match_index).state, currentFrame().state);
-		int goodPoints = cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask);
+		double goodProb = this->recoverPoseV2(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask, frameBuffer.at(match_index).state, currentFrame().state);
+		//int goodPoints = cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask);
 
 		ROS_DEBUG_STREAM("error: " << error);
 
@@ -742,13 +336,13 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 		t_hat.convertTo(t_hat,  t.type);
 		t_hat.copyTo(t);
 
-		t = ((currentFrame().state.getr() - frameBuffer.at(match_index).state.getr()).norm() * t); // return the scaled translation using the two frames states
+		//t = ((currentFrame().state.getr() - frameBuffer.at(match_index).state.getr()).norm() * t); // return the scaled translation using the two frames states
 
 		ft1_out = ft1;
 		ft2_out = ft2;
 
-		pt1_out = pt1_new;
-		pt2_out = pt2_new;
+		pt1_out = pt1;
+		pt2_out = pt2;
 
 		F = E;
 
@@ -762,7 +356,7 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 		pass = false;
 	}
 
-	this->viewMatches(ft1, ft2, this->frameBuffer.at(match_index), currentFrame(), pt1_new, pt2_new);
+	this->viewMatches(ft1, ft2, this->frameBuffer.at(match_index), currentFrame(), pt1, pt2);
 
 	return error;
 }

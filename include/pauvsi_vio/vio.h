@@ -107,8 +107,9 @@ public:
 	VIO();
 	~VIO();
 
-	//callbacks
+	//VIO FUNCTIONS
 	void imuCallback(const sensor_msgs::ImuConstPtr& msg);
+
 	void cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::CameraInfoConstPtr& cam);
 
 	cv::Mat get3x3FromVector(boost::array<double, 9> vec);
@@ -119,26 +120,18 @@ public:
 
 	void setCurrentFrame(cv::Mat frame, ros::Time t);
 
-	/*
-	 * gets the most recently added frame
-	 */
 	Frame& currentFrame(){
 		return this->frameBuffer.at(0);
 	}
 
-	/*
-	 * gets the last frame
-	 */
 	Frame& lastFrame(){
 		return this->frameBuffer.at(1);
 	}
 
-	/*
-	 * returns the camera topic used by this node
-	 */
 	std::string getCameraTopic(){
 		return cameraTopic;
 	}
+
 	std::string getIMUTopic(){
 		return imuTopic;
 	}
@@ -151,6 +144,21 @@ public:
 		D = _D;
 	}
 
+	void broadcastWorldToOdomTF();
+
+	ros::Time broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
+
+	void publishActivePoints();
+
+	void recalibrateState(double avgPixelChange, double threshold, bool consecutive);
+
+	void run();
+
+
+
+
+
+	//DRAWING
 	template <typename T>
 	float distancePointLine(const cv::Point_<T> point, const cv::Vec<T,3>& line);
 
@@ -162,26 +170,26 @@ public:
 			const float inlierDistance = -1);
 
 	void viewImage(cv::Mat img);
+
 	void viewImage(Frame frame);
+
 	void viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new);
+
 	//void viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new, cv::Matx33f F);
+
 	cv::Mat reproject3dPoints(cv::Mat img_in, VIOState x);
 
 
-	void broadcastWorldToOdomTF();
 
-	ros::Time broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
 
-	void publishActivePoints();
 
+	//MOTION ESTIMATION
 	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
-
-	void update3DFeatures();
 
 	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2, bool& pass, std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, int& match_frame_index);
 
 	double recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
-	cv::OutputArray _R, cv::OutputArray _t, cv::InputOutputArray _mask, VIOState x1, VIOState x2);
+			cv::OutputArray _R, cv::OutputArray _t, cv::InputOutputArray _mask, VIOState x1, VIOState x2);
 
 	void getBestCorrespondences(double& pixel_delta,  std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, VIOState& x1, VIOState& x2, int& match_index);
 
@@ -189,19 +197,16 @@ public:
 
 	void findBestCorresponding2DFeature(VIOFeature2D start, Frame lf, std::deque<Frame> fb, VIOFeature2D& end, int& frameIndex);
 
-	void run();
-
 	double poseFromPoints(std::vector<VIOFeature3D> points3d, Frame lf, Frame cf, Eigen::Matrix<double, 7, 1>& Z, bool& pass);
 
-
-	void recalibrateState(double avgPixelChange, double threshold, bool consecutive);
-
-	/*
-	 * uses manhattan method to find distance between two pixels
-	 */
 	float manhattan(cv::Point2f p1, cv::Point2f p2){
 		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
 	}
+
+
+
+	//TRIANGULATION
+	void update3DFeatures();
 
 
 

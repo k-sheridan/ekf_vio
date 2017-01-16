@@ -60,7 +60,7 @@ set_target_properties(vioFeature2d PROPERTIES LINKER_LANGUAGE CXX)
 add_library(frame include/pauvsi_vio/Frame.hpp)
 set_target_properties(frame PROPERTIES LINKER_LANGUAGE CXX)
 
-add_library(vio include/pauvsi_vio/vio.cpp)
+add_library(vio include/pauvsi_vio/vio.cpp include/pauvsi_vio/vioMotion.cpp include/pauvsi_vio/vioDraw.cpp include/pauvsi_vio/vioTriangulate.cpp)
 
 add_executable(pauvsi_vio src/pauvsi_vio.cpp)
 target_link_libraries(visualmeasurement ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
