@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(pauvsi_vio)
 
+set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
 find_package(catkin REQUIRED COMPONENTS
   cv_bridge
@@ -34,6 +35,8 @@ catkin_package(
    DEPENDS eigen opencv
 )
 
+add_library(keyframeinfo include/pauvsi_vio/KeyFrameInfo.hpp)
+set_target_properties(keyframeinfo PROPERTIES LINKER_LANGUAGE CXX)
 
 add_library(visualmeasurement include/pauvsi_vio/VisualMeasurement.hpp)
 set_target_properties(visualmeasurement PROPERTIES LINKER_LANGUAGE CXX)
@@ -71,6 +74,6 @@ target_link_libraries(featureTracker frame ${catkin_LIBRARIES} ${OpenCV_LIBRARIE
 target_link_libraries(vioFeature3d vioLine)
 target_link_libraries(frame vioFeature3d ${Eigen_LIBRARIES})
 target_link_libraries(frame vioFeature2d viostate)
-target_link_libraries(vio frame ${catkin_LIBRARIES} featureTracker vioekf egoMotionEstimator viostate visualmeasurement vioFeature3d)
+target_link_libraries(vio frame ${catkin_LIBRARIES} featureTracker vioekf egoMotionEstimator viostate visualmeasurement vioFeature3d keyframeinfo)
 target_link_libraries(pauvsi_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} vio)
 

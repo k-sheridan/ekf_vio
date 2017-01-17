@@ -75,7 +75,7 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 		if(status.at(i) == 1)
 		{
 			// the id number is not that important because it will be handled by the frame
-			VIOFeature2D feat(newPoints.at(i), oldFrame.features.at(i).getFeatureID(), i, -1); // create a matched feature with id = -1
+			VIOFeature2D feat(newPoints.at(i), oldFrame.features.at(i).getFeatureID(), i, oldFrame.features.at(i).getMatchedIDDeque(), oldFrame.features.at(i).getMatchedIndexDeque(), -1); // create a matched feature with id = -1
 			//if the previous feature was described
 			if(oldFrame.features.at(i).isFeatureDescribed())
 			{
@@ -83,6 +83,8 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 				feat.setFeatureDescription(oldFrame.features.at(i).getFeatureDescription()); // transfer previous description to new feature
 				//ROS_DEBUG_STREAM_THROTTLE(0, feat.getFeatureDescription());
 			}
+
+			//ROS_DEBUG_STREAM("old: " << oldFrame.features.at(i).getMatchedIDDeque().size() << " new: " << feat.getMatchedIDDeque().size());
 
 			newFrame.addFeature(feat); // add this feature to the new frame
 

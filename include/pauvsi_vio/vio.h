@@ -35,6 +35,7 @@
 #include "FeatureTracker.h"
 #include "VIOEKF.h"
 #include "VIOState.hpp"
+#include "KeyFrameInfo.hpp"
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -65,6 +66,12 @@
 #define DEFAULT_IDEAL_FUNDAMENTAL_PXL_DELTA 0.3
 #define DEFAULT_MIN_FUNDAMENTAL_PXL_DELTA 0.3
 #define DEFAULT_MAX_FUNDAMENTAL_ERROR 5e-7
+
+#define NUM_KEYFRAMES 4
+#define KEYFRAME_LEVEL_1 0.8
+#define KEYFRAME_LEVEL_2 0.6
+#define KEYFRAME_LEVEL_3 0.4
+#define KEYFRAME_LEVEL_4 0.2
 
 
 class VIO
@@ -179,6 +186,8 @@ public:
 
 	cv::Mat reproject3dPoints(cv::Mat img_in, VIOState x);
 
+	void drawKeyFrames();
+
 
 
 
@@ -186,16 +195,20 @@ public:
 	//MOTION ESTIMATION
 	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
 
+	void updateKeyFrameInfo();
+
+	double computeKeyFramePixelDelta(Frame cf, KeyFrameInfo keyFrame);
+
 	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2, bool& pass, std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, int& match_frame_index);
 
 	double recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
 			cv::OutputArray _R, cv::OutputArray _t, cv::InputOutputArray _mask, VIOState x1, VIOState x2);
 
-	void getBestCorrespondences(double& pixel_delta,  std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, VIOState& x1, VIOState& x2, int& match_index);
+	//void getBestCorrespondences(double& pixel_delta,  std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, VIOState& x1, VIOState& x2, int& match_index);
 
 	VIOFeature2D getCorrespondingFeature(VIOFeature2D currFeature, Frame lastFrame);
 
-	void findBestCorresponding2DFeature(VIOFeature2D start, Frame lf, std::deque<Frame> fb, VIOFeature2D& end, int& frameIndex);
+	//void findBestCorresponding2DFeature(VIOFeature2D start, Frame lf, std::deque<Frame> fb, VIOFeature2D& end, int& frameIndex);
 
 	double poseFromPoints(std::vector<VIOFeature3D> points3d, Frame lf, Frame cf, Eigen::Matrix<double, 7, 1>& Z, bool& pass);
 
@@ -234,6 +247,7 @@ protected:
 	//Frame lastFrame; //the last frame
 
 	std::deque<Frame> frameBuffer; // holds frames
+	std::vector<KeyFrameInfo> keyFrames; // holds information about the key frames
 
 	FeatureTracker feature_tracker;
 

@@ -19,7 +19,8 @@ void VIO::update3DFeatures()
 	double error;
 	int match_frame_index;
 
-	error = this->computeFundamentalMatrix(F, R, t, pt1, pt2, pass, ft1, ft2, match_frame_index);
+	//TODO update 3d features using all keyframes
+	//error = this->computeFundamentalMatrix(F, R, t, pt1, pt2, pass, ft1, ft2, match_frame_index);
 
 	if(pass && error < MAXIMUM_FUNDAMENTAL_ERROR)
 	{

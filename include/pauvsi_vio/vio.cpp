@@ -45,6 +45,9 @@ VIO::VIO()
 	//ensure that both frames have a valid state
 	this->currentFrame().state = this->state;
 	this->lastFrame().state = this->state;
+
+	//keyframe setup
+	this->keyFrames = std::vector<KeyFrameInfo>(NUM_KEYFRAMES);
 }
 
 VIO::~VIO()
@@ -149,7 +152,7 @@ void VIO::run()
 		if(this->initialized) // if initialized
 		{
 			//UPDATE 3D ACTIVE AND INACTIVE FEATURES
-			this->update3DFeatures();
+			//this->update3DFeatures();
 		}
 	}
 
@@ -184,7 +187,7 @@ void VIO::run()
  */
 VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 {
-	// recalibrate
+	//RECALIBRATION
 	static bool consecutiveRecalibration = false;
 	double avgFeatureChange = feature_tracker.averageFeatureChange(lf, cf); // get the feature change between f1 and f2
 
@@ -200,7 +203,6 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 	}
 
 	//MOTION ESTIMATION
-
 	VIOState newX = x; // set newX to last x
 
 	//if the camera moves more than the minimum START distance
@@ -215,31 +217,15 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 		//it will also propagate the error throughout the predction step into the states covariance matrix
 		VIOState pred = ekf.predict(x, cf.timeImageCreated);
 
-		Eigen::Matrix<double, 7, 1> meas;
-		double meas_error;
-		bool pass = false;
+		//NEXT
+		//We must predict motion using either the triangulated 3d points or the key frames and their corresponding points
+		this->updateKeyFrameInfo(); // finds new keyframes for the currentframe
+		//TODO find the fundamental motion estimate for each keyframe
 
-		meas_error = this->poseFromPoints(this->active3DFeatures, lf, cf, meas, pass);
-
-
-		if(pass)
-		{
-			ROS_DEBUG_STREAM("updating with: " << meas.transpose());
-			ROS_DEBUG_STREAM("meas cov: " << meas_error);
-
-			VisualMeasurement z = VisualMeasurement(meas, meas_error * Eigen::MatrixXd::Identity(7, 7));
-
-			//newX = ekf.update(pred, z);
-			newX = pred;
-		}
-		else
-		{
-			ROS_DEBUG_STREAM("pose estimate did not pass");
-			newX = pred;
-		}
+		newX = pred;
 
 	}
-	else
+	else //REMOVE ALL IMU MESSAGES WHICH WERE NOT USED FROM THE BUFFER IF NOT INITIALIZED YET
 	{
 		std::vector<sensor_msgs::Imu> newBuff;
 
@@ -255,435 +241,10 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 		this->ekf.imuMessageBuffer = newBuff; // replace the buffer
 	}
 
+	//this->drawKeyFrames();
 	return newX;
 }
 
-/*
- * computes the F mat
- * gets scales translation
- */
-
-double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1_out, std::vector<cv::Point2f>& pt2_out, bool& pass, std::vector<VIOFeature2D>& ft1_out, std::vector<VIOFeature2D>& ft2_out, int& match_frame_index)
-{
-	double pixel_delta = 0;
-	VIOState x1, x2;
-	std::vector<VIOFeature2D> ft1, ft2;
-	int match_index;
-
-	double error = 0;
-
-	//std::vector<cv::Point2f> pt1_new, pt2_new;
-	std::vector<cv::Point2f> pt1, pt2;
-
-	this->getBestCorrespondences(pixel_delta, ft1, ft2, x1, x2, match_index);
-
-	match_frame_index = match_index;
-
-	if(pixel_delta > MIN_FUNDAMENTAL_PXL_DELTA)
-	{
-		pass = true;
-
-		for(int i = 0; i < ft1.size(); i++)
-		{
-			pt1.push_back(ft1.at(i).getUndistorted());
-			pt2.push_back(ft2.at(i).getUndistorted());
-		}
-
-		cv::Mat mask;
-		cv::Mat E = cv::findEssentialMat(pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::RANSAC, 0.999, 1.0, mask);
-
-		//std::vector<cv::Point2f> pt1_copy, pt2_copy;
-		//pt1_copy = pt1;
-		//pt2_copy = pt2;
-		//cv::correctMatches(E, pt1_copy, pt2_copy, pt1_new, pt2_new);
-
-		//pt1_new = pt1;
-		//pt2_new = pt2;
-
-		for(int i = 0; i < pt1.size(); i++)
-		{
-			cv::Matx31f u1, u2;
-
-			u1(0) = pt1.at(i).x;
-			u1(1) = pt1.at(i).y;
-			u1(2) = 1.0;
-
-			u2(0) = pt2.at(i).x;
-			u2(1) = pt2.at(i).y;
-			u2(2) = 1.0;
-
-			Eigen::Matrix<float, 3, 1> u1_eig, u2_eig;
-			Eigen::Matrix<float, 3, 3> E_eig;
-
-			cv::cv2eigen(u1, u1_eig);
-			cv::cv2eigen(u2, u2_eig);
-			cv::cv2eigen(E, E_eig);
-
-			error += abs((u2_eig.transpose() * E_eig * u1_eig)(0, 0));
-
-		}
-		//error = 0;
-
-		cv::Mat R_temp, t_hat;
-
-		double goodProb = this->recoverPoseV2(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask, frameBuffer.at(match_index).state, currentFrame().state);
-		//int goodPoints = cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask);
-
-		ROS_DEBUG_STREAM("error: " << error);
-
-		R_temp.convertTo(R_temp,  R.type);
-		R_temp.copyTo(R);
-		t_hat.convertTo(t_hat,  t.type);
-		t_hat.copyTo(t);
-
-		//t = ((currentFrame().state.getr() - frameBuffer.at(match_index).state.getr()).norm() * t); // return the scaled translation using the two frames states
-
-		ft1_out = ft1;
-		ft2_out = ft2;
-
-		pt1_out = pt1;
-		pt2_out = pt2;
-
-		F = E;
-
-		ROS_DEBUG_STREAM("tFinal: " << t);
-
-	}
-	else
-	{
-		ROS_DEBUG_STREAM("pixel delta too small for fundamental mat computation");
-		error = 1e9;
-		pass = false;
-	}
-
-	this->viewMatches(ft1, ft2, this->frameBuffer.at(match_index), currentFrame(), pt1, pt2);
-
-	return error;
-}
-
-double VIO::recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
-		cv::OutputArray _R, cv::OutputArray _t, cv::InputOutputArray _mask, VIOState x1, VIOState x2)
-{
-
-	cv::Mat points1, points2, cameraMatrix;
-	_points1.getMat().convertTo(points1, CV_64F);
-	_points2.getMat().convertTo(points2, CV_64F);
-	_cameraMatrix.getMat().convertTo(cameraMatrix, CV_64F);
-
-	int npoints = points1.checkVector(2);
-	CV_Assert( npoints >= 0 && points2.checkVector(2) == npoints &&
-			points1.type() == points2.type());
-
-	CV_Assert(cameraMatrix.rows == 3 && cameraMatrix.cols == 3 && cameraMatrix.channels() == 1);
-
-	if (points1.channels() > 1)
-	{
-		points1 = points1.reshape(1, npoints);
-		points2 = points2.reshape(1, npoints);
-	}
-
-	double fx = cameraMatrix.at<double>(0,0);
-	double fy = cameraMatrix.at<double>(1,1);
-	double cx = cameraMatrix.at<double>(0,2);
-	double cy = cameraMatrix.at<double>(1,2);
-
-	points1.col(0) = (points1.col(0) - cx) / fx;
-	points2.col(0) = (points2.col(0) - cx) / fx;
-	points1.col(1) = (points1.col(1) - cy) / fy;
-	points2.col(1) = (points2.col(1) - cy) / fy;
-
-	points1 = points1.t();
-	points2 = points2.t();
-
-	cv::Mat R1, R2, t;
-	cv::decomposeEssentialMat(E, R1, R2, t);
-	cv::Mat P0 = cv::Mat::eye(3, 4, R1.type());
-	cv::Mat P1(3, 4, R1.type()), P2(3, 4, R1.type()), P3(3, 4, R1.type()), P4(3, 4, R1.type());
-	P1(cv::Range::all(), cv::Range(0, 3)) = R1 * 1.0; P1.col(3) = t * 1.0;
-	P2(cv::Range::all(), cv::Range(0, 3)) = R2 * 1.0; P2.col(3) = t * 1.0;
-	P3(cv::Range::all(), cv::Range(0, 3)) = R1 * 1.0; P3.col(3) = -t * 1.0;
-	P4(cv::Range::all(), cv::Range(0, 3)) = R2 * 1.0; P4.col(3) = -t * 1.0;
-
-	// Do the cheirality check.
-	// Notice here a threshold dist is used to filter
-	// out far away points (i.e. infinite points) since
-	// there depth may vary between postive and negtive.
-	double dist = 50.0;
-	cv::Mat Q;
-	cv::triangulatePoints(P0, P1, points1, points2, Q);
-	cv::Mat mask1 = Q.row(2).mul(Q.row(3)) > 0;
-	Q.row(0) /= Q.row(3);
-	Q.row(1) /= Q.row(3);
-	Q.row(2) /= Q.row(3);
-	Q.row(3) /= Q.row(3);
-	mask1 = (Q.row(2) < dist) & mask1;
-	Q = P1 * Q;
-	mask1 = (Q.row(2) > 0) & mask1;
-	mask1 = (Q.row(2) < dist) & mask1;
-
-	cv::triangulatePoints(P0, P2, points1, points2, Q);
-	cv::Mat mask2 = Q.row(2).mul(Q.row(3)) > 0;
-	Q.row(0) /= Q.row(3);
-	Q.row(1) /= Q.row(3);
-	Q.row(2) /= Q.row(3);
-	Q.row(3) /= Q.row(3);
-	mask2 = (Q.row(2) < dist) & mask2;
-	Q = P2 * Q;
-	mask2 = (Q.row(2) > 0) & mask2;
-	mask2 = (Q.row(2) < dist) & mask2;
-
-	cv::triangulatePoints(P0, P3, points1, points2, Q);
-	cv::Mat mask3 = Q.row(2).mul(Q.row(3)) > 0;
-	Q.row(0) /= Q.row(3);
-	Q.row(1) /= Q.row(3);
-	Q.row(2) /= Q.row(3);
-	Q.row(3) /= Q.row(3);
-	mask3 = (Q.row(2) < dist) & mask3;
-	Q = P3 * Q;
-	mask3 = (Q.row(2) > 0) & mask3;
-	mask3 = (Q.row(2) < dist) & mask3;
-
-	cv::triangulatePoints(P0, P4, points1, points2, Q);
-	cv::Mat mask4 = Q.row(2).mul(Q.row(3)) > 0;
-	Q.row(0) /= Q.row(3);
-	Q.row(1) /= Q.row(3);
-	Q.row(2) /= Q.row(3);
-	Q.row(3) /= Q.row(3);
-	mask4 = (Q.row(2) < dist) & mask4;
-	Q = P4 * Q;
-	mask4 = (Q.row(2) > 0) & mask4;
-	mask4 = (Q.row(2) < dist) & mask4;
-
-	mask1 = mask1.t();
-	mask2 = mask2.t();
-	mask3 = mask3.t();
-	mask4 = mask4.t();
-
-	// If _mask is given, then use it to filter outliers.
-	if (!_mask.empty())
-	{
-		cv::Mat mask = _mask.getMat();
-		CV_Assert(mask.size() == mask1.size());
-		cv::bitwise_and(mask, mask1, mask1);
-		cv::bitwise_and(mask, mask2, mask2);
-		cv::bitwise_and(mask, mask3, mask3);
-		cv::bitwise_and(mask, mask4, mask4);
-	}
-	if (_mask.empty() && _mask.needed())
-	{
-		_mask.create(mask1.size(), CV_8U);
-	}
-
-	CV_Assert(_R.needed() && _t.needed());
-	_R.create(3, 3, R1.type());
-	_t.create(3, 1, t.type());
-
-	double chProb1 = (double)countNonZero(mask1) / (double)npoints;
-	double chProb2 = (double)countNonZero(mask2) / (double)npoints;
-	double chProb3 = (double)countNonZero(mask3) / (double)npoints;
-	double chProb4 = (double)countNonZero(mask4) / (double)npoints;
-
-	//1 - R1 t
-	//2 - R2 t
-	//3 - R1 -t
-	//4 - R2 -t
-
-	tf::StampedTransform base2cam;
-	try{
-		this->ekf.tf_listener.lookupTransform(this->camera_frame, this->CoM_frame, ros::Time(0), base2cam);
-	}
-	catch(tf::TransformException& e){
-		ROS_WARN_STREAM(e.what());
-	}
-
-	tf::Transform tf_cam1 = tf::Transform(x1.getTFQuaternion(), tf::Vector3(x1.x(), x1.y(), x1.z())) * base2cam;
-	tf::Transform tf_cam2 = tf::Transform(x2.getTFQuaternion(), tf::Vector3(x2.x(), x2.y(), x2.z())) * base2cam;
-
-	tf::Transform tf_imu = (tf_cam1.inverse() * tf_cam2).inverse();
-
-	tf::Vector3 t_imu = tf_imu.getOrigin().normalized();
-	tf::Quaternion q_imu = tf_imu.getRotation();
-	tf::Vector3 t_ego = tf::Vector3(t.at<double>(0), t.at<double>(1), t.at<double>(2));
-
-	//r1 to q_r1;
-	Eigen::Matrix3f eig_R1, eig_R2;
-	Eigen::Quaternionf eig_R1_q, eig_R2_q;
-	cv::cv2eigen(R1, eig_R1);
-	cv::cv2eigen(R2, eig_R2);
-	eig_R1_q = eig_R1;
-	eig_R2_q = eig_R2;
-	tf::Quaternion R1_q = tf::Quaternion(eig_R1_q.x(), eig_R1_q.y(), eig_R1_q.z(), eig_R1_q.w());
-	tf::Quaternion R2_q = tf::Quaternion(eig_R2_q.x(), eig_R2_q.y(), eig_R2_q.z(), eig_R2_q.w());
-
-	double negTProb = (t_imu.dot(-1 * t_ego) + 1.0) / 2.0;
-	double posTProb = (t_imu.dot(t_ego) + 1.0) / 2.0;
-	double R1Prob = q_imu.angleShortestPath(R1_q) / CV_PI;
-	double R2Prob = q_imu.angleShortestPath(R2_q) / CV_PI;
-
-	ROS_DEBUG_STREAM("R1: " << R1Prob << " R2: " << R2Prob);
-	ROS_DEBUG_STREAM("t: " << posTProb << " -t: " << negTProb);
-	ROS_DEBUG_STREAM("t: " << t.at<double>(0) << ", " << t.at<double>(1) << ", " << t.at<double>(2));
-
-	double imuProb1 = 0.6 * R1Prob + 0.4 * posTProb;
-	double imuProb2 = 0.6 * R2Prob + 0.4 * posTProb;
-	double imuProb3 = 0.6 * R1Prob + 0.4 * negTProb;
-	double imuProb4 = 0.6 * R2Prob + 0.4 * negTProb;
-	ROS_ASSERT(imuProb1 >= 0 && imuProb1 <= 1 && imuProb2 >= 0 && imuProb2 <= 1);
-
-	double prob1 = 0.3 * imuProb1 + 0.7 * chProb1;
-	double prob2 = 0.3 * imuProb2 + 0.7 * chProb2;
-	double prob3 = 0.3 * imuProb3 + 0.7 * chProb3;
-	double prob4 = 0.3 * imuProb4 + 0.7 * chProb4;
-
-	//finalize and return;
-	if(prob1 > prob2 && prob1 > prob3 && prob1 > prob4)
-	{
-		R1.copyTo(_R);
-		t = tf_imu.getOrigin().length() * t;
-		t.copyTo(_t);
-		ROS_DEBUG_STREAM("R1 & t chosen");
-		if (_mask.needed()) mask1.copyTo(_mask);
-		return prob1;
-	}
-	else if(prob2 > prob1 && prob2 > prob3 && prob2 > prob4)
-	{
-		R2.copyTo(_R);
-		t = tf_imu.getOrigin().length() * t;
-		t.copyTo(_t);
-		ROS_DEBUG_STREAM("R2 & t chosen");
-		if (_mask.needed()) mask2.copyTo(_mask);
-		return prob2;
-	}
-	else if(prob3 > prob2 && prob3 > prob1 && prob3 > prob4)
-	{
-		R1.copyTo(_R);
-		t = -1 * tf_imu.getOrigin().length() * t;
-		t.copyTo(_t);
-		ROS_DEBUG_STREAM("R1 & -t chosen");
-		if (_mask.needed()) mask3.copyTo(_mask);
-		return prob3;
-	}
-	else
-	{
-		R2.copyTo(_R);
-		t = -1 * tf_imu.getOrigin().length() * t;
-		t.copyTo(_t);
-		ROS_DEBUG_STREAM("R2 & -t chosen");
-		if (_mask.needed()) mask4.copyTo(_mask);
-		return prob4;
-	}
-
-
-
-}
-
-void VIO::getBestCorrespondences(double& pixel_delta, std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, VIOState& x1, VIOState& x2, int& match_index)
-{
-	ros::Time start = ros::Time::now();
-
-	int bestFtIndex = 0;
-	match_index = 0;
-
-	double bestPxlDelta = 0;
-
-	std::deque<std::deque<VIOFeature2D> > temp_ft1;
-	std::deque<std::deque<VIOFeature2D> > temp_ft2;
-
-	std::deque<VIOFeature2D> dq;
-	for(int i = 0; i < currentFrame().features.size(); i++)
-		dq.push_back(currentFrame().features.at(i));
-
-	temp_ft1.push_back(dq);
-	temp_ft2.push_back(dq);
-
-	for(int i = 1; i < this->frameBuffer.size(); i++)
-	{
-		float pxlSum = 0;
-
-		//ROS_DEBUG("t0");
-
-		//ROS_DEBUG_STREAM("last vec size: " << temp_ft1.at(i - 1).size());
-
-		std::deque<VIOFeature2D> t1, t2;
-
-		temp_ft1.push_back(t1);
-		temp_ft2.push_back(t2);
-
-		//ros::Time start2 = ros::Time::now();
-
-		for(int j = 0; j < temp_ft1.at(i - 1).size(); j++)
-		{
-			if(temp_ft1.at(i - 1).at(j).isMatched())
-			{
-				temp_ft2.at(i).push_back(temp_ft2.at(i - 1).at(j));
-
-				temp_ft1.at(i).push_back(this->getCorrespondingFeature(temp_ft1.at(i - 1).at(j), this->frameBuffer.at(i)));
-
-				pxlSum += this->manhattan(temp_ft1.at(i).at(temp_ft1[i].size() - 1).getUndistorted(), temp_ft2.at(i - 1).at(j).getUndistorted());
-
-			}
-		}
-
-		//pxlSum = i;
-
-		//ROS_DEBUG_STREAM((ros::Time::now().toSec() - start2.toSec()) * 1000 << " milliseconds runtime (feature correspondence inner loop)");
-
-		//ROS_DEBUG("t1");
-
-		if(temp_ft1.at(i).size() < MIN_TRIAG_FEATURES)
-		{
-			//ROS_DEBUG_STREAM("too few features break");
-			break;
-		}
-
-		if(pxlSum / temp_ft1.at(i).size() > IDEAL_FUNDAMENTAL_PXL_DELTA)
-		{
-			//ROS_DEBUG_STREAM("ideal pxl delta break");
-
-			bestFtIndex = i;
-
-			bestPxlDelta = pxlSum / temp_ft1.at(i).size();
-
-			match_index = i;
-			break;
-		}
-
-		if(pxlSum / temp_ft1.size() > bestPxlDelta)
-		{
-			//ROS_DEBUG_STREAM("better pxlDelta");
-
-			bestFtIndex = i;
-
-			bestPxlDelta = pxlSum / temp_ft1.at(i).size();
-
-			match_index = i;
-		}
-
-		//ROS_DEBUG("t2");
-
-	}
-
-	std::copy(temp_ft1.at(bestFtIndex).begin(), temp_ft1.at(bestFtIndex).end(), std::back_inserter(ft1));
-	std::copy(temp_ft2.at(bestFtIndex).begin(), temp_ft2.at(bestFtIndex).end(), std::back_inserter(ft2));
-	x1 = frameBuffer.at(bestFtIndex).state;
-	x2 = frameBuffer.at(0).state;
-	pixel_delta = bestPxlDelta;
-
-	ROS_DEBUG_STREAM("best pixel delta " << pixel_delta);
-	ROS_DEBUG_STREAM("match index: " << match_index);
-	ROS_DEBUG_STREAM((ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime (feature correspondence)");
-}
-
-VIOFeature2D VIO::getCorrespondingFeature(VIOFeature2D currFeature, Frame lastFrame)
-{
-	//ROS_ASSERT(currFeature.isMatched());
-
-	VIOFeature2D lastFeature = lastFrame.features.at(currFeature.getMatchedIndex());
-
-	ROS_ASSERT(lastFeature.getFeatureID() == currFeature.getMatchedID());
-
-	return lastFeature;
-}
 
 /*
  * publishes all active points in the list using the publisher if the user has specified
@@ -835,98 +396,6 @@ void VIO::correctOrientation(tf::Quaternion q, double certainty)
 	//Takes orientation and rotates it towards q.
 	state.setQuaternion(state.getTFQuaternion().slerp(q, certainty));
 }
-
-double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf, Eigen::Matrix<double, 7, 1>& Z, bool& pass)
-{
-	if(actives.size() < 4)
-	{
-		pass = false;
-		return 0;
-	}
-
-	std::vector<cv::Point3f> objectPoints;
-	std::vector<cv::Point2f> imagePoints;
-
-	cv::Mat tvec, rvec;
-
-	double cov_sum = 0;
-	int totalMatches = 0;
-
-	for(int i = 0; i < actives.size(); i++)
-	{
-		if(lf.features.at(actives.at(i).current2DFeatureMatchIndex).forwardMatched)
-		{
-			objectPoints.push_back(cv::Point3f(actives.at(i).position(0), actives.at(i).position(1), actives.at(i).position(2)));
-
-			VIOFeature2D pt = cf.features.at(lf.features.at(actives.at(i).current2DFeatureMatchIndex).forwardMatchIndex);
-
-			ROS_ASSERT(pt.getFeatureID() == lf.features.at(actives.at(i).current2DFeatureMatchIndex).forwardMatchID);
-			ROS_ASSERT(pt.getMatchedID() == lf.features.at(actives.at(i).current2DFeatureMatchIndex).getFeatureID());
-			ROS_ASSERT(actives.at(i).current2DFeatureMatchID = lf.features.at(actives.at(i).current2DFeatureMatchIndex).getFeatureID());
-			ROS_ASSERT(pt.getMatchedID() == actives.at(i).current2DFeatureMatchID);
-
-			imagePoints.push_back(pt.getFeaturePosition());
-
-			ROS_DEBUG_STREAM("3D Point: " << cv::Point3f(actives.at(i).position(0), actives.at(i).position(1), actives.at(i).position(2)) << " \nCorresponding to: " << pt.getFeaturePosition()
-					<< "\nwith cov: " << actives.at(i).variance << "\n");
-
-			cov_sum += actives.at(i).variance;
-			totalMatches++;
-		}
-	}
-
-	if(objectPoints.size() < 4)
-	{
-		pass = false;
-		return 0;
-	}
-
-	tf::StampedTransform base2cam;
-	try{
-		this->ekf.tf_listener.lookupTransform(this->camera_frame, this->CoM_frame, ros::Time(0), base2cam);
-	}
-	catch(tf::TransformException& e){
-		ROS_WARN_STREAM(e.what());
-	}
-
-	float reprojError;
-
-	//cv::Mat::eye(cv::Size(3, 3), CV_32F)
-	//cv::solvePnP(objectPoints, imagePoints, cf.K, cv::noArray(), rvec, tvec, false);
-	cv::solvePnPRansac(objectPoints, imagePoints, cf.K, cv::noArray(), rvec, tvec, false, 100, 0.5, 0.99);
-
-	cv::Mat cv_R;
-
-	cv::Rodrigues(rvec, cv_R);
-
-	tf::Vector3 t = tf::Vector3(tvec.at<float>(0), tvec.at<float>(1), tvec.at<float>(2));
-
-	Eigen::Matrix<float, 3, 3> R;
-	cv::cv2eigen(cv_R, R);
-
-	Eigen::Quaternionf q_eig(R.transpose());
-	tf::Quaternion q = tf::Quaternion(q_eig.x(), q_eig.y(), q_eig.z(), q_eig.w());
-
-	tf::Transform world2base = tf::Transform(q, t).inverse() * base2cam.inverse();
-
-	Z(0, 0) = world2base.getOrigin().x();
-	Z(1, 0) = world2base.getOrigin().y();
-	Z(2, 0) = world2base.getOrigin().z();
-
-	tf::Quaternion newQ = world2base.getRotation();
-
-	Z(3, 0) = newQ.w();
-	Z(4, 0) = newQ.x();
-	Z(5, 0) = newQ.y();
-	Z(6, 0) = newQ.z();
-
-	ROS_DEBUG_STREAM("PNP: r: " << Z(0) << ", " << Z(1) << ", " << Z(2) << " q: " << Z(3) << ", " << Z(4) << ", " << Z(5) << ", " << Z(6));
-	ROS_DEBUG_STREAM("PNP COV: " << cov_sum / totalMatches);
-
-	pass = true;
-	return cov_sum / totalMatches;
-}
-
 
 
 /*
@@ -1083,6 +552,218 @@ void VIO::recalibrateState(double avgPixelChange, double threshold, bool consecu
 	return;
 }
 
+
+// -=-=-=-=-=-=-=-=-=--=-=-=-=-=-=-=-=-=-=-=-=-=-=
+//LEGACY - Version 2
+
+/*
+
+
+
+ * computes the F mat
+ * gets scales translation
+
+
+double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1_out, std::vector<cv::Point2f>& pt2_out, bool& pass, std::vector<VIOFeature2D>& ft1_out, std::vector<VIOFeature2D>& ft2_out, int& match_frame_index)
+{
+	double pixel_delta = 0;
+	VIOState x1, x2;
+	std::vector<VIOFeature2D> ft1, ft2;
+	int match_index;
+
+	double error = 0;
+
+	//std::vector<cv::Point2f> pt1_new, pt2_new;
+	std::vector<cv::Point2f> pt1, pt2;
+
+	this->getBestCorrespondences(pixel_delta, ft1, ft2, x1, x2, match_index);
+
+	match_frame_index = match_index;
+
+	if(pixel_delta > MIN_FUNDAMENTAL_PXL_DELTA)
+	{
+		pass = true;
+
+		for(int i = 0; i < ft1.size(); i++)
+		{
+			pt1.push_back(ft1.at(i).getUndistorted());
+			pt2.push_back(ft2.at(i).getUndistorted());
+		}
+
+		cv::Mat mask;
+		cv::Mat E = cv::findEssentialMat(pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::RANSAC, 0.999, 1.0, mask);
+
+		//std::vector<cv::Point2f> pt1_copy, pt2_copy;
+		//pt1_copy = pt1;
+		//pt2_copy = pt2;
+		//cv::correctMatches(E, pt1_copy, pt2_copy, pt1_new, pt2_new);
+
+		//pt1_new = pt1;
+		//pt2_new = pt2;
+
+		for(int i = 0; i < pt1.size(); i++)
+		{
+			cv::Matx31f u1, u2;
+
+			u1(0) = pt1.at(i).x;
+			u1(1) = pt1.at(i).y;
+			u1(2) = 1.0;
+
+			u2(0) = pt2.at(i).x;
+			u2(1) = pt2.at(i).y;
+			u2(2) = 1.0;
+
+			Eigen::Matrix<float, 3, 1> u1_eig, u2_eig;
+			Eigen::Matrix<float, 3, 3> E_eig;
+
+			cv::cv2eigen(u1, u1_eig);
+			cv::cv2eigen(u2, u2_eig);
+			cv::cv2eigen(E, E_eig);
+
+			error += abs((u2_eig.transpose() * E_eig * u1_eig)(0, 0));
+
+		}
+		//error = 0;
+
+		cv::Mat R_temp, t_hat;
+
+		double goodProb = this->recoverPoseV2(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask, frameBuffer.at(match_index).state, currentFrame().state);
+		//int goodPoints = cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_hat, mask);
+
+		ROS_DEBUG_STREAM("error: " << error);
+
+		R_temp.convertTo(R_temp,  R.type);
+		R_temp.copyTo(R);
+		t_hat.convertTo(t_hat,  t.type);
+		t_hat.copyTo(t);
+
+		//t = ((currentFrame().state.getr() - frameBuffer.at(match_index).state.getr()).norm() * t); // return the scaled translation using the two frames states
+
+		ft1_out = ft1;
+		ft2_out = ft2;
+
+		pt1_out = pt1;
+		pt2_out = pt2;
+
+		F = E;
+
+		ROS_DEBUG_STREAM("tFinal: " << t);
+
+	}
+	else
+	{
+		ROS_DEBUG_STREAM("pixel delta too small for fundamental mat computation");
+		error = 1e9;
+		pass = false;
+	}
+
+	this->viewMatches(ft1, ft2, this->frameBuffer.at(match_index), currentFrame(), pt1, pt2);
+
+	return error;
+}
+
+
+void VIO::getBestCorrespondences(double& pixel_delta, std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, VIOState& x1, VIOState& x2, int& match_index)
+{
+	ros::Time start = ros::Time::now();
+
+	int bestFtIndex = 0;
+	match_index = 0;
+
+	double bestPxlDelta = 0;
+
+	std::deque<std::deque<VIOFeature2D> > temp_ft1;
+	std::deque<std::deque<VIOFeature2D> > temp_ft2;
+
+	std::deque<VIOFeature2D> dq;
+	for(int i = 0; i < currentFrame().features.size(); i++)
+		dq.push_back(currentFrame().features.at(i));
+
+	temp_ft1.push_back(dq);
+	temp_ft2.push_back(dq);
+
+	for(int i = 1; i < this->frameBuffer.size(); i++)
+	{
+		float pxlSum = 0;
+
+		//ROS_DEBUG("t0");
+
+		//ROS_DEBUG_STREAM("last vec size: " << temp_ft1.at(i - 1).size());
+
+		std::deque<VIOFeature2D> t1, t2;
+
+		temp_ft1.push_back(t1);
+		temp_ft2.push_back(t2);
+
+		//ros::Time start2 = ros::Time::now();
+
+		for(int j = 0; j < temp_ft1.at(i - 1).size(); j++)
+		{
+			if(temp_ft1.at(i - 1).at(j).isMatched())
+			{
+				temp_ft2.at(i).push_back(temp_ft2.at(i - 1).at(j));
+
+				temp_ft1.at(i).push_back(this->getCorrespondingFeature(temp_ft1.at(i - 1).at(j), this->frameBuffer.at(i)));
+
+				pxlSum += this->manhattan(temp_ft1.at(i).at(temp_ft1[i].size() - 1).getUndistorted(), temp_ft2.at(i - 1).at(j).getUndistorted());
+
+			}
+		}
+
+		//pxlSum = i;
+
+		//ROS_DEBUG_STREAM((ros::Time::now().toSec() - start2.toSec()) * 1000 << " milliseconds runtime (feature correspondence inner loop)");
+
+		//ROS_DEBUG("t1");
+
+		if(temp_ft1.at(i).size() < MIN_TRIAG_FEATURES)
+		{
+			//ROS_DEBUG_STREAM("too few features break");
+			break;
+		}
+
+		if(pxlSum / temp_ft1.at(i).size() > IDEAL_FUNDAMENTAL_PXL_DELTA)
+		{
+			//ROS_DEBUG_STREAM("ideal pxl delta break");
+
+			bestFtIndex = i;
+
+			bestPxlDelta = pxlSum / temp_ft1.at(i).size();
+
+			match_index = i;
+			break;
+		}
+
+		if(pxlSum / temp_ft1.size() > bestPxlDelta)
+		{
+			//ROS_DEBUG_STREAM("better pxlDelta");
+
+			bestFtIndex = i;
+
+			bestPxlDelta = pxlSum / temp_ft1.at(i).size();
+
+			match_index = i;
+		}
+
+		//ROS_DEBUG("t2");
+
+	}
+
+	std::copy(temp_ft1.at(bestFtIndex).begin(), temp_ft1.at(bestFtIndex).end(), std::back_inserter(ft1));
+	std::copy(temp_ft2.at(bestFtIndex).begin(), temp_ft2.at(bestFtIndex).end(), std::back_inserter(ft2));
+	x1 = frameBuffer.at(bestFtIndex).state;
+	x2 = frameBuffer.at(0).state;
+	pixel_delta = bestPxlDelta;
+
+	ROS_DEBUG_STREAM("best pixel delta " << pixel_delta);
+	ROS_DEBUG_STREAM("match index: " << match_index);
+	ROS_DEBUG_STREAM((ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime (feature correspondence)");
+}
+
+*/
+
+
+//-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 //LEGACY - Version 1
 
 /*

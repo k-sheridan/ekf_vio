@@ -33,8 +33,8 @@ private:
 	bool matched;
 	bool undistorted;
 	float quality;
-	int matchedFeatureFromLastFrameIndex;
-	int matchedFeatureFromLastFrameID;
+	std::deque<int> matchedFeatureIndexes;
+	std::deque<int> matchedFeatureIDs;
 	float distanceFromFrameCenter;
 
 public:
@@ -51,26 +51,34 @@ public:
 	/*
 	 * create a feature with a position and match
 	 */
-	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, int _id){
+	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, std::deque<int> matchedID_deque, std::deque<int> matchedIndex_deque, int _id){
 		this->setFeaturePosition(pt);
 		id = _id;
 		described = false; // the feature has not been described with this constructor
 		matched = true;
-		matchedFeatureFromLastFrameID = matchedID;
-		matchedFeatureFromLastFrameIndex = matchedIndex;
+
+		matchedFeatureIDs = matchedID_deque; // give this feature the old features ID buffer
+		matchedFeatureIndexes = matchedIndex_deque; // give this feature the old features Index buffer
+
+		matchedFeatureIDs.push_front(matchedID); // add the old feature to this features ID buffer at front
+		matchedFeatureIndexes.push_front(matchedIndex); // add the old feature to this features index buffer
 		quality = -1.0;
 	}
 	/*
 	 * create a feature with a position, description and match
 	 */
-	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, cv::Mat desc, int _id){
+	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, std::deque<int> matchedID_deque, std::deque<int> matchedIndex_deque, cv::Mat desc, int _id){
 		this->setFeaturePosition(pt);
 		id = _id;
 		described = true; // the feature has been described with this constructor
 		description = desc;
 		matched = true;
-		matchedFeatureFromLastFrameID = matchedID;
-		matchedFeatureFromLastFrameIndex = matchedIndex;
+
+		matchedFeatureIDs = matchedID_deque; // give this feature the old features ID buffer
+		matchedFeatureIndexes = matchedIndex_deque; // give this feature the old features Index buffer
+
+		matchedFeatureIDs.push_front(matchedID); // add the old feature to this features ID buffer at front
+		matchedFeatureIndexes.push_front(matchedIndex); // add the old feature to this features index buffer
 		quality = -1.0;
 	}
 	/*
@@ -83,8 +91,6 @@ public:
 		id = _id;
 		described = false; // the feature has not been described with this constructor
 		matched = false;
-		matchedFeatureFromLastFrameID = -1;
-		matchedFeatureFromLastFrameIndex = -1;
 		quality = -1.0;
 	}
 
@@ -98,8 +104,6 @@ public:
 		description = _description;
 		described = true; // the feature has not been described with this constructor
 		matched = false;
-		matchedFeatureFromLastFrameID = -1;
-		matchedFeatureFromLastFrameIndex = -1;
 		quality = -1.0;
 	}
 
@@ -141,12 +145,27 @@ public:
 		return distanceFromFrameCenter;
 	}
 
+	int getMatchedID(int i){
+		return this->matchedFeatureIDs.at(i);
+	}
+
+	int getMatchedIndex(int i){
+		return this->matchedFeatureIndexes.at(i);
+	}
 	int getMatchedID(){
-		return this->matchedFeatureFromLastFrameID;
+		return this->matchedFeatureIDs.at(0);
 	}
 
 	int getMatchedIndex(){
-		return this->matchedFeatureFromLastFrameIndex;
+		return this->matchedFeatureIndexes.at(0);
+	}
+
+	std::deque<int> getMatchedIDDeque(){
+		return this->matchedFeatureIDs;
+	}
+
+	std::deque<int> getMatchedIndexDeque(){
+		return this->matchedFeatureIndexes;
 	}
 
 	cv::Point2f getUndistorted()

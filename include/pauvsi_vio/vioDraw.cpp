@@ -8,6 +8,46 @@
 
 #include "vio.h"
 
+
+void VIO::drawKeyFrames()
+{
+	cv::Mat img1, img2, img3, img4, img5;
+	img1 = currentFrame().image;
+	img2 = frameBuffer.at(keyFrames.at(0).frameBufferIndex).image;
+	img3 = frameBuffer.at(keyFrames.at(1).frameBufferIndex).image;
+	img4 = frameBuffer.at(keyFrames.at(2).frameBufferIndex).image;
+	img5 = frameBuffer.at(keyFrames.at(3).frameBufferIndex).image;
+
+	cv::cvtColor(img1, img1, CV_GRAY2BGR);
+	cv::cvtColor(img2, img2, CV_GRAY2BGR);
+	cv::cvtColor(img3, img3, CV_GRAY2BGR);
+	cv::cvtColor(img4, img4, CV_GRAY2BGR);
+	cv::cvtColor(img5, img5, CV_GRAY2BGR);
+
+	//do work on images
+
+	cv::Mat img2_s, img3_s, img4_s, img5_s;
+	cv::resize(img2, img2_s, cv::Size(img1.rows / 2, img1.cols / 2));
+	cv::resize(img3, img3_s, cv::Size(img1.rows / 2, img1.cols / 2));
+	cv::resize(img4, img4_s, cv::Size(img1.rows / 2, img1.cols / 2));
+	cv::resize(img5, img5_s, cv::Size(img1.rows / 2, img1.cols / 2));
+
+	/*
+	cv::Mat row2, row3;
+	cv::hconcat(img2_s, img3_s, row2);
+	cv::hconcat(img4_s, img5_s, row3);
+	cv::Mat row1_2, final;
+	cv::vconcat(img1, row2, row1_2);
+	cv::vconcat(row1_2, row3, final);
+	*/
+
+	cv::namedWindow("debug", cv::WINDOW_AUTOSIZE);
+	cv::imshow("debug", img1);
+	cv::waitKey(1);
+}
+
+// LEGACY - VERSION 2
+
 template <typename T1, typename T2>
 void VIO::drawEpipolarLines(const std::string& title, const cv::Matx<T1,3,3> F,
 		const cv::Mat& img1, const cv::Mat& img2,
