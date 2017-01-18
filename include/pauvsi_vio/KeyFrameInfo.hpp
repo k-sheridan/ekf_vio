@@ -17,6 +17,8 @@ public:
 
 	double pixelDelta; // the pixel delta between this frame and the current frame
 
+	std::vector<VIOFeature2D> matchedFeatures;
+
 	std::vector<int> currentFrameIndexes; // these are the indexes of the features in the current frame which are matched with this frame.
 
 	KeyFrameInfo()

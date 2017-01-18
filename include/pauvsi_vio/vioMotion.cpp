@@ -37,22 +37,37 @@ void VIO::updateKeyFrameInfo()
 		std::vector<int> tempIndexes;
 		tempIndexes.reserve(lastIndexes.size());
 
+		// these are for collecting the smallest index
 		int smallestDequeIndex = 0;
+		int smallestDequeSize;
+		if(lastIndexes.size() > 0){
+			smallestDequeSize = cf.features.at(lastIndexes.at(0)).getMatchedIndexDeque().size();
+		}
+		else
+		{
+			break;
+		}
 
 		for(const int& cfIndex : lastIndexes)
 		{
-			//TODO find the next index where a feature is dropped
 
 			int thisDequeSize = cf.features.at(cfIndex).getMatchedIndexDeque().size();
 			if(thisDequeSize >= i)
 			{
+				if(cf.features.at(cfIndex).getMatchedIndexDeque().size() < smallestDequeSize)
+				{
+					smallestDequeSize = cf.features.at(cfIndex).getMatchedIndexDeque().size();
+					smallestDequeIndex = cfIndex;
+				}
+
 				tempIndexes.push_back(cfIndex);
 			}
+
 		}
 
 		int tempIndexSize = tempIndexes.size();
 
-		ROS_DEBUG_STREAM("features left: " << tempIndexSize);
+		//ROS_DEBUG_STREAM("features left: " << tempIndexSize);
 
 		if(keyFramesSet < 1 && (tempIndexSize < kfLvl1 || tempIndexSize < 5))
 		{
@@ -62,7 +77,7 @@ void VIO::updateKeyFrameInfo()
 			keyFrames.at(0).nextFeatureID = this->frameBuffer.at(i - 1).nextFeatureID;
 			keyFrames.at(0).pixelDelta = this->computeKeyFramePixelDelta(cf, keyFrames.at(0));
 
-			ROS_DEBUG_STREAM("setting keyframe 1 from inside with index " << keyFrames.at(0).frameBufferIndex);
+			//ROS_DEBUG_STREAM("setting keyframe 1 from inside with index " << keyFrames.at(0).frameBufferIndex);
 		}
 
 		if(keyFramesSet < 2 && (tempIndexSize < kfLvl2 || tempIndexSize < 5))
@@ -73,7 +88,7 @@ void VIO::updateKeyFrameInfo()
 			keyFrames.at(1).nextFeatureID = this->frameBuffer.at(i - 1).nextFeatureID;
 			keyFrames.at(1).pixelDelta = this->computeKeyFramePixelDelta(cf, keyFrames.at(1));
 
-			ROS_DEBUG_STREAM("setting keyframe 2 from inside with index " << keyFrames.at(1).frameBufferIndex);
+			//ROS_DEBUG_STREAM("setting keyframe 2 from inside with index " << keyFrames.at(1).frameBufferIndex);
 		}
 
 		if(keyFramesSet < 3 && (tempIndexSize < kfLvl3 || tempIndexSize < 5))
@@ -84,7 +99,7 @@ void VIO::updateKeyFrameInfo()
 			keyFrames.at(2).nextFeatureID = this->frameBuffer.at(i - 1).nextFeatureID;
 			keyFrames.at(2).pixelDelta = this->computeKeyFramePixelDelta(cf, keyFrames.at(2));
 
-			ROS_DEBUG_STREAM("setting keyframe 3 from inside with index " << keyFrames.at(2).frameBufferIndex);
+			//ROS_DEBUG_STREAM("setting keyframe 3 from inside with index " << keyFrames.at(2).frameBufferIndex);
 		}
 
 		if(keyFramesSet < 4 && (tempIndexSize < kfLvl4 || tempIndexSize < 5))
@@ -95,7 +110,35 @@ void VIO::updateKeyFrameInfo()
 			keyFrames.at(3).nextFeatureID = this->frameBuffer.at(i - 1).nextFeatureID;
 			keyFrames.at(3).pixelDelta = this->computeKeyFramePixelDelta(cf, keyFrames.at(3));
 
-			ROS_DEBUG_STREAM("setting keyframe 4 from inside with index " << keyFrames.at(3).frameBufferIndex);
+			//ROS_DEBUG_STREAM("setting keyframe 4 from inside with index " << keyFrames.at(3).frameBufferIndex);
+		}
+
+		//ROS_DEBUG_STREAM("current index: " << i);
+		//ROS_DEBUG_STREAM("smallest deque size: " << smallestDequeSize);
+		//ROS_DEBUG_STREAM("optimization wants to skip to " << smallestDequeSize + 1 << " and get last features from " << smallestDequeSize);
+
+		// now skip forward to the point just before a feature is lost
+		if(smallestDequeSize < this->frameBuffer.size())
+		{
+
+			i = smallestDequeSize; // will be iterated once
+
+			tempIndexes.clear(); // empty the temp indexes to be filled again
+
+			for(const int& cfIndex : lastIndexes)
+			{
+
+				int thisDequeSize = cf.features.at(cfIndex).getMatchedIndexDeque().size();
+				if(thisDequeSize >= smallestDequeSize)
+				{
+					tempIndexes.push_back(cfIndex);
+				}
+			}
+		}
+		else
+		{
+			lastIndexes = tempIndexes;
+			break;
 		}
 
 		lastIndexes = tempIndexes;
@@ -113,7 +156,7 @@ void VIO::updateKeyFrameInfo()
 		keyFrames.at(3).nextFeatureID = this->frameBuffer.at(i - 1).nextFeatureID;
 		keyFrames.at(3).pixelDelta = this->computeKeyFramePixelDelta(cf, keyFrames.at(3));
 
-		ROS_DEBUG_STREAM("setting keyframe 4 from outside with index " << keyFrames.at(3).frameBufferIndex);
+		//ROS_DEBUG_STREAM("setting keyframe 4 from outside with index " << keyFrames.at(3).frameBufferIndex);
 	}
 
 	if(keyFramesSet <= 2)
@@ -123,7 +166,7 @@ void VIO::updateKeyFrameInfo()
 		keyFrames.at(2).nextFeatureID = this->frameBuffer.at(i - 1).nextFeatureID;
 		keyFrames.at(2).pixelDelta = this->computeKeyFramePixelDelta(cf, keyFrames.at(2));
 
-		ROS_DEBUG_STREAM("setting keyframe 3 from outside with index " << keyFrames.at(2).frameBufferIndex);
+		//ROS_DEBUG_STREAM("setting keyframe 3 from outside with index " << keyFrames.at(2).frameBufferIndex);
 	}
 
 	if(keyFramesSet <= 1)
@@ -133,7 +176,7 @@ void VIO::updateKeyFrameInfo()
 		keyFrames.at(1).nextFeatureID = this->frameBuffer.at(i - 1).nextFeatureID;
 		keyFrames.at(1).pixelDelta = this->computeKeyFramePixelDelta(cf, keyFrames.at(1));
 
-		ROS_DEBUG_STREAM("setting keyframe 2 from outside with index " << keyFrames.at(1).frameBufferIndex);
+		//ROS_DEBUG_STREAM("setting keyframe 2 from outside with index " << keyFrames.at(1).frameBufferIndex);
 	}
 	if(keyFramesSet == 0)
 	{
@@ -142,21 +185,23 @@ void VIO::updateKeyFrameInfo()
 		keyFrames.at(0).nextFeatureID = this->frameBuffer.at(i - 1).nextFeatureID;
 		keyFrames.at(0).pixelDelta = this->computeKeyFramePixelDelta(cf, keyFrames.at(0));
 
-		ROS_DEBUG_STREAM("setting keyframe 1 from outside with index " << keyFrames.at(0).frameBufferIndex);
+		//ROS_DEBUG_STREAM("setting keyframe 1 from outside with index " << keyFrames.at(0).frameBufferIndex);
 	}
 
 	//DEBUG
-	ROS_DEBUG_STREAM("KeyFrame 1 index: " << keyFrames.at(0).frameBufferIndex << " features: " << keyFrames.at(0).currentFrameIndexes.size() << " pxlDelta: " << keyFrames.at(0).pixelDelta);
-	ROS_DEBUG_STREAM("KeyFrame 2 index: " << keyFrames.at(1).frameBufferIndex << " features: " << keyFrames.at(1).currentFrameIndexes.size() << " pxlDelta: " << keyFrames.at(1).pixelDelta);
-	ROS_DEBUG_STREAM("KeyFrame 3 index: " << keyFrames.at(2).frameBufferIndex << " features: " << keyFrames.at(2).currentFrameIndexes.size() << " pxlDelta: " << keyFrames.at(2).pixelDelta);
-	ROS_DEBUG_STREAM("KeyFrame 4 index: " << keyFrames.at(3).frameBufferIndex << " features: " << keyFrames.at(3).currentFrameIndexes.size() << " pxlDelta: " << keyFrames.at(3).pixelDelta);
+	//ROS_DEBUG_STREAM("KeyFrame 1 index: " << keyFrames.at(0).frameBufferIndex << " features: " << keyFrames.at(0).currentFrameIndexes.size() << " pxlDelta: " << keyFrames.at(0).pixelDelta);
+	//ROS_DEBUG_STREAM("KeyFrame 2 index: " << keyFrames.at(1).frameBufferIndex << " features: " << keyFrames.at(1).currentFrameIndexes.size() << " pxlDelta: " << keyFrames.at(1).pixelDelta);
+	//ROS_DEBUG_STREAM("KeyFrame 3 index: " << keyFrames.at(2).frameBufferIndex << " features: " << keyFrames.at(2).currentFrameIndexes.size() << " pxlDelta: " << keyFrames.at(2).pixelDelta);
+	//ROS_DEBUG_STREAM("KeyFrame 4 index: " << keyFrames.at(3).frameBufferIndex << " features: " << keyFrames.at(3).currentFrameIndexes.size() << " pxlDelta: " << keyFrames.at(3).pixelDelta);
 	ROS_DEBUG_STREAM((ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime (key frame computation)");
 }
 
-double VIO::computeKeyFramePixelDelta(Frame cf, KeyFrameInfo keyFrame)
+double VIO::computeKeyFramePixelDelta(Frame cf, KeyFrameInfo& keyFrame)
 {
 	Frame matchFrame = this->frameBuffer.at(keyFrame.frameBufferIndex);
 	ROS_ASSERT(matchFrame.nextFeatureID == keyFrame.nextFeatureID);
+
+	std::vector<VIOFeature2D> matchedFeatures;
 
 	double deltaSum = 0;
 
@@ -178,8 +223,12 @@ double VIO::computeKeyFramePixelDelta(Frame cf, KeyFrameInfo keyFrame)
 		ft1 = matchFrame.features.at(matchFeatureIndex);
 		ROS_ASSERT(ft1.getFeatureID() == matchFeatureID);
 
+		matchedFeatures.push_back(ft1);
+
 		deltaSum += this->manhattan(ft1.getUndistorted(), ft2.getUndistorted());
 	}
+
+	keyFrame.matchedFeatures = matchedFeatures;
 
 	return deltaSum / (double)keyFrame.currentFrameIndexes.size();
 }

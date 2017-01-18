@@ -197,7 +197,7 @@ public:
 
 	void updateKeyFrameInfo();
 
-	double computeKeyFramePixelDelta(Frame cf, KeyFrameInfo keyFrame);
+	double computeKeyFramePixelDelta(Frame cf, KeyFrameInfo& keyFrame);
 
 	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2, bool& pass, std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, int& match_frame_index);
 
