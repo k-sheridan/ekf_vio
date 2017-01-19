@@ -1,0 +1,55 @@
+<launch>
+	
+	
+	
+	<node pkg="tf" type="static_transform_publisher" name="odom_base" 
+			args="0 0 0 0 0 0 /odom /base_link 20"/>
+	
+	<node pkg="tf" type="static_transform_publisher" name="IMU_base" 
+			args="0.01 0.034 0 0 0 0 /base_link /imu_frame 20"/>
+			
+	<node pkg="tf" type="static_transform_publisher" name="base_camera" 
+			args="0.096 0 0.023 -1.57079632679 0 -1.57079632679 /base_link /camera_frame 20"/> 
+	
+	<node name="flightControllerSerial" pkg="rosserial_python" type="serial_node.py">
+		<param name="port" value="/dev/ttyACM0" />
+	</node>
+
+	<node name="camera" pkg="pauvsi_pgc_driver" type="pgcDriver" output="screen">
+		<param name="frame_rate" value="5" />
+  		<param name="serial_number" value="15374828" />
+  		<param name="publish_rectified" value="false" />
+		<param name="publish_distort" value="true" />
+		<param name="publish_color" value="false" />
+		<param name="publish_mono" value="false" />
+		<param name="topic" value="/camera/bottom"/>
+		<param name="frame" value="bottom_camera"/>
+		<param name="publish_scaled_mono" value="true" />
+		<param name="scaleX" value="640" />
+		<param name="scaleY" value="512" />
+		<rosparam file="$(find pauvsi_pgc_driver)/params/13Y3C_params.yaml"/>
+	</node>
+	
+	<node name="vio" pkg="pauvsi_vio" type="pauvsi_vio" output="screen">
+		<param name="cameraTopic" value="/camera/bottom/image_scaled"/>
+		<param name="imu_topic" value="/IMU_Full"/>
+		<param name="fast_threshold" value="50"/>
+		<param name="feature_similarity_threshold" value="90"/>
+		<param name="kill_by_dissimilarity" value="false"/>
+		<param name="min_eigen_value" value="0.01"/>
+		<param name="num_features" value="20"/>
+		<param name="min_new_feature_distance" value="20"/>
+		<param name="convert2rad" value="true"/>
+		<param name="min_triag_dist" value="0.03"/>
+		<param name="pixel_delta_init_thresh" value="0.2"/>
+		<param name="max_triangulation_error" value="0.01"/>
+		<param name="frame_buffer_length" value="50"/>
+		<param name="ideal_fundamental_matrix_pxl_delta" value="1"/>
+		<param name="max_fundamental_error" value="0.5"/>
+		<param name="min_triag_features" value="25"/>
+		<param name="min_fundamental_matrix_pxl_delta" value="0.35"/>
+		
+	</node>
+	
+	
+</launch>
