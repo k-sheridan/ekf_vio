@@ -25,24 +25,39 @@ void VIO::drawKeyFrames()
 	cv::cvtColor(img5, img5, CV_GRAY2BGR);
 
 	//do work on images
+	Frame cf = currentFrame();
+	for(int i = 0; i < cf.features.size(); i++)
+	{
+		cv::Matx31f u;
+		u(0) = cf.features.at(i).getFeaturePosition().x;
+		u(1) = cf.features.at(i).getFeaturePosition().y;
+
+		cv::drawMarker(img1, cv::Point2f(u(0), u(1)), cv::Scalar(255, 0, 0), cv::MARKER_DIAMOND, 4);
+	}
+
 
 	cv::Mat img2_s, img3_s, img4_s, img5_s;
-	cv::resize(img2, img2_s, cv::Size(img1.rows / 2, img1.cols / 2));
-	cv::resize(img3, img3_s, cv::Size(img1.rows / 2, img1.cols / 2));
-	cv::resize(img4, img4_s, cv::Size(img1.rows / 2, img1.cols / 2));
-	cv::resize(img5, img5_s, cv::Size(img1.rows / 2, img1.cols / 2));
+	cv::resize(img2, img2_s, cv::Size(320, 256));
+	cv::resize(img3, img3_s, cv::Size(320, 256));
+	cv::resize(img4, img4_s, cv::Size(320, 256));
+	cv::resize(img5, img5_s, cv::Size(320, 256));
 
-	/*
-	cv::Mat row2, row3;
-	cv::hconcat(img2_s, img3_s, row2);
-	cv::hconcat(img4_s, img5_s, row3);
-	cv::Mat row1_2, final;
-	cv::vconcat(img1, row2, row1_2);
-	cv::vconcat(row1_2, row3, final);
-	*/
 
-	cv::namedWindow("debug", cv::WINDOW_AUTOSIZE);
-	cv::imshow("debug", img1);
+	cv::Mat final = cv::Mat(cv::Size(640, 1024), CV_8UC3);
+	//cv::Mat roi1 = cv::Mat(final, cv::Rect(0, 0, 640, 512));
+	img1.copyTo(final(cv::Rect(0, 0, 640, 512)));
+	//cv::Mat roi2 = cv::Mat(final, cv::Rect(0, 512, 320, 256));
+	img2_s.copyTo(final(cv::Rect(0, 512, 320, 256)));
+	//cv::Mat roi3 = cv::Mat(final, cv::Rect(320, 512, 320, 256));
+	img3_s.copyTo(final(cv::Rect(320, 512, 320, 256)));
+	//cv::Mat roi4 = cv::Mat(final, cv::Rect(0, 768, 320, 256));
+	img4_s.copyTo(final(cv::Rect(0, 768, 320, 256)));
+	//cv::Mat roi5 = cv::Mat(final, cv::Rect(320, 768, 320, 256));
+	img5_s.copyTo(final(cv::Rect(320, 768, 320, 256)));
+
+
+	//cv::namedWindow("debug", cv::WINDOW_AUTOSIZE);
+	cv::imshow("debug", final);
 	cv::waitKey(1);
 }
 

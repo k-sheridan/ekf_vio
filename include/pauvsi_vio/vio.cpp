@@ -241,7 +241,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 		this->ekf.imuMessageBuffer = newBuff; // replace the buffer
 	}
 
-	//this->drawKeyFrames();
+	this->drawKeyFrames();
 	return newX;
 }
 

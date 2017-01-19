@@ -114,7 +114,7 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	try{
 		tf_listener.lookupTransform(this->odom_frame, this->imu_frame, ros::Time(0), imu2odom);
 	}
-	catch(tf::TransformException e){
+	catch(tf::TransformException& e){
 		ROS_WARN_STREAM(e.what());
 	}
 

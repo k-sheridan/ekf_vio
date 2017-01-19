@@ -8,8 +8,21 @@
 
 #include "vio.h"
 
-
 void VIO::updateKeyFrameInfo()
+{
+	if(keyFrames.at(0).frameBufferIndex == keyFrames.at(1).frameBufferIndex == keyFrames.at(2).frameBufferIndex  == keyFrames.at(3).frameBufferIndex)
+	{
+		this->bruteForceKeyFrameUpdate();
+	}
+	else
+	{
+		//TODO create an optimal keyframe update algorithm using local search rather than global search
+		this->bruteForceKeyFrameUpdate();
+	}
+}
+
+
+void VIO::bruteForceKeyFrameUpdate()
 {
 	ros::Time start = ros::Time::now();
 

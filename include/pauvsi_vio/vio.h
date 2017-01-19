@@ -196,6 +196,7 @@ public:
 	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
 
 	void updateKeyFrameInfo();
+	void bruteForceKeyFrameUpdate();
 
 	double computeKeyFramePixelDelta(Frame cf, KeyFrameInfo& keyFrame);
 

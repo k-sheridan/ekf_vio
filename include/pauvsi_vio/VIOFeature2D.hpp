@@ -16,6 +16,7 @@
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/video.hpp"
 #include <vector>
+#include <deque>
 #include <string>
 #include <ros/ros.h>
 
@@ -51,14 +52,14 @@ public:
 	/*
 	 * create a feature with a position and match
 	 */
-	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, std::deque<int> matchedID_deque, std::deque<int> matchedIndex_deque, int _id){
+	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, std::deque<int>&& matchedID_deque, std::deque<int>&& matchedIndex_deque, int _id){
 		this->setFeaturePosition(pt);
 		id = _id;
 		described = false; // the feature has not been described with this constructor
 		matched = true;
 
-		matchedFeatureIDs = matchedID_deque; // give this feature the old features ID buffer
-		matchedFeatureIndexes = matchedIndex_deque; // give this feature the old features Index buffer
+		matchedFeatureIDs = (matchedID_deque); // give this feature the old features ID buffer
+		matchedFeatureIndexes = (matchedIndex_deque); // give this feature the old features Index buffer
 
 		matchedFeatureIDs.push_front(matchedID); // add the old feature to this features ID buffer at front
 		matchedFeatureIndexes.push_front(matchedIndex); // add the old feature to this features index buffer
@@ -67,15 +68,15 @@ public:
 	/*
 	 * create a feature with a position, description and match
 	 */
-	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, std::deque<int> matchedID_deque, std::deque<int> matchedIndex_deque, cv::Mat desc, int _id){
+	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, std::deque<int>&& matchedID_deque, std::deque<int>&& matchedIndex_deque, cv::Mat desc, int _id){
 		this->setFeaturePosition(pt);
 		id = _id;
 		described = true; // the feature has been described with this constructor
 		description = desc;
 		matched = true;
 
-		matchedFeatureIDs = matchedID_deque; // give this feature the old features ID buffer
-		matchedFeatureIndexes = matchedIndex_deque; // give this feature the old features Index buffer
+		matchedFeatureIDs = (matchedID_deque); // give this feature the old features ID buffer
+		matchedFeatureIndexes = (matchedIndex_deque); // give this feature the old features Index buffer
 
 		matchedFeatureIDs.push_front(matchedID); // add the old feature to this features ID buffer at front
 		matchedFeatureIndexes.push_front(matchedIndex); // add the old feature to this features index buffer
