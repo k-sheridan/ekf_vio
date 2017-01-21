@@ -32,8 +32,46 @@ void VIO::drawKeyFrames()
 		u(0) = cf.features.at(i).getFeaturePosition().x;
 		u(1) = cf.features.at(i).getFeaturePosition().y;
 
-		cv::drawMarker(img1, cv::Point2f(u(0), u(1)), cv::Scalar(255, 0, 0), cv::MARKER_DIAMOND, 4);
+		cv::drawMarker(img1, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 6);
 	}
+
+	ROS_DEBUG_STREAM("feat: " <<  keyFrames.at(0).matchedFeatures.size());
+	for(auto e : keyFrames.at(0).matchedFeatures)
+	{
+		cv::Matx31f u;
+		u(0) = e.getFeaturePosition().x;
+		u(1) = e.getFeaturePosition().y;
+
+		cv::drawMarker(img2, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
+	}
+
+	for(auto e : keyFrames.at(1).matchedFeatures)
+	{
+		cv::Matx31f u;
+		u(0) = e.getFeaturePosition().x;
+		u(1) = e.getFeaturePosition().y;
+
+		cv::drawMarker(img3, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
+	}
+
+	for(auto e : keyFrames.at(2).matchedFeatures)
+	{
+		cv::Matx31f u;
+		u(0) = e.getFeaturePosition().x;
+		u(1) = e.getFeaturePosition().y;
+
+		cv::drawMarker(img4, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
+	}
+
+	for(auto e : keyFrames.at(3).matchedFeatures)
+	{
+		cv::Matx31f u;
+		u(0) = e.getFeaturePosition().x;
+		u(1) = e.getFeaturePosition().y;
+
+		cv::drawMarker(img5, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
+	}
+
 
 
 	cv::Mat img2_s, img3_s, img4_s, img5_s;

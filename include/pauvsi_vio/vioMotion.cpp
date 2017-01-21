@@ -226,14 +226,12 @@ double VIO::computeKeyFramePixelDelta(Frame cf, KeyFrameInfo& keyFrame)
 			break;
 		}
 
-		VIOFeature2D ft1, ft2;
-
-		ft2 = cf.features.at(index);
+		VIOFeature2D& ft2 = cf.features.at(index);
 
 		int matchFeatureIndex = ft2.getMatchedIndexDeque().at(keyFrame.frameBufferIndex - 1);
 		int matchFeatureID = ft2.getMatchedIDDeque().at(keyFrame.frameBufferIndex - 1);
 
-		ft1 = matchFrame.features.at(matchFeatureIndex);
+		VIOFeature2D& ft1 = matchFrame.features.at(matchFeatureIndex);
 		ROS_ASSERT(ft1.getFeatureID() == matchFeatureID);
 
 		matchedFeatures.push_back(ft1);
