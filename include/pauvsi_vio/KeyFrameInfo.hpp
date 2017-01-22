@@ -21,6 +21,8 @@ public:
 
 	std::vector<int> currentFrameIndexes; // these are the indexes of the features in the current frame which are matched with this frame.
 
+	cv::Matx34f P; //this is the scaled projection matrix for this keyframe
+
 	KeyFrameInfo()
 	{
 		frameBufferIndex = 0;

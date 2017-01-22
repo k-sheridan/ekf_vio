@@ -317,7 +317,7 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 
 	F = E;
 
-	return essential_error;
+	return essential_error / pt1.size();
 
 }
 

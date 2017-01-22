@@ -8,6 +8,19 @@
 
 #include "vio.h"
 
+struct less_than_key
+{
+	inline bool operator() (const VIOFeature3D& ft1, const VIOFeature3D& ft2)
+	{
+		return (ft1.variance < ft2.variance);
+	}
+};
+
+void VIO::sortActive3DFeaturesByVariance()
+{
+	std::sort(active3DFeatures.begin(), active3DFeatures.end(), less_than_key());
+}
+
 void VIO::update3DFeatures()
 {
 	cv::Mat F;

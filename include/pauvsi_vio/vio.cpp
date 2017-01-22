@@ -220,6 +220,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 		//NEXT
 		//We must predict motion using either the triangulated 3d points or the key frames and their corresponding points
 		this->updateKeyFrameInfo(); // finds new keyframes for the currentframe
+		this->sortActive3DFeaturesByVariance(); // this sorts the active 3d features according to their variances in ascending order
 
 		for(int i = 0; i < keyFrames.size(); i++)
 		{
@@ -228,7 +229,8 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 			cv::Matx31f t;
 			double essential_error = this->computeFundamentalMatrix(E, R, t, keyFrames.at(i));
 
-			ROS_DEBUG_STREAM("KF " << i << " t: " << t << " error: " << essential_error);
+			ROS_DEBUG_STREAM("KF " << i << " t: " << t << " error: " << essential_error << " pixel delta: " << keyFrames.at(i).pixelDelta);
+			ROS_DEBUG_STREAM(R);
 		}
 
 		newX = pred;

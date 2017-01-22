@@ -229,6 +229,7 @@ public:
 
 	//TRIANGULATION
 	void update3DFeatures();
+	void sortActive3DFeaturesByVariance();
 
 
 
