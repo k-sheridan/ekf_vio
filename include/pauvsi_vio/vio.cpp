@@ -220,7 +220,16 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 		//NEXT
 		//We must predict motion using either the triangulated 3d points or the key frames and their corresponding points
 		this->updateKeyFrameInfo(); // finds new keyframes for the currentframe
-		//TODO find the fundamental motion estimate for each keyframe
+
+		for(int i = 0; i < keyFrames.size(); i++)
+		{
+			cv::Mat E;
+			cv::Matx33f R;
+			cv::Matx31f t;
+			double essential_error = this->computeFundamentalMatrix(E, R, t, keyFrames.at(i));
+
+			ROS_DEBUG_STREAM("KF " << i << " t: " << t << " error: " << essential_error);
+		}
 
 		newX = pred;
 
@@ -354,6 +363,8 @@ void VIO::readROSParameters()
 	ros::param::param<double>("~max_fundamental_error", MAXIMUM_FUNDAMENTAL_ERROR, DEFAULT_MAX_FUNDAMENTAL_ERROR);
 
 	ros::param::param<int>("~min_triag_features", MIN_TRIAG_FEATURES, DEFAULT_MIN_TRIAG_FEATURES);
+
+	ros::param::param<int>("~max_gauss_newton_iterations", MAX_GN_ITERS, DEFAULT_MAX_GN_ITERS);
 }
 
 /*

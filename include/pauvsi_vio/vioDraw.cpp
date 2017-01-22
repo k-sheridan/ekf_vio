@@ -35,7 +35,7 @@ void VIO::drawKeyFrames()
 		cv::drawMarker(img1, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 6);
 	}
 
-	ROS_DEBUG_STREAM("feat: " <<  keyFrames.at(0).matchedFeatures.size());
+	//ROS_DEBUG_STREAM("feat: " <<  keyFrames.at(0).matchedFeatures.size());
 	for(auto e : keyFrames.at(0).matchedFeatures)
 	{
 		cv::Matx31f u;

@@ -43,7 +43,7 @@
 		<param name="min_triag_dist" value="0.03"/>
 		<param name="pixel_delta_init_thresh" value="0.2"/>
 		<param name="max_triangulation_error" value="0.01"/>
-		<param name="frame_buffer_length" value="50"/>
+		<param name="frame_buffer_length" value="200"/>
 		<param name="ideal_fundamental_matrix_pxl_delta" value="1"/>
 		<param name="max_fundamental_error" value="0.5"/>
 		<param name="min_triag_features" value="25"/>

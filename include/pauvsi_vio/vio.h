@@ -66,6 +66,7 @@
 #define DEFAULT_IDEAL_FUNDAMENTAL_PXL_DELTA 0.3
 #define DEFAULT_MIN_FUNDAMENTAL_PXL_DELTA 0.3
 #define DEFAULT_MAX_FUNDAMENTAL_ERROR 5e-7
+#define DEFAULT_MAX_GN_ITERS 10
 
 #define NUM_KEYFRAMES 4
 #define KEYFRAME_LEVEL_1 0.8
@@ -95,6 +96,7 @@ public:
 	double MAX_TRIAG_ERROR;
 	double MIN_TRIAG_Z;
 
+	int MAX_GN_ITERS;
 	int MIN_TRIAG_FEATURES;
 	double IDEAL_FUNDAMENTAL_PXL_DELTA;
 	double MIN_FUNDAMENTAL_PXL_DELTA;
@@ -198,9 +200,15 @@ public:
 	void updateKeyFrameInfo();
 	void bruteForceKeyFrameUpdate();
 
+	tf::Transform cameraTransformFromState(VIOState x, tf::Transform b2c);
+
+	void pose_gauss_newton(const std::vector< cv::Point3d > &wX,
+	                       const std::vector< cv::Point2d > &x,
+	                       cv::Mat &ctw, cv::Mat &cRw);
+
 	double computeKeyFramePixelDelta(Frame cf, KeyFrameInfo& keyFrame);
 
-	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2, bool& pass, std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, int& match_frame_index);
+	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, KeyFrameInfo& kf);
 
 	double recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
 			cv::OutputArray _R, cv::OutputArray _t, cv::InputOutputArray _mask, VIOState x1, VIOState x2);

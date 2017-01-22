@@ -256,6 +256,76 @@ VIOFeature2D VIO::getCorrespondingFeature(VIOFeature2D currFeature, Frame lastFr
 	return lastFeature;
 }
 
+/*
+ * uses the features of the current frame and the keyframe to estimate the scaled motion between the two frames and returns a current pose estimate
+ * along with the certianty of the estimate
+ */
+double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, KeyFrameInfo& kf)
+{
+	Frame& cf = currentFrame();
+	Frame& mf = this->frameBuffer.at(kf.frameBufferIndex);
+	ROS_ASSERT(mf.nextFeatureID == kf.nextFeatureID); // ensure that this kf is matched to the correct frame
+
+	std::vector<cv::Point2f> pt1, pt2;
+
+	//push back undistorted and normalized image coordinates into their respective vecs
+	for(auto e : kf.matchedFeatures)
+	{
+		pt1.push_back(e.getUndistorted());
+	}
+
+	for(auto e : kf.currentFrameIndexes)
+	{
+		pt2.push_back(cf.features.at(e).getUndistorted());
+	}
+
+	cv::Mat mask; // this is the mask which shows what features were used for motion estimation
+	cv::Mat E = cv::findEssentialMat(pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::RANSAC, 0.999, 1.0, mask); // compute the essential/fundamental matrix
+
+	//compute the error in the motion estimate
+	double essential_error = 0;
+	for(int i = 0; i < pt1.size(); i++)
+	{
+		cv::Matx31f u1, u2;
+
+		u1(0) = pt1.at(i).x;
+		u1(1) = pt1.at(i).y;
+		u1(2) = 1.0;
+
+		u2(0) = pt2.at(i).x;
+		u2(1) = pt2.at(i).y;
+		u2(2) = 1.0;
+
+		Eigen::Matrix<float, 3, 1> u1_eig, u2_eig;
+		Eigen::Matrix<float, 3, 3> E_eig;
+
+		cv::cv2eigen(u1, u1_eig);
+		cv::cv2eigen(u2, u2_eig);
+		cv::cv2eigen(E, E_eig);
+
+		essential_error += abs((u2_eig.transpose() * E_eig * u1_eig)(0, 0));
+	}
+
+	cv::Mat R_temp, t_temp;
+
+	cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_temp, cv::noArray()); // chooses one of the four possible solutions for the motion using state estimates
+
+	R_temp.convertTo(R_temp,  R.type);
+	R_temp.copyTo(R);
+	t_temp.convertTo(t_temp,  t.type);
+	t_temp.copyTo(t);
+
+	F = E;
+
+	return essential_error;
+
+}
+
+tf::Transform VIO::cameraTransformFromState(VIOState x, tf::Transform b2c)
+{
+
+}
+
 double VIO::recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
 		cv::OutputArray _R, cv::OutputArray _t, cv::InputOutputArray _mask, VIOState x1, VIOState x2)
 {
@@ -476,10 +546,10 @@ double VIO::recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputA
 
 double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf, Eigen::Matrix<double, 7, 1>& Z, bool& pass)
 {
-	if(actives.size() < 4)
+	if(actives.size() < 3)
 	{
 		pass = false;
-		return 0;
+		return DBL_MAX;
 	}
 
 	std::vector<cv::Point3f> objectPoints;
@@ -503,7 +573,7 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 			ROS_ASSERT(actives.at(i).current2DFeatureMatchID = lf.features.at(actives.at(i).current2DFeatureMatchIndex).getFeatureID());
 			ROS_ASSERT(pt.getMatchedID() == actives.at(i).current2DFeatureMatchID);
 
-			imagePoints.push_back(pt.getFeaturePosition());
+			imagePoints.push_back(pt.getUndistorted());
 
 			ROS_DEBUG_STREAM("3D Point: " << cv::Point3f(actives.at(i).position(0), actives.at(i).position(1), actives.at(i).position(2)) << " \nCorresponding to: " << pt.getFeaturePosition()
 					<< "\nwith cov: " << actives.at(i).variance << "\n");
@@ -513,10 +583,10 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 		}
 	}
 
-	if(objectPoints.size() < 4)
+	if(objectPoints.size() < 3)
 	{
 		pass = false;
-		return 0;
+		return DBL_MAX;
 	}
 
 	tf::StampedTransform base2cam;
@@ -528,10 +598,10 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 	}
 
 	float reprojError;
-
+	cv::Mat inliers;
 	//cv::Mat::eye(cv::Size(3, 3), CV_32F)
-	//cv::solvePnP(objectPoints, imagePoints, cf.K, cv::noArray(), rvec, tvec, false);
-	cv::solvePnPRansac(objectPoints, imagePoints, cf.K, cv::noArray(), rvec, tvec, false, 100, 0.5, 0.99);
+	//cv::solvePnP(objectPoints, imagePoints, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::noArray(), rvec, tvec, false, cv::SOLVEPNP_P3P);
+	cv::solvePnPRansac(objectPoints, imagePoints, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::noArray(), rvec, tvec, false, 100, 0.5, 0.99, inliers, cv::SOLVEPNP_P3P);
 
 	cv::Mat cv_R;
 
