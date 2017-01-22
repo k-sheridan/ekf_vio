@@ -29,6 +29,7 @@ private:
 	int id;
 	cv::KeyPoint feature; // response = quality
 	cv::Point2f undistort_feature;
+	cv::Point2f normalized_feature;
 	cv::Mat description; // vector 1X32
 	bool described;
 	bool matched;
@@ -37,6 +38,7 @@ private:
 	std::deque<int> matchedFeatureIndexes;
 	std::deque<int> matchedFeatureIDs;
 	float distanceFromFrameCenter;
+	cv::Mat K;
 
 public:
 
@@ -169,10 +171,17 @@ public:
 		return this->matchedFeatureIndexes;
 	}
 
-	cv::Point2f getUndistorted()
+	/*
+	 * if normalized true returns normalized undistorted point else
+	 * returns undistorted point
+	 */
+	cv::Point2f getUndistorted(bool normalized = true)
 	{
 		ROS_ASSERT(this->undistorted);
-		return this->undistort_feature;
+		if(normalized)
+			return this->undistort_feature;
+		else
+			return cv::Point2f(K.at<float>(0, 0) * this->undistort_feature.x + K.at<float>(2, 0), K.at<float>(1, 1) * this->undistort_feature.y + K.at<float>(2, 1)); // the non normed point
 	}
 
 	bool isUndistorted(){
@@ -181,7 +190,7 @@ public:
 
 	/*
 	 * undistorts this feature using K and D
-	 * the new K is identity
+	 * the new K is the ident
 	 * sets the undistorted feature
 	 */
 	void undistort(cv::Mat K, cv::Mat D)
@@ -195,6 +204,7 @@ public:
 
 		this->undistort_feature = out.at(0);
 		this->undistorted = true;
+		this->K = K;
 	}
 
 	void setQuality(float _quality){

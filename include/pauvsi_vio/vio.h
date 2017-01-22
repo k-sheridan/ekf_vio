@@ -209,6 +209,8 @@ public:
 	double computeKeyFramePixelDelta(Frame cf, KeyFrameInfo& keyFrame);
 
 	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, KeyFrameInfo& kf);
+	double computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2);
+	double computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf);
 
 	double recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
 			cv::OutputArray _R, cv::OutputArray _t, cv::InputOutputArray _mask, VIOState x1, VIOState x2);

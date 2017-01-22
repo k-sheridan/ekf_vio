@@ -82,7 +82,7 @@ void VIO::bruteForceKeyFrameUpdate()
 
 		//ROS_DEBUG_STREAM("features left: " << tempIndexSize);
 
-		if(keyFramesSet < 1 && (tempIndexSize < kfLvl1 || tempIndexSize < 5))
+		if(keyFramesSet < 1 && (tempIndexSize < kfLvl1 || tempIndexSize < 8))
 		{
 			keyFramesSet++;
 			keyFrames.at(0).currentFrameIndexes = lastIndexes;
@@ -93,7 +93,7 @@ void VIO::bruteForceKeyFrameUpdate()
 			//ROS_DEBUG_STREAM("setting keyframe 1 from inside with index " << keyFrames.at(0).frameBufferIndex);
 		}
 
-		if(keyFramesSet < 2 && (tempIndexSize < kfLvl2 || tempIndexSize < 5))
+		if(keyFramesSet < 2 && (tempIndexSize < kfLvl2 || tempIndexSize < 8))
 		{
 			keyFramesSet++;
 			keyFrames.at(1).currentFrameIndexes = lastIndexes;
@@ -104,7 +104,7 @@ void VIO::bruteForceKeyFrameUpdate()
 			//ROS_DEBUG_STREAM("setting keyframe 2 from inside with index " << keyFrames.at(1).frameBufferIndex);
 		}
 
-		if(keyFramesSet < 3 && (tempIndexSize < kfLvl3 || tempIndexSize < 5))
+		if(keyFramesSet < 3 && (tempIndexSize < kfLvl3 || tempIndexSize < 8))
 		{
 			keyFramesSet++;
 			keyFrames.at(2).currentFrameIndexes = lastIndexes;
@@ -115,7 +115,7 @@ void VIO::bruteForceKeyFrameUpdate()
 			//ROS_DEBUG_STREAM("setting keyframe 3 from inside with index " << keyFrames.at(2).frameBufferIndex);
 		}
 
-		if(keyFramesSet < 4 && (tempIndexSize < kfLvl4 || tempIndexSize < 5))
+		if(keyFramesSet < 4 && (tempIndexSize < kfLvl4 || tempIndexSize < 8))
 		{
 			keyFramesSet++;
 			keyFrames.at(3).currentFrameIndexes = lastIndexes;
@@ -236,7 +236,7 @@ double VIO::computeKeyFramePixelDelta(Frame cf, KeyFrameInfo& keyFrame)
 
 		matchedFeatures.push_back(ft1);
 
-		deltaSum += this->manhattan(ft1.getUndistorted(), ft2.getUndistorted());
+		deltaSum += this->manhattan(ft1.getUndistorted(true), ft2.getUndistorted(true));
 	}
 
 	keyFrame.matchedFeatures = matchedFeatures;
@@ -256,68 +256,85 @@ VIOFeature2D VIO::getCorrespondingFeature(VIOFeature2D currFeature, Frame lastFr
 	return lastFeature;
 }
 
+double VIO::computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf)
+{
+	std::vector<cv::Point2f> pt1_temp, pt2_temp;
+	this->computeFundamentalMatrix(F, kf, pt1_temp, pt2_temp);
+}
+
+double VIO::computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf, std::vector<cv::Point2f>& pt1_temp, std::vector<cv::Point2f>& pt2_temp)
+{
+	Frame& cf = currentFrame();
+		Frame& mf = this->frameBuffer.at(kf.frameBufferIndex);
+		ROS_ASSERT(mf.nextFeatureID == kf.nextFeatureID); // ensure that this kf is matched to the correct frame
+
+		//std::vector<cv::Point2f> pt1_temp, pt2_temp;
+
+		//push back undistorted and normalized image coordinates into their respective vecs
+		for(auto e : kf.matchedFeatures)
+		{
+			pt1_temp.push_back(e.getUndistorted());
+		}
+
+		for(auto e : kf.currentFrameIndexes)
+		{
+			pt2_temp.push_back(cf.features.at(e).getUndistorted());
+		}
+
+		cv::Mat mask; // this is the mask which shows what features were used for motion estimation
+		cv::Mat E = cv::findEssentialMat(pt1_temp, pt2_temp, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::RANSAC, 0.999, 0.1, mask); // compute the essential/fundamental matrix
+
+		//compute the error in the motion estimate
+		double essential_error = 0;
+		for(int i = 0; i < pt1_temp.size(); i++)
+		{
+			cv::Matx31f u1, u2;
+
+			u1(0) = pt1_temp.at(i).x;
+			u1(1) = pt1_temp.at(i).y;
+			u1(2) = 1.0;
+
+			u2(0) = pt2_temp.at(i).x;
+			u2(1) = pt2_temp.at(i).y;
+			u2(2) = 1.0;
+
+			Eigen::Matrix<float, 3, 1> u1_eig, u2_eig;
+			Eigen::Matrix<float, 3, 3> E_eig;
+
+			cv::cv2eigen(u1, u1_eig);
+			cv::cv2eigen(u2, u2_eig);
+			cv::cv2eigen(E, E_eig);
+
+			essential_error += abs((u2_eig.transpose() * E_eig * u1_eig)(0, 0));
+		}
+
+		//pt1 = pt1_temp;
+		//pt2 = pt2_temp;
+
+		F = E;
+		return essential_error / pt1_temp.size();
+}
+
 /*
  * uses the features of the current frame and the keyframe to estimate the scaled motion between the two frames and returns a current pose estimate
  * along with the certianty of the estimate
  */
 double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, KeyFrameInfo& kf)
 {
-	Frame& cf = currentFrame();
-	Frame& mf = this->frameBuffer.at(kf.frameBufferIndex);
-	ROS_ASSERT(mf.nextFeatureID == kf.nextFeatureID); // ensure that this kf is matched to the correct frame
-
 	std::vector<cv::Point2f> pt1, pt2;
 
-	//push back undistorted and normalized image coordinates into their respective vecs
-	for(auto e : kf.matchedFeatures)
-	{
-		pt1.push_back(e.getUndistorted());
-	}
-
-	for(auto e : kf.currentFrameIndexes)
-	{
-		pt2.push_back(cf.features.at(e).getUndistorted());
-	}
-
-	cv::Mat mask; // this is the mask which shows what features were used for motion estimation
-	cv::Mat E = cv::findEssentialMat(pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::RANSAC, 0.999, 1.0, mask); // compute the essential/fundamental matrix
-
-	//compute the error in the motion estimate
-	double essential_error = 0;
-	for(int i = 0; i < pt1.size(); i++)
-	{
-		cv::Matx31f u1, u2;
-
-		u1(0) = pt1.at(i).x;
-		u1(1) = pt1.at(i).y;
-		u1(2) = 1.0;
-
-		u2(0) = pt2.at(i).x;
-		u2(1) = pt2.at(i).y;
-		u2(2) = 1.0;
-
-		Eigen::Matrix<float, 3, 1> u1_eig, u2_eig;
-		Eigen::Matrix<float, 3, 3> E_eig;
-
-		cv::cv2eigen(u1, u1_eig);
-		cv::cv2eigen(u2, u2_eig);
-		cv::cv2eigen(E, E_eig);
-
-		essential_error += abs((u2_eig.transpose() * E_eig * u1_eig)(0, 0));
-	}
+	double essential_error = this->computeFundamentalMatrix(F, kf, pt1, pt2);
 
 	cv::Mat R_temp, t_temp;
 
-	cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_temp, mask); // chooses one of the four possible solutions for the motion using state estimates
+	cv::recoverPose(F, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_temp); // chooses one of the four possible solutions for the motion using state estimates
 
 	R_temp.convertTo(R_temp,  R.type);
 	R_temp.copyTo(R);
 	t_temp.convertTo(t_temp,  t.type);
 	t_temp.copyTo(t);
 
-	F = E;
-
-	return essential_error / pt1.size();
+	return essential_error;
 
 }
 
@@ -573,7 +590,7 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 			ROS_ASSERT(actives.at(i).current2DFeatureMatchID = lf.features.at(actives.at(i).current2DFeatureMatchIndex).getFeatureID());
 			ROS_ASSERT(pt.getMatchedID() == actives.at(i).current2DFeatureMatchID);
 
-			imagePoints.push_back(pt.getUndistorted());
+			imagePoints.push_back(pt.getUndistorted(true));
 
 			ROS_DEBUG_STREAM("3D Point: " << cv::Point3f(actives.at(i).position(0), actives.at(i).position(1), actives.at(i).position(2)) << " \nCorresponding to: " << pt.getFeaturePosition()
 					<< "\nwith cov: " << actives.at(i).variance << "\n");

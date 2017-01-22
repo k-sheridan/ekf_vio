@@ -227,10 +227,14 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 			cv::Mat E;
 			cv::Matx33f R;
 			cv::Matx31f t;
-			double essential_error = this->computeFundamentalMatrix(E, R, t, keyFrames.at(i));
 
-			ROS_DEBUG_STREAM("KF " << i << " t: " << t << " error: " << essential_error << " pixel delta: " << keyFrames.at(i).pixelDelta);
-			ROS_DEBUG_STREAM(R);
+			double essential_error = this->computeFundamentalMatrix(E, keyFrames.at(i));
+
+			cv::Matx33f F;
+			E.copyTo(F);
+			keyFrames.at(i).F = F; //save the fundamental matrix to this keyframe
+
+			ROS_DEBUG_STREAM("KF " << " pixel delta: " << keyFrames.at(i).pixelDelta << "error: " << essential_error);
 		}
 
 		newX = pred;
