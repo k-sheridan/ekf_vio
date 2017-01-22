@@ -308,7 +308,7 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 
 	cv::Mat R_temp, t_temp;
 
-	cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_temp, cv::noArray()); // chooses one of the four possible solutions for the motion using state estimates
+	cv::recoverPose(E, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_temp, mask); // chooses one of the four possible solutions for the motion using state estimates
 
 	R_temp.convertTo(R_temp,  R.type);
 	R_temp.copyTo(R);
