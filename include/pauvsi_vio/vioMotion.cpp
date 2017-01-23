@@ -259,10 +259,11 @@ VIOFeature2D VIO::getCorrespondingFeature(VIOFeature2D currFeature, Frame lastFr
 double VIO::computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf)
 {
 	std::vector<cv::Point2f> pt1_temp, pt2_temp;
-	this->computeFundamentalMatrix(F, kf, pt1_temp, pt2_temp);
+	cv::Mat mask;
+	this->computeFundamentalMatrix(F, kf, pt1_temp, pt2_temp, mask);
 }
 
-double VIO::computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf, std::vector<cv::Point2f>& pt1_temp, std::vector<cv::Point2f>& pt2_temp)
+double VIO::computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf, std::vector<cv::Point2f>& pt1_temp, std::vector<cv::Point2f>& pt2_temp, cv::Mat& mask)
 {
 	Frame& cf = currentFrame();
 		Frame& mf = this->frameBuffer.at(kf.frameBufferIndex);
@@ -281,7 +282,7 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf, std::vector<c
 			pt2_temp.push_back(cf.features.at(e).getUndistorted());
 		}
 
-		cv::Mat mask; // this is the mask which shows what features were used for motion estimation
+		//cv::Mat mask; // this is the mask which shows what features were used for motion estimation
 		cv::Mat E = cv::findEssentialMat(pt1_temp, pt2_temp, cv::Mat::eye(cv::Size(3, 3), CV_32F), cv::RANSAC, 0.999, 0.1, mask); // compute the essential/fundamental matrix
 
 		//compute the error in the motion estimate
@@ -319,15 +320,16 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf, std::vector<c
  * uses the features of the current frame and the keyframe to estimate the scaled motion between the two frames and returns a current pose estimate
  * along with the certianty of the estimate
  */
-double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, KeyFrameInfo& kf)
+double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33d& R, cv::Matx31d& t, KeyFrameInfo& kf)
 {
 	std::vector<cv::Point2f> pt1, pt2;
+	cv::Mat mask;
 
-	double essential_error = this->computeFundamentalMatrix(F, kf, pt1, pt2);
+	double essential_error = this->computeFundamentalMatrix(F, kf, pt1, pt2, mask);
 
 	cv::Mat R_temp, t_temp;
 
-	cv::recoverPose(F, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_temp); // chooses one of the four possible solutions for the motion using state estimates
+	cv::recoverPose(F, pt1, pt2, cv::Mat::eye(cv::Size(3, 3), CV_32F), R_temp, t_temp, mask); // chooses one of the four possible solutions for the motion using state estimates
 
 	R_temp.convertTo(R_temp,  R.type);
 	R_temp.copyTo(R);
@@ -340,10 +342,14 @@ double VIO::computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t,
 
 tf::Transform VIO::cameraTransformFromState(VIOState x, tf::Transform b2c)
 {
-
+	return tf::Transform(x.getTFQuaternion(), tf::Vector3(x.x(), x.y(), x.z())) * b2c;
 }
 
-double VIO::recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
+
+
+// OLD FOR REFERENCE
+
+/*double VIO::recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
 		cv::OutputArray _R, cv::OutputArray _t, cv::InputOutputArray _mask, VIOState x1, VIOState x2)
 {
 
@@ -650,4 +656,4 @@ double VIO::poseFromPoints(std::vector<VIOFeature3D> actives, Frame lf, Frame cf
 
 	pass = true;
 	return cov_sum / totalMatches;
-}
+}*/

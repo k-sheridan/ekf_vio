@@ -208,8 +208,8 @@ public:
 
 	double computeKeyFramePixelDelta(Frame cf, KeyFrameInfo& keyFrame);
 
-	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, KeyFrameInfo& kf);
-	double computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2);
+	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33d& R, cv::Matx31d& t, KeyFrameInfo& kf);
+	double computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2, cv::Mat& mask);
 	double computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf);
 
 	double recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
@@ -232,6 +232,10 @@ public:
 	//TRIANGULATION
 	void update3DFeatures();
 	void sortActive3DFeaturesByVariance();
+
+	void decomposeEssentialMatrix(cv::Matx33f E, cv::Matx34d& Rt);
+
+	void updateFeatureDepths(cv::Matx34d P2, double variance);
 
 
 

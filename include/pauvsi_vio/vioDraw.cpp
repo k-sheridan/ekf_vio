@@ -8,6 +8,43 @@
 
 #include "vio.h"
 
+cv::Mat drawEpiLines(cv::Matx33f F, cv::Point2f pt, cv::Matx33f tK, cv::Mat img)
+{
+	cv::Matx31f u;
+
+	u(0) = pt.x;
+			u(1) = pt.y;
+			//u(2) = 1.0;
+			/*u = tK * u;
+			u(0) /= u(2);
+			u(1) /= u(2);*/
+
+			// Draw the epipolar lines
+			std::vector<cv::Vec3f> lines1;
+			std::vector<cv::Point2f> ptt;
+			ptt.push_back(cv::Point2f(u(0), u(1)));
+			cv::computeCorrespondEpilines(ptt, 2, F, lines1);
+
+			//ROS_DEBUG_STREAM("abc: " << lines1[0]);
+
+			cv::Matx31f pt1, pt2;
+			pt1(0) = -2;
+			pt1(1) = -(lines1[0][2] + lines1[0][0]*-2)/lines1[0][1];
+			pt1(2) = 1.0;
+			pt1 = tK * pt1;
+
+			pt2(0) = 2;
+			pt2(1) = -(lines1[0][2]+lines1[0][0]*2)/lines1[0][1];
+			pt2(2) = 1.0;
+			pt2 = tK * pt2;
+
+			cv::line(img,
+					cv::Point(pt1(0), pt1(1)),
+					cv::Point(pt2(0), pt2(1)),
+					cv::Scalar(rand()%255, rand()%255, rand()%255));
+
+			return img;
+}
 
 void VIO::drawKeyFrames()
 {
@@ -39,7 +76,7 @@ void VIO::drawKeyFrames()
 
 		cv::drawMarker(img1, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 6);
 	}
-
+	F = keyFrames.at(0).F;
 	//ROS_DEBUG_STREAM("feat: " <<  keyFrames.at(0).matchedFeatures.size());
 	for(auto e : keyFrames.at(0).matchedFeatures)
 	{
@@ -48,8 +85,10 @@ void VIO::drawKeyFrames()
 		u(1) = e.getFeaturePosition().y;
 
 		cv::drawMarker(img2, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
-	}
 
+		img2 = drawEpiLines(F, e.getUndistorted(), tK, img2);
+	}
+	//F = keyFrames.at(1).F;
 	for(auto e : keyFrames.at(1).matchedFeatures)
 	{
 		cv::Matx31f u;
@@ -57,8 +96,10 @@ void VIO::drawKeyFrames()
 		u(1) = e.getFeaturePosition().y;
 
 		cv::drawMarker(img3, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
-	}
 
+		//img3 = drawEpiLines(F, e.getUndistorted(), tK, img3);
+	}
+	//F = keyFrames.at(2).F;
 	for(auto e : keyFrames.at(2).matchedFeatures)
 	{
 		cv::Matx31f u;
@@ -66,10 +107,12 @@ void VIO::drawKeyFrames()
 		u(1) = e.getFeaturePosition().y;
 
 		cv::drawMarker(img4, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
+
+		//img4 = drawEpiLines(F, e.getUndistorted(), tK, img4);
 	}
 
 	//F = tK.t() * keyFrames.at(3).F * tK; // convert the essential mat into the fundamental mat
-	F = keyFrames.at(3).F;
+	//F = keyFrames.at(3).F;
 
 	for(auto e : keyFrames.at(3).matchedFeatures)
 	{
@@ -79,36 +122,7 @@ void VIO::drawKeyFrames()
 
 		cv::drawMarker(img5, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
 
-		u(0) = e.getUndistorted().x;
-		u(1) = e.getUndistorted().y;
-		//u(2) = 1.0;
-		/*u = tK * u;
-		u(0) /= u(2);
-		u(1) /= u(2);*/
-
-		// Draw the epipolar lines
-		std::vector<cv::Vec3f> lines1;
-		std::vector<cv::Point2f> pt;
-		pt.push_back(cv::Point2f(u(0), u(1)));
-		cv::computeCorrespondEpilines(pt, 2, F, lines1);
-
-		ROS_DEBUG_STREAM("abc: " << lines1[0]);
-
-		cv::Matx31f pt1, pt2;
-		pt1(0) = -2;
-		pt1(1) = -(lines1[0][2] + lines1[0][0]*-2)/lines1[0][1];
-		pt1(2) = 1.0;
-		pt1 = tK * pt1;
-
-		pt2(0) = 2;
-		pt2(1) = -(lines1[0][2]+lines1[0][0]*2)/lines1[0][1];
-		pt2(2) = 1.0;
-		pt2 = tK * pt2;
-
-		cv::line(img5,
-						cv::Point(pt1(0), pt1(1)),
-						cv::Point(pt2(0), pt2(1)),
-						cv::Scalar(rand()%255, rand()%255, rand()%255));
+		//img5 = drawEpiLines(F, e.getUndistorted(), tK, img5);
 
 	}
 

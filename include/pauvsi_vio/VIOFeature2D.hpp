@@ -21,6 +21,8 @@
 #include <ros/ros.h>
 
 #define DEAFAULT_FEATURE_SIZE 1.0
+#define DEFAULT_FETAURE_DEPTH 0.5
+#define DEFAULT_FEATURE_DEPTH_VARIANCE 1000
 
 class VIOFeature2D
 {
@@ -28,8 +30,8 @@ class VIOFeature2D
 private:
 	int id;
 	cv::KeyPoint feature; // response = quality
-	cv::Point2f undistort_feature;
-	cv::Point2f normalized_feature;
+	cv::Point2f undistort_feature; // this is the direction vector of this feature
+	//cv::Point2f normalized_feature;
 	cv::Mat description; // vector 1X32
 	bool described;
 	bool matched;
@@ -39,6 +41,12 @@ private:
 	std::deque<int> matchedFeatureIDs;
 	float distanceFromFrameCenter;
 	cv::Mat K;
+
+	//depth kalman
+	double depth;
+	double depth_variance;
+
+	//bool convertedTo3D;
 
 public:
 
@@ -54,7 +62,7 @@ public:
 	/*
 	 * create a feature with a position and match
 	 */
-	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, std::deque<int>&& matchedID_deque, std::deque<int>&& matchedIndex_deque, int _id){
+	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, std::deque<int>&& matchedID_deque, std::deque<int>&& matchedIndex_deque, int _id, double depth, double depth_variance){
 		this->setFeaturePosition(pt);
 		id = _id;
 		described = false; // the feature has not been described with this constructor
@@ -66,11 +74,14 @@ public:
 		matchedFeatureIDs.push_front(matchedID); // add the old feature to this features ID buffer at front
 		matchedFeatureIndexes.push_front(matchedIndex); // add the old feature to this features index buffer
 		quality = -1.0;
+
+		this->depth = depth;
+		this->depth_variance = depth_variance;
 	}
 	/*
 	 * create a feature with a position, description and match
 	 */
-	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, std::deque<int>&& matchedID_deque, std::deque<int>&& matchedIndex_deque, cv::Mat desc, int _id){
+	VIOFeature2D(cv::Point2f pt, int matchedID, int matchedIndex, std::deque<int>&& matchedID_deque, std::deque<int>&& matchedIndex_deque, cv::Mat desc, int _id, double depth, double depth_variance){
 		this->setFeaturePosition(pt);
 		id = _id;
 		described = true; // the feature has been described with this constructor
@@ -83,31 +94,50 @@ public:
 		matchedFeatureIDs.push_front(matchedID); // add the old feature to this features ID buffer at front
 		matchedFeatureIndexes.push_front(matchedIndex); // add the old feature to this features index buffer
 		quality = -1.0;
+
+		this->depth = depth;
+		this->depth_variance = depth_variance;
 	}
 	/*
 	 * creates a feature
 	 * without description
 	 * not matched
 	 */
-	VIOFeature2D(cv::KeyPoint _corner, int _id){
+	VIOFeature2D(cv::KeyPoint _corner, int _id, double depth = DEFAULT_FETAURE_DEPTH, double depth_variance = DEFAULT_FEATURE_DEPTH_VARIANCE){
 		feature = _corner;
 		id = _id;
 		described = false; // the feature has not been described with this constructor
 		matched = false;
+		//convertedTo3D = false;
 		quality = -1.0;
+		this->depth = depth;
+		this->depth_variance = depth_variance;
 	}
 
 	/*
 	 * creates a feature with a description
 	 * not matched
 	 */
-	VIOFeature2D(cv::KeyPoint _corner, cv::Mat _description, int _id){
+	VIOFeature2D(cv::KeyPoint _corner, cv::Mat _description, int _id, double depth = DEFAULT_FETAURE_DEPTH, double depth_variance = DEFAULT_FEATURE_DEPTH_VARIANCE){
 		feature = _corner;
 		id = _id;
 		description = _description;
 		described = true; // the feature has not been described with this constructor
 		matched = false;
+		//convertedTo3D = false; // the feature
 		quality = -1.0;
+		this->depth = depth;
+		this->depth_variance = depth_variance;
+	}
+
+	void updateDepth(double depth_measurement, double variance)
+	{
+		ROS_ASSERT(this->depth_variance > 0 && variance > 0);
+		double K = this->depth_variance / (this->depth_variance + variance);
+
+		this->depth = this->depth + K * (depth_measurement - this->depth);
+
+		this->depth_variance = (1 - K) * this->depth_variance;
 	}
 
 	cv::KeyPoint getFeature(){
@@ -138,6 +168,14 @@ public:
 
 	int getFeatureID(){
 		return id;
+	}
+
+	double getFeatureDepth(){
+		return this->depth;
+	}
+
+	double getFeatureDepthVariance(){
+		return this->depth_variance;
 	}
 
 	float getQuality(){
@@ -205,6 +243,11 @@ public:
 		this->undistort_feature = out.at(0);
 		this->undistorted = true;
 		this->K = K;
+	}
+
+	void setFeatureDepth(double d)
+	{
+		this->depth = d;
 	}
 
 	void setQuality(float _quality){

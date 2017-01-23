@@ -21,6 +21,36 @@ void VIO::sortActive3DFeaturesByVariance()
 	std::sort(active3DFeatures.begin(), active3DFeatures.end(), less_than_key());
 }
 
+/*
+ * this function cycles through all matched features from key frame 0,
+ * transforms their depth into the current frame
+ * calculates their depth in the current frame
+ * updates their depth
+ * if their depth variance is good enough
+ * 	convert the point to a 3d features for future motion estimation
+ */
+void VIO::updateFeatureDepths(cv::Matx34d P2, double variance)
+{
+
+}
+
+void VIO::decomposeEssentialMatrix(cv::Matx33f E, cv::Matx34d& Rt)
+{
+	cv::SVD svd(E);
+	cv::Matx33d W(0,-1,0,   //HZ 9.13
+	      1,0,0,
+	      0,0,1);
+	cv::Matx33d Winv(0,1,0,
+	     -1,0,0,
+	     0,0,1);
+	cv::Mat_<double> R = svd.u * cv::Mat(W) * svd.vt; //HZ 9.19
+	cv::Mat_<double> t = svd.u.col(2); //u3
+	Rt = cv::Matx34d(R(0,0),    R(0,1), R(0,2), t(0),
+	         R(1,0),    R(1,1), R(1,2), t(1),
+	         R(2,0),    R(2,1), R(2,2), t(2));
+}
+
+/*
 void VIO::update3DFeatures()
 {
 	cv::Mat F;
@@ -211,3 +241,4 @@ void VIO::update3DFeatures()
 	}
 }
 
+*/
