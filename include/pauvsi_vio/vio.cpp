@@ -185,7 +185,7 @@ void VIO::run()
  * uses an Extended Kalman Filter to predict and update the state and its
  * covariance.
  */
-VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
+VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 {
 	//RECALIBRATION
 	static bool consecutiveRecalibration = false;
@@ -234,8 +234,9 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 		E.copyTo(F);
 		keyFrames.at(0).F = F; //save the fundamental matrix to this keyframe (0)
 
-		ROS_DEBUG_STREAM("KF " << " pixel delta: " << keyFrames.at(0).pixelDelta << "error: " << essential_error);
+		//ROS_DEBUG_STREAM("KF " << " pixel delta: " << keyFrames.at(0).pixelDelta << "error: " << essential_error);
 
+		//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate
 		newX = pred;
 
 	}

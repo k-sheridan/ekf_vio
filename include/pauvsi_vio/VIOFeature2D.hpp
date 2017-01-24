@@ -238,7 +238,7 @@ public:
 
 		std::vector<cv::Point2f> out;
 
-		cv::fisheye::undistortPoints(in, out, K, D);
+		cv::fisheye::undistortPoints(in, out, K, D); // the new K is the Identity matrix
 
 		this->undistort_feature = out.at(0);
 		this->undistorted = true;

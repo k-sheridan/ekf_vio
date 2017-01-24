@@ -195,7 +195,7 @@ public:
 
 
 	//MOTION ESTIMATION
-	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
+	VIOState estimateMotion(VIOState x, Frame& frame1, Frame& frame2);
 
 	void updateKeyFrameInfo();
 	void bruteForceKeyFrameUpdate();
@@ -235,7 +235,7 @@ public:
 
 	void decomposeEssentialMatrix(cv::Matx33f E, cv::Matx34d& Rt);
 
-	void updateFeatureDepths(cv::Matx34d P2, double variance);
+	void updateFeatureDepths(VIOState x, double variance);
 
 
 

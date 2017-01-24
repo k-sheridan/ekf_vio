@@ -75,7 +75,8 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 		if(status.at(i) == 1)
 		{
 			// the id number is not that important because it will be handled by the frame
-			VIOFeature2D feat(newPoints.at(i), oldFrame.features.at(i).getFeatureID(), i, oldFrame.features.at(i).getMatchedIDDeque(), oldFrame.features.at(i).getMatchedIndexDeque(), -1, oldFrame.features.at(i).getFeatureDepth(), oldFrame.features.at(i).getFeatureDepthVariance()); // create a matched feature with id = -1
+			VIOFeature2D feat(newPoints.at(i), oldFrame.features.at(i).getFeatureID(), i, oldFrame.features.at(i).getMatchedIDDeque(),
+					oldFrame.features.at(i).getMatchedIndexDeque(), -1, oldFrame.features.at(i).getFeatureDepth(), oldFrame.features.at(i).getFeatureDepthVariance()); // create a matched feature with id = -1
 			//if the previous feature was described
 			if(oldFrame.features.at(i).isFeatureDescribed())
 			{
