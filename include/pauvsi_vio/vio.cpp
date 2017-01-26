@@ -34,8 +34,10 @@ VIO::VIO()
 
 	//setup pointcloudPublisher
 	if(PUBLISH_ACTIVE_FEATURES)
+	{
 		activePointsPub = nh.advertise<sensor_msgs::PointCloud>("/vio/activefeatures", 100);
-
+		featureDepthPub = nh.advertise<sensor_msgs::PointCloud>("/vio/featuredepth", 100);
+	}
 	initialized = false; //not intialized yet
 
 	//push two frames into the fb
@@ -143,11 +145,13 @@ void VIO::run()
 			currentFrame().undistortFeatures(); // undistort the new features
 		}
 
+		ROS_DEBUG_STREAM("before: " << currentFrame().features.at(0).getFeatureDepth());
 		//MOTION ESTIMATION
 		this->lastState = this->state;
 		this->state = this->estimateMotion(this->lastState, this->lastFrame(), this->currentFrame());
 		//set the currentFrames new state
 		this->currentFrame().state = this->state;
+		ROS_DEBUG_STREAM("after: " << currentFrame().features.at(0).getFeatureDepth());
 
 		if(this->initialized) // if initialized
 		{
@@ -174,9 +178,10 @@ void VIO::run()
 
 	this->broadcastWorldToOdomTF();
 	this->publishActivePoints();
+	this->publishFeatureDepth();
 
 	//ROS_DEBUG_STREAM("imu readings: " << this->imuMessageBuffer.size());
-	ROS_DEBUG_STREAM("frame: " << this->frameBuffer.size() << " init: " << initialized);
+	//ROS_DEBUG_STREAM("frame: " << this->frameBuffer.size() << " init: " << initialized);
 }
 
 
@@ -230,6 +235,8 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 
 		double essential_error = this->computeFundamentalMatrix(E, R, t, keyFrames.at(0));
 
+		double fundamentalMotionEstimationVariance = (essential_error + 1 / (keyFrames.at(0).pixelDelta + 0.01)); // this parameter is tuneable it is the uncertainty in +/- meters
+
 		cv::Matx33f F;
 		E.copyTo(F);
 		keyFrames.at(0).F = F; //save the fundamental matrix to this keyframe (0)
@@ -238,6 +245,9 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 
 		//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate
 		newX = pred;
+
+		//now that we have a new state estimate we can transform and update the depths of all relatively old features
+		this->updateFeatureDepths(newX, fundamentalMotionEstimationVariance);
 
 	}
 	else //REMOVE ALL IMU MESSAGES WHICH WERE NOT USED FROM THE BUFFER IF NOT INITIALIZED YET
@@ -304,6 +314,50 @@ void VIO::publishActivePoints()
 		pc.channels = colors;
 
 		this->activePointsPub.publish(pc); // publish!
+	}
+}
+
+void VIO::publishFeatureDepth()
+{
+	if(this->PUBLISH_ACTIVE_FEATURES)
+	{
+		sensor_msgs::PointCloud pc;
+
+		std::vector<geometry_msgs::Point32> point;
+		std::vector<sensor_msgs::ChannelFloat32> colors;
+
+		pc.header.frame_id = this->camera_frame;
+
+		Frame& cf = currentFrame();
+
+		for(auto& e : cf.features)
+		{
+			//debugFeature(this->active3DFeatures.at(i));
+
+			std::vector<float> intensity;
+			sensor_msgs::ChannelFloat32 c;
+
+			intensity.push_back(255);
+			//intensity.push_back(this->active3DFeatures.at(i).color[1]);
+			//intensity.push_back(this->active3DFeatures.at(i).color[2]);
+
+			c.values = intensity;
+			c.name = "intensity";
+
+			geometry_msgs::Point32 pt;
+			pt.x = e.getFeatureDepth() * e.getUndistorted().x;
+			pt.y = e.getFeatureDepth() * e.getUndistorted().y;
+			pt.z = e.getFeatureDepth();
+
+			point.push_back(pt);
+			colors.push_back(c);
+
+		}
+
+		pc.points = point;
+		pc.channels = colors;
+
+		this->featureDepthPub.publish(pc);
 	}
 }
 
@@ -777,7 +831,7 @@ void VIO::getBestCorrespondences(double& pixel_delta, std::vector<VIOFeature2D>&
 	ROS_DEBUG_STREAM((ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime (feature correspondence)");
 }
 
-*/
+ */
 
 
 //-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=

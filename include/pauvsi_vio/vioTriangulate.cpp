@@ -162,12 +162,12 @@ void VIO::updateFeatureDepths(VIOState x, double variance)
 	// tf_last * P1_last = tf_current => tf_last.inv() * tf_current = P1_last
 	tf::Transform last2current = this->cameraTransformFromState(lf.state, base2cam).inverse() * tf_current;
 
-	// tf_kf * P2 = tf_current => tf_kf.inverse() * tf_current = P2
-	tf::Transform P2_temp = this->cameraTransformFromState(this->frameBuffer.at(kf.frameBufferIndex).state, base2cam).inverse() * tf_current;
-	cv::Matx34d P2 = tfTransform2RtMatrix(P2_temp); // this is the transform which converts points in the keyframe to points in the currentFrame
+	// tf_current * P2 = tf_kf => tf_kf * tf_current.inv = P2
+	tf::Transform P2_temp = tf_current.inverse() * this->cameraTransformFromState(this->frameBuffer.at(kf.frameBufferIndex).state, base2cam);
+	cv::Matx34d P2 = tfTransform2RtMatrix(P2_temp); // this is the transform which converts points in the currentframe to points in the keyframe
 
 	//go through each current feature and transform its depth from the last frame
-	for(auto e : cf.features)
+	for(auto& e : cf.features)
 	{
 		VIOFeature2D& last_ft = (e.isMatched()) ? lf.features.at(e.getMatchedIndex()) : e;
 		//last_ft = lf.features.at(e.getMatchedIndex()); // get the last feature which matches this one
@@ -179,13 +179,33 @@ void VIO::updateFeatureDepths(VIOState x, double variance)
 		tf::Vector3 transformedPoint = last2current * (last_ft.getFeatureDepth() * tf::Vector3(last_ft.getUndistorted().x, last_ft.getUndistorted().y, 1.0)); // transform the 3d point from the last frame into the current frame
 
 		//extract the depth from the transformed point and set it
-		last_ft.setFeatureDepth(transformedPoint.z()); // the depth would be equal to the new z from the transformed point
+		e.setFeatureDepth(transformedPoint.z()); // the depth would be equal to the new z from the transformed point
+		//ROS_DEBUG_STREAM(e.getFeatureDepth());
 	}
+
+	cv::Matx<double, 6, 4> A;
+	cv::vconcat(P1, P2, A); // construct the A in Ax = b
 
 	//TODO - update the depths of all matched points
 	//now that the depths are all corrected for the motion of the camera we can triangulate and do a kalman update on the feature
 	for(int i = 0; i < kf.currentFrameIndexes.size(); i++)
 	{
+		cv::Matx61d b;
+
+		cv::Point2f pt2=kf.matchedFeatures.at(i).getUndistorted(), pt1=cf.features.at(kf.currentFrameIndexes.at(i)).getUndistorted(); // get the two points
+
+		b(0) = pt1.x;
+		b(1) = pt1.y;
+		b(2) = 1.0;
+		b(3) = pt2.x;
+		b(4) = pt2.y;
+		b(5) = 1.0;
+
+		cv::Matx41d X;
+
+		cv::solve(A, b, X, cv::DECOMP_SVD);
+
+		ROS_DEBUG_STREAM("X: " << X(2)/X(3));
 
 	}
 }

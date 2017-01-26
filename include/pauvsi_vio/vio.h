@@ -160,6 +160,7 @@ public:
 	ros::Time broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
 
 	void publishActivePoints();
+	void publishFeatureDepth();
 
 	void recalibrateState(double avgPixelChange, double threshold, bool consecutive);
 
@@ -270,6 +271,7 @@ protected:
 	ros::Subscriber imuSub;
 
 	ros::Publisher activePointsPub;
+	ros::Publisher featureDepthPub;
 
 	//initialized with default values
 	std::string cameraTopic;
@@ -301,7 +303,7 @@ protected:
 	std::vector<accelNode> accelQueue;
 
 	std::vector<VIOFeature3D> active3DFeatures;
-	std::vector<VIOFeature3D> inactive3DFeatures;
+	//std::vector<VIOFeature3D> inactive3DFeatures;
 
 	cv::Mat K;
 	cv::Mat D;
