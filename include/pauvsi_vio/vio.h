@@ -197,7 +197,7 @@ public:
 
 
 	//MOTION ESTIMATION
-	VIOState estimateMotion(VIOState x, Frame frame1, Frame frame2);
+	VIOState estimateMotion(VIOState x, Frame& frame1, Frame& frame2);
 
 	void updateKeyFrameInfo();
 	void bruteForceKeyFrameUpdate();
@@ -210,7 +210,9 @@ public:
 
 	double computeKeyFramePixelDelta(Frame cf, KeyFrameInfo& keyFrame);
 
-	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33f& R, cv::Matx31f& t, KeyFrameInfo& kf);
+	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33d& R, cv::Matx31d& t, KeyFrameInfo& kf);
+	double computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2, cv::Mat& mask);
+	double computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf);
 
 	double recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
 			cv::OutputArray _R, cv::OutputArray _t, cv::InputOutputArray _mask, VIOState x1, VIOState x2);
@@ -246,6 +248,10 @@ public:
 	void FindOptimalImagePoints(const Eigen::Matrix3d& ematrix,
 			const Eigen::Vector2d& point1, const Eigen::Vector2d& point2,
 			Eigen::Vector2d* corrected_point1, Eigen::Vector2d* corrected_point2);
+
+	void decomposeEssentialMatrix(cv::Matx33f E, cv::Matx34d& Rt);
+
+	void updateFeatureDepths(VIOState x, double variance);
 
 
 

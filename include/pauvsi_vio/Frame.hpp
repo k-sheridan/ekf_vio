@@ -161,7 +161,7 @@ public:
 			if(this->features.at(i).isUndistorted())
 			{
 				cv::KeyPoint p;
-				p.pt = (this->features.at(i).getUndistorted());
+				p.pt = (this->features.at(i).getUndistorted(true));
 				kp.push_back(p);
 			}
 		}
@@ -209,6 +209,8 @@ public:
 	 */
 	void undistortFeatures()
 	{
+
+
 		for(int i = 0; i < this->features.size(); i++)
 		{
 			if(!this->features.at(i).isUndistorted())

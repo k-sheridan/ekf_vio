@@ -185,7 +185,7 @@ void VIO::run()
  * uses an Extended Kalman Filter to predict and update the state and its
  * covariance.
  */
-VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
+VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 {
 	//RECALIBRATION
 	static bool consecutiveRecalibration = false;
@@ -222,17 +222,21 @@ VIOState VIO::estimateMotion(VIOState x, Frame lf, Frame cf)
 		this->updateKeyFrameInfo(); // finds new keyframes for the currentframe
 		this->sortActive3DFeaturesByVariance(); // this sorts the active 3d features according to their variances in ascending order
 
-		for(int i = 0; i < keyFrames.size(); i++)
-		{
-			cv::Mat E;
-			cv::Matx33f R;
-			cv::Matx31f t;
-			double essential_error = this->computeFundamentalMatrix(E, R, t, keyFrames.at(i));
+		cv::Matx34d P2; // this is the inverse transform between the current frame and keyframe zero
 
-			ROS_DEBUG_STREAM("KF " << i << " t: " << t << " error: " << essential_error << " pixel delta: " << keyFrames.at(i).pixelDelta);
-			ROS_DEBUG_STREAM(R);
-		}
+		cv::Mat E;
+		cv::Matx33d R;
+		cv::Matx31d t;
 
+		double essential_error = this->computeFundamentalMatrix(E, R, t, keyFrames.at(0));
+
+		cv::Matx33f F;
+		E.copyTo(F);
+		keyFrames.at(0).F = F; //save the fundamental matrix to this keyframe (0)
+
+		//ROS_DEBUG_STREAM("KF " << " pixel delta: " << keyFrames.at(0).pixelDelta << "error: " << essential_error);
+
+		//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate
 		newX = pred;
 
 	}
