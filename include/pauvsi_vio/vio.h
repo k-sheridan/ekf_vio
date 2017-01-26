@@ -106,6 +106,8 @@ public:
 
 	std::string ACTIVE_FEATURES_TOPIC;
 
+	typedef Eigen::Matrix<double, 3, 4> Matrix3x4d;
+
 	//frames
 	std::string imu_frame;
 	std::string camera_frame;
@@ -230,6 +232,20 @@ public:
 	//TRIANGULATION
 	void update3DFeatures();
 	void sortActive3DFeaturesByVariance();
+	bool Triangulate(const Matrix3x4d& pose1, const Matrix3x4d& pose2,
+			const Eigen::Vector2d& point1, const Eigen::Vector2d& point2,
+			Eigen::Vector4d* triangulated_point, Eigen::Matrix3d fmatrix);
+
+	void FundamentalMatrixFromProjectionMatrices(const double pmatrix1[3 * 4],
+			const double pmatrix2[3 * 4], double fmatrix[3 * 3]);
+
+	bool TriangulateDLT(const Matrix3x4d& pose1, const Matrix3x4d& pose2,
+			const Eigen::Vector2d& point1, const Eigen::Vector2d& point2,
+			Eigen::Vector4d* triangulated_point);
+
+	void FindOptimalImagePoints(const Eigen::Matrix3d& ematrix,
+			const Eigen::Vector2d& point1, const Eigen::Vector2d& point2,
+			Eigen::Vector2d* corrected_point1, Eigen::Vector2d* corrected_point2);
 
 
 
