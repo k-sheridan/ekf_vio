@@ -111,6 +111,8 @@ bool VIO::Triangulate(const Matrix3x4d& pose1, const Matrix3x4d& pose2,
 	FindOptimalImagePoints(fmatrix, point1, point2, &corrected_point1,
 			&corrected_point2);
 
+	//ROS_DEBUG_STREAM("correction delta: " << (point1 - corrected_point1).squaredNorm());
+
 	// Now the two points are guaranteed to intersect. We can use the DLT method
 	// since it is easy to construct.
 	return TriangulateDLT(pose1, pose2, corrected_point1, corrected_point2,
@@ -188,9 +190,39 @@ void VIO::updateFeatureDepths(VIOState x, double variance)
 
 	//TODO - update the depths of all matched points
 	//now that the depths are all corrected for the motion of the camera we can triangulate and do a kalman update on the feature
+	Eigen::Matrix3d fundamental_matrix;
+	Matrix3x4d pose1(P1.val);
+	Matrix3x4d pose2(P2.val);
+
+	Eigen::Vector4d X;
+
+	this->FundamentalMatrixFromProjectionMatrices(P1.val, P2.val, fundamental_matrix.data());
+
 	for(int i = 0; i < kf.currentFrameIndexes.size(); i++)
 	{
-		cv::Matx61d b;
+		cv::Point2f pt2=kf.matchedFeatures.at(i).getUndistorted(), pt1=cf.features.at(kf.currentFrameIndexes.at(i)).getUndistorted(); // get the two points
+		Eigen::Vector2d u1, u2;
+		u1(0) = pt1.x;
+		u1(1) = pt1.y;
+		u2(0) = pt2.x;
+		u2(1) = pt2.y;
+
+		this->Triangulate(pose1, pose2, u1, u2, &X, fundamental_matrix);
+
+		ROS_DEBUG_STREAM("Pos: " << X.hnormalized());
+		ROS_DEBUG_STREAM("reproj error ^: " << this->ReprojectionError(pose2, X, u2));
+
+	}
+}
+
+double VIO::ReprojectionError(const Matrix3x4d& pose, const Eigen::Vector4d& world_point, const Eigen::Vector2d& image_point) {
+  const Eigen::Vector3d reprojected_point = pose * world_point;
+  const double sq_reproj_error = (reprojected_point.hnormalized() - image_point).squaredNorm();
+  return sq_reproj_error;
+}
+
+/*
+ * cv::Matx61d b;
 
 		cv::Point2f pt2=kf.matchedFeatures.at(i).getUndistorted(), pt1=cf.features.at(kf.currentFrameIndexes.at(i)).getUndistorted(); // get the two points
 
@@ -206,9 +238,7 @@ void VIO::updateFeatureDepths(VIOState x, double variance)
 		cv::solve(A, b, X, cv::DECOMP_SVD);
 
 		ROS_DEBUG_STREAM("X: " << X(2)/X(3));
-
-	}
-}
+ */
 
 void VIO::decomposeEssentialMatrix(cv::Matx33f E, cv::Matx34d& Rt)
 {

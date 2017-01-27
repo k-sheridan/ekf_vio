@@ -254,6 +254,8 @@ public:
 
 	void updateFeatureDepths(VIOState x, double variance);
 
+	double ReprojectionError(const Matrix3x4d& pose, const Eigen::Vector4d& world_point, const Eigen::Vector2d& image_point);
+
 
 
 	/*	bool visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction, tf::Vector3& rotationInference,
