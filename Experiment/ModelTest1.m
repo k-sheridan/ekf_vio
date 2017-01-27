@@ -15,15 +15,15 @@ w_mag = sqrt((wx+bgx)^2 + (wy+bgy)^2 + (wz+bgz)^2);
 %syms w_mag
 
 %IMPORTANT--- if the omega values are 0 use this
-dq0 = 1;
-dq1 = 0;
-dq2 = 0;
-dq3 = 0;
+%dq0 = 1;
+%dq1 = 0;
+%dq2 = 0;
+%dq3 = 0;
 
-%dq0 = cos(0.5 * w_mag * dt);
-%dq1 = (2 * wx / w_mag) * sin(0.5 * w_mag * dt);
-%dq2 = (2 * wy / w_mag) * sin(0.5 * w_mag * dt);
-%dq3 = (2 * wz / w_mag) * sin(0.5 * w_mag * dt);
+dq0 = cos(0.5 * w_mag * dt);
+dq1 = (2 * wx / w_mag) * sin(0.5 * w_mag * dt);
+dq2 = (2 * wy / w_mag) * sin(0.5 * w_mag * dt);
+dq3 = (2 * wz / w_mag) * sin(0.5 * w_mag * dt);
 
 dq_mag = sqrt(dq0^2+dq1^2+dq2^2+dq3^2);
 dq0 = dq0 / dq_mag;
@@ -179,6 +179,7 @@ s32
 s33
 s34
 s35
+s36
 s37
 s38
 s39
