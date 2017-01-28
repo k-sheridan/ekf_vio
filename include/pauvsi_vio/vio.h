@@ -252,7 +252,7 @@ public:
 
 	void decomposeEssentialMatrix(cv::Matx33f E, cv::Matx34d& Rt);
 
-	void updateFeatureDepths(VIOState x, double variance);
+	void updateFeatureDepths(VIOState x);
 
 	double ReprojectionError(const Matrix3x4d& pose, const Eigen::Vector4d& world_point, const Eigen::Vector2d& image_point);
 

@@ -227,27 +227,58 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 		this->updateKeyFrameInfo(); // finds new keyframes for the currentframe
 		this->sortActive3DFeaturesByVariance(); // this sorts the active 3d features according to their variances in ascending order
 
-		cv::Matx34d P2; // this is the inverse transform between the current frame and keyframe zero
-
-		cv::Mat E;
-		cv::Matx33d R;
-		cv::Matx31d t;
-
-		double essential_error = this->computeFundamentalMatrix(E, R, t, keyFrames.at(0));
-
-		double fundamentalMotionEstimationVariance = (essential_error + 1 / (keyFrames.at(0).pixelDelta + 0.01)); // this parameter is tuneable it is the uncertainty in +/- meters
-
-		cv::Matx33f F;
-		E.copyTo(F);
-		keyFrames.at(0).F = F; //save the fundamental matrix to this keyframe (0)
-
-		//ROS_DEBUG_STREAM("KF " << " pixel delta: " << keyFrames.at(0).pixelDelta << "error: " << essential_error);
 
 		//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate
-		newX = pred;
+
+		//Motion estimation
+		if(active3DFeatures.size() < 3)
+		{
+
+			cv::Mat E;
+			cv::Matx33d R;
+			cv::Matx31d t;
+
+			double essential_error = this->computeFundamentalMatrix(E, R, t, keyFrames.at(0));
+
+			double fundamentalMotionEstimationVariance = (100 * essential_error); // this parameter is tuneable it is the uncertainty in +/- meters
+
+			cv::Matx33f F;
+			E.copyTo(F);
+			keyFrames.at(0).F = F; //save the fundamental matrix to this keyframe (0)
+
+			//form measurment
+			Eigen::Matrix3d R_eig;
+			Eigen::Matrix<double, 3, 1> t_eig;
+
+			cv::cv2eigen(R.t(), R_eig);
+			cv::cv2eigen(t, t_eig);
+
+			Eigen::Quaterniond q = Eigen::Quaterniond(R_eig);
+			t_eig = q * (-t_eig);
+
+			Eigen::Matrix<double, 7, 1> z_vec;
+			z_vec(0) = t_eig(0);
+			z_vec(1) = t_eig(1);
+			z_vec(2) = t_eig(2);
+			z_vec(3) = q.w();
+			z_vec(4) = q.x();
+			z_vec(5) = q.y();
+			z_vec(6) = q.z();
+
+			Eigen::Matrix<double, 7, 7> sigma = fundamentalMotionEstimationVariance * Eigen::MatrixXd::Identity(7, 7);
+
+			VisualMeasurement z = VisualMeasurement(z_vec, sigma);
+
+			newX = ekf.update(pred, z); // update using 2d/2d motion estimation
+
+		}
+		else
+		{
+			newX = pred;
+		}
 
 		//now that we have a new state estimate we can transform and update the depths of all relatively old features
-		this->updateFeatureDepths(newX, fundamentalMotionEstimationVariance);
+		this->updateFeatureDepths(newX);
 
 	}
 	else //REMOVE ALL IMU MESSAGES WHICH WERE NOT USED FROM THE BUFFER IF NOT INITIALIZED YET

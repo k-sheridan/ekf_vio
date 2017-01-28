@@ -39,7 +39,7 @@ void VIO::FindOptimalImagePoints(const Eigen::Matrix3d& ematrix,
 	// The epipolar line from one image point in the other image.
 	Eigen::Vector2d epipolar_line1 = s_matrix * ematrix * point2_homog;
 	Eigen::Vector2d epipolar_line2 = s_matrix * ematrix.transpose()
-					* point1_homog;
+							* point1_homog;
 
 	const double a = epipolar_line1.transpose() * e_submatrix * epipolar_line2;
 	const double b = (epipolar_line1.squaredNorm()
@@ -53,7 +53,7 @@ void VIO::FindOptimalImagePoints(const Eigen::Matrix3d& ematrix,
 	epipolar_line2 -= e_submatrix.transpose() * lambda * epipolar_line2;
 
 	lambda *= (2.0 * d)
-					/ (epipolar_line1.squaredNorm() + epipolar_line2.squaredNorm());
+							/ (epipolar_line1.squaredNorm() + epipolar_line2.squaredNorm());
 
 	*corrected_point1 = (point1_homog
 			- s_matrix.transpose() * lambda * epipolar_line1).hnormalized();
@@ -123,8 +123,8 @@ bool VIO::Triangulate(const Matrix3x4d& pose1, const Matrix3x4d& pose2,
 cv::Matx34d tfTransform2RtMatrix(tf::Transform& t)
 {
 	cv::Matx34d P(t.getBasis()[0][0], t.getBasis()[0][1], t.getBasis()[0][2], t.getOrigin().x(),
-					t.getBasis()[1][0], t.getBasis()[1][1], t.getBasis()[1][2], t.getOrigin().y(),
-					t.getBasis()[2][0], t.getBasis()[2][1], t.getBasis()[2][2], t.getOrigin().z());
+			t.getBasis()[1][0], t.getBasis()[1][1], t.getBasis()[1][2], t.getOrigin().y(),
+			t.getBasis()[2][0], t.getBasis()[2][1], t.getBasis()[2][2], t.getOrigin().z());
 	return P;
 }
 
@@ -140,6 +140,107 @@ cv::Matx34d tfTransform2RtMatrix(tf::Transform& t)
  *
  * x is the state of the current frame
  */
+void VIO::updateFeatureDepths(VIOState x)
+{
+	tf::StampedTransform base2cam;
+	try{
+		this->ekf.tf_listener.lookupTransform(this->camera_frame, this->CoM_frame, ros::Time(0), base2cam);
+	}
+	catch(tf::TransformException& e){
+		ROS_WARN_STREAM(e.what());
+	}
+
+	Frame& cf = currentFrame();
+	Frame& lf = lastFrame();
+	KeyFrameInfo& kf = this->keyFrames.at(0);
+	ROS_ASSERT(kf.nextFeatureID = this->frameBuffer.at(kf.frameBufferIndex).nextFeatureID);
+
+	cv::Matx34d P1(1, 0, 0, 0,
+			0, 1, 0, 0,
+			0, 0, 1, 0);
+
+	tf::Transform tf_current = this->cameraTransformFromState(x, base2cam);
+
+	// tf_last * P1_last = tf_current => tf_last.inv() * tf_current = P1_last
+	tf::Transform last2current = this->cameraTransformFromState(lf.state, base2cam).inverse() * tf_current;
+
+	// tf_current * P2 = tf_kf => tf_kf * tf_current.inv = P2
+	//tf::Transform P2_temp = tf_current.inverse() * this->cameraTransformFromState(this->frameBuffer.at(kf.frameBufferIndex).state, base2cam);
+	//cv::Matx34d P2 = tfTransform2RtMatrix(P2_temp); // this is the transform which converts points in the currentframe to points in the keyframe
+
+	//go through each current feature and transform its depth from the last frame
+	for(auto& e : cf.features)
+	{
+		VIOFeature2D& last_ft = (e.isMatched()) ? lf.features.at(e.getMatchedIndex()) : e;
+		//last_ft = lf.features.at(e.getMatchedIndex()); // get the last feature which matches this one
+		if(!e.isMatched())
+			continue;
+
+		ROS_ASSERT(last_ft.getFeatureID() == e.getMatchedID());
+
+		tf::Vector3 transformedPoint = last2current * (last_ft.getFeatureDepth() * tf::Vector3(last_ft.getUndistorted().x, last_ft.getUndistorted().y, 1.0)); // transform the 3d point from the last frame into the current frame
+
+		//extract the depth from the transformed point and set it
+		e.setFeatureDepth(transformedPoint.z()); // the depth would be equal to the new z from the transformed point
+		//ROS_DEBUG_STREAM(e.getFeatureDepth());
+	}
+}
+
+double VIO::ReprojectionError(const Matrix3x4d& pose, const Eigen::Vector4d& world_point, const Eigen::Vector2d& image_point) {
+	const Eigen::Vector3d reprojected_point = pose * world_point;
+	const double sq_reproj_error = (reprojected_point.hnormalized() - image_point).squaredNorm();
+	return sq_reproj_error;
+}
+
+/*
+ * cv::Matx61d b;
+
+		cv::Point2f pt2=kf.matchedFeatures.at(i).getUndistorted(), pt1=cf.features.at(kf.currentFrameIndexes.at(i)).getUndistorted(); // get the two points
+
+		b(0) = pt1.x;
+		b(1) = pt1.y;
+		b(2) = 1.0;
+		b(3) = pt2.x;
+		b(4) = pt2.y;
+		b(5) = 1.0;
+
+		cv::Matx41d X;
+
+		cv::solve(A, b, X, cv::DECOMP_SVD);
+
+		ROS_DEBUG_STREAM("X: " << X(2)/X(3));
+ */
+
+void VIO::decomposeEssentialMatrix(cv::Matx33f E, cv::Matx34d& Rt)
+{
+	cv::SVD svd(E);
+	cv::Matx33d W(0,-1,0,   //HZ 9.13
+			1,0,0,
+			0,0,1);
+	cv::Matx33d Winv(0,1,0,
+			-1,0,0,
+			0,0,1);
+	cv::Mat_<double> R = svd.u * cv::Mat(W) * svd.vt; //HZ 9.19
+	cv::Mat_<double> t = svd.u.col(2); //u3
+	Rt = cv::Matx34d(R(0,0),    R(0,1), R(0,2), t(0),
+			R(1,0),    R(1,1), R(1,2), t(1),
+			R(2,0),    R(2,1), R(2,2), t(2));
+}
+
+/*
+
+/*
+ * NOTE: the position of the state, the last state, and the keyframe state must be estimated by this point
+ *
+ * this function cycles through all matched features from key frame 0,
+ * transforms their depth into the current frame
+ * calculates their depth in the current frame
+ * updates their depth
+ * if their depth variance is good enough
+ * 	convert the point to a 3d features for future motion estimation
+ *
+ * x is the state of the current frame
+
 void VIO::updateFeatureDepths(VIOState x, double variance)
 {
 	tf::StampedTransform base2cam;
@@ -196,67 +297,39 @@ void VIO::updateFeatureDepths(VIOState x, double variance)
 
 	Eigen::Vector4d X;
 
+	double length_of_motion = P2_temp.getOrigin().length();
+
 	this->FundamentalMatrixFromProjectionMatrices(P1.val, P2.val, fundamental_matrix.data());
 
-	for(int i = 0; i < kf.currentFrameIndexes.size(); i++)
+	if(kf.pixelDelta > MIN_FUNDAMENTAL_PXL_DELTA)
 	{
-		cv::Point2f pt2=kf.matchedFeatures.at(i).getUndistorted(), pt1=cf.features.at(kf.currentFrameIndexes.at(i)).getUndistorted(); // get the two points
-		Eigen::Vector2d u1, u2;
-		u1(0) = pt1.x;
-		u1(1) = pt1.y;
-		u2(0) = pt2.x;
-		u2(1) = pt2.y;
 
-		this->Triangulate(pose1, pose2, u1, u2, &X, fundamental_matrix);
+		for(int i = 0; i < kf.currentFrameIndexes.size(); i++)
+		{
+			cv::Point2f pt2=kf.matchedFeatures.at(i).getUndistorted(), pt1=cf.features.at(kf.currentFrameIndexes.at(i)).getUndistorted(); // get the two points
+			Eigen::Vector2d u1, u2;
+			u1(0) = pt1.x;
+			u1(1) = pt1.y;
+			u2(0) = pt2.x;
+			u2(1) = pt2.y;
 
-		ROS_DEBUG_STREAM("Pos: " << X.hnormalized());
-		ROS_DEBUG_STREAM("reproj error ^: " << this->ReprojectionError(pose2, X, u2));
+			this->Triangulate(pose1, pose2, u1, u2, &X, fundamental_matrix);
 
+			double depth = X(2)/X(3);
+
+			if(depth > MIN_TRIAG_Z)
+			{
+				//cf.features.at(kf.currentFrameIndexes.at(i)).updateDepth(depth, variance + 1 / (length_of_motion * depth + 0.00001)); // update the depth of the point
+
+				ROS_DEBUG_STREAM("depth: " << depth << " variance: " << variance + 1 / (length_of_motion * depth + 0.00001));
+				ROS_DEBUG_STREAM("reproj error ^: " << this->ReprojectionError(pose2, X, u2));
+			}
+
+		}
 	}
 }
 
-double VIO::ReprojectionError(const Matrix3x4d& pose, const Eigen::Vector4d& world_point, const Eigen::Vector2d& image_point) {
-  const Eigen::Vector3d reprojected_point = pose * world_point;
-  const double sq_reproj_error = (reprojected_point.hnormalized() - image_point).squaredNorm();
-  return sq_reproj_error;
-}
 
-/*
- * cv::Matx61d b;
-
-		cv::Point2f pt2=kf.matchedFeatures.at(i).getUndistorted(), pt1=cf.features.at(kf.currentFrameIndexes.at(i)).getUndistorted(); // get the two points
-
-		b(0) = pt1.x;
-		b(1) = pt1.y;
-		b(2) = 1.0;
-		b(3) = pt2.x;
-		b(4) = pt2.y;
-		b(5) = 1.0;
-
-		cv::Matx41d X;
-
-		cv::solve(A, b, X, cv::DECOMP_SVD);
-
-		ROS_DEBUG_STREAM("X: " << X(2)/X(3));
- */
-
-void VIO::decomposeEssentialMatrix(cv::Matx33f E, cv::Matx34d& Rt)
-{
-	cv::SVD svd(E);
-	cv::Matx33d W(0,-1,0,   //HZ 9.13
-			1,0,0,
-			0,0,1);
-	cv::Matx33d Winv(0,1,0,
-			-1,0,0,
-			0,0,1);
-	cv::Mat_<double> R = svd.u * cv::Mat(W) * svd.vt; //HZ 9.19
-	cv::Mat_<double> t = svd.u.col(2); //u3
-	Rt = cv::Matx34d(R(0,0),    R(0,1), R(0,2), t(0),
-			R(1,0),    R(1,1), R(1,2), t(1),
-			R(2,0),    R(2,1), R(2,2), t(2));
-}
-
-/*
 void VIO::update3DFeatures()
 {
 >>>>>>> 98dd91d74806469f2705a7968f81ae787fbc7470
@@ -393,7 +466,7 @@ void VIO::update3DFeatures()
 
 			if (matched3d) {
 				tf::Vector3 pos = w2c
-						* tf::Vector3(matched3dFeature.position(0),
+ * tf::Vector3(matched3dFeature.position(0),
 								matched3dFeature.position(1),
 								matched3dFeature.position(2));
 				cv::Matx41f X_;
