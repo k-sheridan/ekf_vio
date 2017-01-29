@@ -28,7 +28,6 @@
 #include <tf2_ros/message_filter.h>
 #include <tf2_ros/transform_listener.h>
 
-#include "EgoMotionEstimator.hpp"
 #include "Frame.hpp"
 #include "VIOFeature3D.hpp"
 #include "VIOFeature2D.hpp"

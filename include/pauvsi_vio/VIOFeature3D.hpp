@@ -20,7 +20,7 @@
 #include <ros/ros.h>
 #include <eigen3/Eigen/Geometry>
 
-#include "VIOLine.hpp"
+//#include "VIOLine.hpp"
 
 #define PROCESS_ERROR 0.0
 

@@ -24,7 +24,7 @@ VIOEKF::~VIOEKF() {
 	// TODO Auto-generated destructor stub
 }
 
-VIOState VIOEKF::update(VIOState in, VisualMeasurement z)
+VIOState VIOEKF::update(VIOState in, Measurement z)
 {
 	//compute the full covariance for the entire pred step
 

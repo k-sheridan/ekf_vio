@@ -19,10 +19,10 @@
 #include "message_filters/subscriber.h"
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
+#include <Measurement.hpp>
 
 #include "pauvsi_vio/VIOState.hpp"
 #include <eigen3/Eigen/Geometry>
-#include "pauvsi_vio/VisualMeasurement.hpp"
 
 #define PI 3.14156
 #define CONVERT_2_RAD_DEFAULT false
@@ -61,7 +61,7 @@ public:
 
 	VIOState predict(VIOState lastState, ros::Time predictionTime);
 
-	VIOState update(VIOState lastState, VisualMeasurement z);
+	VIOState update(VIOState lastState, Measurement z);
 
 	//STATE x STATE
 	Eigen::Matrix<double, 16, 16> stateJacobian(VIOState x, double dt);
@@ -69,8 +69,6 @@ public:
 	Eigen::Matrix<double, 16, 16> computePredictionError(double dt);
 
 	VIOState transitionState(VIOState x, double dt);
-
-	VisualMeasurement predictMeasurement();
 
 	void setGravityMagnitude(double g)
 	{

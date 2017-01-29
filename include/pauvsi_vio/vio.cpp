@@ -240,7 +240,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 
 			double essential_error = this->computeFundamentalMatrix(E, R, t, keyFrames.at(0));
 
-			double fundamentalMotionEstimationVariance = (100 * essential_error); // this parameter is tuneable it is the uncertainty in +/- meters
+			double fundamentalMotionEstimationVariance = (1000 * essential_error); // this parameter is tuneable it is the uncertainty in +/- meters
 
 			cv::Matx33f F;
 			E.copyTo(F);
@@ -267,7 +267,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 
 			Eigen::Matrix<double, 7, 7> sigma = fundamentalMotionEstimationVariance * Eigen::MatrixXd::Identity(7, 7);
 
-			VisualMeasurement z = VisualMeasurement(z_vec, sigma);
+			Measurement z = Measurement(z_vec, sigma);
 
 			newX = ekf.update(pred, z); // update using 2d/2d motion estimation
 

@@ -10,14 +10,14 @@
 
 #include <eigen3/Eigen/Geometry>
 
-class VisualMeasurement
+class Measurement
 {
 public:
 	Eigen::Matrix<double, 7, 1> z; // x, y, z, q0, q1, q2, q3
 	Eigen::Matrix<double, 7, 7> covariance;
 	ros::Time t;
 
-	VisualMeasurement(Eigen::Matrix<double, 7, 1> z_, Eigen::Matrix<double, 7, 7> cov)
+	Measurement(Eigen::Matrix<double, 7, 1> z_, Eigen::Matrix<double, 7, 7> cov)
 	{
 		z = z_;
 		covariance = cov;
