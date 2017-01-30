@@ -21,8 +21,11 @@
 #include <ros/ros.h>
 #include <eigen3/Eigen/Geometry>
 
-#include "Point.h"
-#include "Frame.hpp"
+#include "Frame.h"
+
+class Point;
+
+class Frame;
 
 class Feature{
 
@@ -51,53 +54,13 @@ public:
 	bool set; // says whether the feature was set
 
 
-	Feature(){
-		set = false;
-		described = false;
-		undistorted = false;
-	}
+	Feature();
 
-	Feature(Frame* _frame, cv::Point2f px, Point* pt)
-	{
-		set = true;
-		described = false;
-		undistorted = false;
-		frame = _frame;
-		feature.pt = px;
-		original_pxl = px;
-		radius = -1; // the radius is not very important
-		quality = 0;
+	Feature(Frame* _frame, cv::Point2f px, Point* pt, int id = -1);
 
-		id = -1;
+	void undistort(cv::Mat K, cv::Mat D);
 
-		description = cv::Mat(cv::Size(0, 0), CV_32F);
-
-		this->undistort(frame->K, frame->D); // assuming that the point is distorted and not normal yet
-
-		point = pt;
-		point->addObservation(this);
-
-	}
-
-	void undistort(cv::Mat K, cv::Mat D)
-	{
-		std::vector<cv::Point2f> in;
-		in.push_back(this->original_pxl);
-
-		std::vector<cv::Point2f> out;
-
-		cv::fisheye::undistortPoints(in, out, K, D); // the new K is the Identity matrix
-
-		this->undistort_pxl = out.at(0);
-		this->undistorted = true;
-	}
-
-	Eigen::Vector3d getDirectionVector()
-	{
-		ROS_ASSERT(this->undistorted && set);
-		ROS_ASSERT(this->point->status == Point::TRACKING_GOOD); // force tracking to be good if using point
-		return Eigen::Vector3d(undistort_pxl.x, undistort_pxl.y, 1.0);
-	}
+	Eigen::Vector3d getDirectionVector();
 
 
 };

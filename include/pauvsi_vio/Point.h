@@ -10,10 +10,7 @@
 
 #include <eigen3/Eigen/Geometry>
 
-//#include "Feature.h"
-
-
-class Feature;
+#include "Feature.h"
 
 
 class Point{

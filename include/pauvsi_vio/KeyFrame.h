@@ -8,7 +8,7 @@
 #ifndef PAUVSI_VIO_INCLUDE_PAUVSI_VIO_KEYFRAME_H_
 #define PAUVSI_VIO_INCLUDE_PAUVSI_VIO_KEYFRAME_H_
 
-#include "Frame.hpp"
+#include <Frame.h>
 
 struct KeyFrame
 {
