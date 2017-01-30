@@ -13,12 +13,12 @@ void VIO::updateKeyFrameInfo()
 	if(keyFrames.size() < 1)
 	{
 		KeyFrame kf;
-		kf.frame = &this->frameBuffer.back();
+		kf.frame = &this->frameBuffer.at(frameBuffer.size() - 2);
 		keyFrames.push_back(kf);
 	}
 	else
 	{
-		keyFrames.at(0).frame = &this->frameBuffer.back();
+		keyFrames.at(0).frame = &this->frameBuffer.at(frameBuffer.size() - 2);
 	}
 }
 

@@ -85,16 +85,20 @@ int Frame::getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_ra
 	//get new features
 	candidates = this->getFASTCorners(fast_threshold);
 
+	ROS_DEBUG_STREAM("got " << candidates.size() << " feats");
+
 	//clean features by kill radius
 	this->cleanUpFeaturesByKillRadius(candidates, kill_radius);
 
 	//clean features by redundancy
-	//ROS_DEBUG_STREAM("before " << candidates.size());
+	ROS_DEBUG_STREAM("before " << candidates.size());
 	this->removeRedundantFeature(candidates, this->features, min_feature_dist);
-	//ROS_DEBUG_STREAM("after " << candidates.size());
+	ROS_DEBUG_STREAM("after " << candidates.size());
 
 	//rank the features
 	this->rankFeatures(candidates, fast_threshold, kill_radius);
+
+	ROS_DEBUG("ranked");
 
 	int added = 0;
 
@@ -103,7 +107,7 @@ int Frame::getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_ra
 	{
 		for(int i = 0; i < candidates.size(); i++)
 		{
-			Feature feat = Feature(this, candidates.at(i).original_pxl, 0);
+			Feature feat = Feature(this, candidates.at(i).original_pxl, NULL);
 			this->addFeature(feat);
 			added++;
 		}
@@ -112,7 +116,7 @@ int Frame::getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_ra
 	{
 		for(int i = 0; i < nFeatures; i++)
 		{
-			Feature feat = Feature(this, candidates.at(i).original_pxl, 0);
+			Feature feat = Feature(this, candidates.at(i).original_pxl, NULL);
 			this->addFeature(feat);
 			added++;
 		}
@@ -132,6 +136,8 @@ int Frame::getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_ra
 std::vector<Feature> Frame::getFASTCorners(int threshold){
 	std::vector<cv::KeyPoint> corners;
 	cv::FAST(this->image, corners, threshold, true); // detect with nonmax suppression
+
+	ROS_DEBUG_STREAM("got " << corners.size() << " raw corners");
 
 	int startingID = features.size(); // the starting ID is the current size of the feature vector
 
@@ -378,7 +384,7 @@ void Frame::cleanUpFeaturesByKillRadius(std::vector<Feature>& feats, float killR
 		}
 		else
 		{
-			//ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << features.at(i).getDistanceFromFrameCenter());
+			ROS_DEBUG_STREAM_THROTTLE(200, "removing a feature with radius " << features.at(i).radius);
 		}
 	}
 

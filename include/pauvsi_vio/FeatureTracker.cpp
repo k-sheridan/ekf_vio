@@ -49,13 +49,13 @@ std::vector<cv::DMatch> FeatureTracker::matchFeaturesWithFlann(cv::Mat query, cv
 bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 	std::vector<cv::Point2f> oldPoints = oldFrame.getPoint2fVectorFromFeatures();
-	//ROS_DEBUG_STREAM_ONCE("got " << oldPoints.size() << " old point2fs from the oldframe which has " << oldFrame.features.size() << " features");
+	ROS_DEBUG_STREAM_ONCE("got " << oldPoints.size() << " old point2fs from the oldframe which has " << oldFrame.features.size() << " features");
 	std::vector<cv::Point2f> newPoints;
 
 	std::vector<uchar> status; // status vector for each point
 	cv::Mat error; // error vector for each point
 
-	//ROS_DEBUG_ONCE("running lucas kande optical flow algorithm");
+	ROS_DEBUG_ONCE("running lucas kande optical flow algorithm");
 	/*
 	 * this calculates the new positions of the old features in the new image
 	 * status tells us whether or not a point index has been flowed over to the new frame
@@ -65,7 +65,7 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 	cv::calcOpticalFlowPyrLK(oldFrame.image, newFrame.image, oldPoints, newPoints, status, error, cv::Size(21, 21), 3,
 			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), 0, this->MIN_EIGEN_VALUE);
 
-	//ROS_DEBUG_STREAM_ONCE("ran optical flow and got " << newPoints.size() << " points out");
+	ROS_DEBUG_STREAM_ONCE("ran optical flow and got " << newPoints.size() << " points out");
 
 	int lostFeatures = 0;
 	//next add these features into the new Frame

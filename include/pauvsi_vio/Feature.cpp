@@ -31,9 +31,13 @@ Feature::Feature(Frame* _frame, cv::Point2f px, Point* pt, int _id)
 
 	this->undistort(frame->K, frame->D); // assuming that the point is distorted and not normal yet
 
-	point = pt;
-	point->addObservation(this); // add my self to the point's observations
-
+	if(pt != NULL){
+		point = pt;
+		point->addObservation(this); // add my self to the point's observations
+	}
+	else{
+		ROS_DEBUG_STREAM("null pointer");
+	}
 }
 
 void Feature::undistort(cv::Mat K, cv::Mat D)

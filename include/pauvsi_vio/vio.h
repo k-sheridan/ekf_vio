@@ -37,6 +37,9 @@
 #include "KeyFrame.h"
 
 
+#define SUPER_DEBUG 1
+
+
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
 #define DEFAULT_IMU_TOPIC "/IMU_Full"
 #define DEFAULT_FAST_THRESHOLD 50
@@ -70,6 +73,7 @@
 
 #define MAXIMUM_KEYFRAMES 1
 #define DEFAULT_MINIMUM_KEYFRAME_FEATURE_RATIO 0.6
+
 
 
 class VIO

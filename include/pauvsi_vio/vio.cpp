@@ -158,9 +158,9 @@ void VIO::run()
 	if(currentFrame().features.size() < this->NUM_FEATURES)
 	{
 		//add n new unique features
-		//ROS_DEBUG("low on features getting more");
+		ROS_DEBUG_STREAM("low on features getting more: " << currentFrame().features.size());
 		int featuresAdded = currentFrame().getAndAddNewFeatures(this->NUM_FEATURES - currentFrame().features.size(), this->FAST_THRESHOLD, this->KILL_RADIUS, this->MIN_NEW_FEATURE_DISTANCE);
-
+		ROS_DEBUG_STREAM("got more: " << currentFrame().features.size());
 		//TODO check that everything is linked correctly
 		//this block adds a map point for the new feature added and links it to the new feature
 		for(std::vector<Feature>::iterator it = currentFrame().features.end() - featuresAdded; it != currentFrame().features.end(); it++)
@@ -248,7 +248,11 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 		this->ekf.imuMessageBuffer = newBuff; // replace the buffer
 	}
 
-	//this->drawKeyFrames();
+#if SUPER_DEBUG
+	this->updateKeyFrameInfo();
+	this->drawKeyFrames();
+#endif
+
 	return newX;
 }
 

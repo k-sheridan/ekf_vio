@@ -127,14 +127,13 @@ void VIO::drawKeyFrames()
 	cv::Mat img1, img2;
 
 	img1 = currentFrame().image;
-/*
-	if(keyFrames.size() == 0)
-		return;
 
-	img2 = keyFrames.at(0).frame->image;
+	cv::cvtColor(img1, img1, CV_GRAY2BGR);
+	cv::cvtColor(img2, img2, CV_GRAY2BGR);
 
-	cv::Mat final;
-	cv::vconcat(img1, img2, final);*/
+
+	ROS_DEBUG_STREAM("KeyFrame Features: " << keyFrames.back().frame->features.size());
+
 
 	cv::imshow("debug", img1);
 	cv::waitKey(1);
