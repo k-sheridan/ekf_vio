@@ -48,11 +48,9 @@ add_library(vioekf include/pauvsi_vio/VIOEKF.cpp)
 
 add_library(featureTracker include/pauvsi_vio/FeatureTracker.cpp)
 
-add_library(point include/pauvsi_vio/Point.h)
-set_target_properties(point PROPERTIES LINKER_LANGUAGE CXX)
+add_library(point include/pauvsi_vio/Point.cpp)
 
-add_library(feature include/pauvsi_vio/Feature.h)
-set_target_properties(feature PROPERTIES LINKER_LANGUAGE CXX)
+add_library(feature include/pauvsi_vio/Feature.cpp)
 
 add_library(frame include/pauvsi_vio/Frame.cpp)
 

@@ -12,6 +12,7 @@
 
 #include "Feature.h"
 
+class Feature;
 
 class Point{
 
@@ -26,21 +27,11 @@ public:
 
 	std::deque<Feature*> observations; // this is  a list of observations of this 3d point from different frames
 
-	Point()
-	{
-		status = TRACKING_GOOD;
-	}
+	Point();
 
-	Point(Feature* ft){
-		status = TRACKING_GOOD;
-		observations.push_front(ft); // add this observation to the deque
-	}
+	Point(Feature* ft);
 
-	void addObservation(Feature* ft)
-	{
-		//status = TRACKING_GOOD;
-		observations.push_front(ft);
-	}
+	void addObservation(Feature* ft);
 };
 
 
