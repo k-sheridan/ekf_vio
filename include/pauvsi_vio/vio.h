@@ -29,12 +29,12 @@
 #include <tf2_ros/transform_listener.h>
 
 #include "Frame.hpp"
-#include "VIOFeature3D.hpp"
-#include "VIOFeature2D.hpp"
+#include "Point.h"
+#include "Feature.h"
 #include "FeatureTracker.h"
 #include "VIOEKF.h"
 #include "VIOState.hpp"
-#include "KeyFrameInfo.hpp"
+#include "KeyFrame.h"
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -51,7 +51,6 @@
 #define DEFAULT_COM_FRAME_NAME "base_link"
 #define DEFAULT_WORLD_FRAME_NAME "world"
 #define DEFAULT_GRAVITY_MAGNITUDE 9.8065
-#define PI_OVER_180 0.01745329251
 #define DEFAULT_RECALIBRATION_THRESHOLD 0.02
 #define DEFAULT_QUEUE_SIZE 10
 #define DEFAULT_ACTIVE_FEATURES_TOPIC "/pauvsi_vio/activefeatures"
@@ -67,11 +66,10 @@
 #define DEFAULT_MAX_FUNDAMENTAL_ERROR 5e-7
 #define DEFAULT_MAX_GN_ITERS 10
 
-#define NUM_KEYFRAMES 4
-#define KEYFRAME_LEVEL_1 0.8
-#define KEYFRAME_LEVEL_2 0.6
-#define KEYFRAME_LEVEL_3 0.4
-#define KEYFRAME_LEVEL_4 0.2
+#define PI_OVER_180 0.01745329251
+
+#define MAXIMUM_KEYFRAMES 1
+#define DEFAULT_MINIMUM_KEYFRAME_FEATURE_RATIO 0.6
 
 
 class VIO
@@ -158,9 +156,6 @@ public:
 
 	ros::Time broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
 
-	void publishActivePoints();
-	void publishFeatureDepth();
-
 	void recalibrateState(double avgPixelChange, double threshold, bool consecutive);
 
 	void run();
@@ -184,11 +179,9 @@ public:
 
 	void viewImage(Frame frame);
 
-	void viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new);
+	void viewMatches(std::vector<Feature> ft1, std::vector<Feature> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new);
 
 	//void viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new, cv::Matx33f F);
-
-	cv::Mat reproject3dPoints(cv::Mat img_in, VIOState x);
 
 	void drawKeyFrames();
 
@@ -200,30 +193,12 @@ public:
 	VIOState estimateMotion(VIOState x, Frame& frame1, Frame& frame2);
 
 	void updateKeyFrameInfo();
-	void bruteForceKeyFrameUpdate();
 
 	tf::Transform cameraTransformFromState(VIOState x, tf::Transform b2c);
 
 	void pose_gauss_newton(const std::vector< cv::Point3d > &wX,
 	                       const std::vector< cv::Point2d > &x,
 	                       cv::Mat &ctw, cv::Mat &cRw);
-
-	double computeKeyFramePixelDelta(Frame cf, KeyFrameInfo& keyFrame);
-
-	double computeFundamentalMatrix(cv::Mat& F, cv::Matx33d& R, cv::Matx31d& t, KeyFrameInfo& kf);
-	double computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf, std::vector<cv::Point2f>& pt1, std::vector<cv::Point2f>& pt2, cv::Mat& mask);
-	double computeFundamentalMatrix(cv::Mat& F, KeyFrameInfo& kf);
-
-	double recoverPoseV2( cv::InputArray E, cv::InputArray _points1, cv::InputArray _points2, cv::InputArray _cameraMatrix,
-			cv::OutputArray _R, cv::OutputArray _t, cv::InputOutputArray _mask, VIOState x1, VIOState x2);
-
-	//void getBestCorrespondences(double& pixel_delta,  std::vector<VIOFeature2D>& ft1, std::vector<VIOFeature2D>& ft2, VIOState& x1, VIOState& x2, int& match_index);
-
-	VIOFeature2D getCorrespondingFeature(VIOFeature2D currFeature, Frame lastFrame);
-
-	//void findBestCorresponding2DFeature(VIOFeature2D start, Frame lf, std::deque<Frame> fb, VIOFeature2D& end, int& frameIndex);
-
-	double poseFromPoints(std::vector<VIOFeature3D> points3d, Frame lf, Frame cf, Eigen::Matrix<double, 7, 1>& Z, bool& pass);
 
 	float manhattan(cv::Point2f p1, cv::Point2f p2){
 		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
@@ -232,8 +207,6 @@ public:
 
 
 	//TRIANGULATION
-	void update3DFeatures();
-	void sortActive3DFeaturesByVariance();
 	bool Triangulate(const Matrix3x4d& pose1, const Matrix3x4d& pose2,
 			const Eigen::Vector2d& point1, const Eigen::Vector2d& point2,
 			Eigen::Vector4d* triangulated_point, Eigen::Matrix3d fmatrix);
@@ -251,17 +224,7 @@ public:
 
 	void decomposeEssentialMatrix(cv::Matx33f E, cv::Matx34d& Rt);
 
-	void updateFeatureDepths(VIOState x);
-
 	double ReprojectionError(const Matrix3x4d& pose, const Eigen::Vector4d& world_point, const Eigen::Vector2d& image_point);
-
-
-
-	/*	bool visualMotionInference(Frame frame1, Frame frame2, tf::Vector3 angleChangePrediction, tf::Vector3& rotationInference,
-				tf::Vector3& unitVelocityInference, double& averageMovement);
-	cv::Mat_<double> IterativeLinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);
-	cv::Mat_<double> LinearLSTriangulation(cv::Point3d u, cv::Matx34d P, cv::Point3d u1, cv::Matx34d P1);
-	bool triangulateAndCheck(cv::Point2f pt1, cv::Point2f pt2, cv::Matx33d K1, cv::Matx33d K2, VIOState x1, VIOState x2, double& error, cv::Matx31d& r, tf::Transform base2cam);*/
 
 protected:
 	ros::NodeHandle nh;
@@ -271,8 +234,7 @@ protected:
 	image_transport::CameraSubscriber cameraSub;
 	ros::Subscriber imuSub;
 
-	ros::Publisher activePointsPub;
-	ros::Publisher featureDepthPub;
+	ros::Publisher featurePub;
 
 	//initialized with default values
 	std::string cameraTopic;
@@ -282,7 +244,7 @@ protected:
 	//Frame lastFrame; //the last frame
 
 	std::deque<Frame> frameBuffer; // holds frames
-	std::vector<KeyFrameInfo> keyFrames; // holds information about the key frames
+	std::deque<KeyFrame> keyFrames; // holds information about the key frames
 
 	FeatureTracker feature_tracker;
 
@@ -303,12 +265,10 @@ protected:
 	std::vector<gyroNode> gyroQueue;
 	std::vector<accelNode> accelQueue;
 
-	std::vector<VIOFeature3D> active3DFeatures;
-	//std::vector<VIOFeature3D> inactive3DFeatures;
-
 	cv::Mat K;
 	cv::Mat D;
 
 };
+
 
 #endif /* PAUVSI_VIO_INCLUDE_VIO_LIB_H_ */

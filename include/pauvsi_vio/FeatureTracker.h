@@ -28,12 +28,14 @@
 #include <tf/transform_broadcaster.h>
 
 #include "Frame.hpp"
-#include "VIOFeature3D.hpp"
-#include "VIOFeature2D.hpp"
+#include "Point.h"
+#include "Feature.h"
 
 class FeatureTracker {
 
 public:
+
+	std::list<Point> map; // this is a list of all active 3d points
 
 	FeatureTracker();
 	void setParams(int fst, float mev, bool kbd, int nf, int mnfd);
@@ -45,6 +47,8 @@ public:
 	void getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, std::vector<cv::Point2f>& lastPoints, std::vector<cv::Point2f>& currentPoints);
 
 	void checkFeatureConsistency(Frame& checkFrame, int killThreshold );
+
+	void getAndAddNewFeatures(Frame& frame, int nFeatures, int fast_threshold, float kill_radius, int min_feature_dist);
 
 	double averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2);
 	double averageFeatureChange(Frame f1, Frame f2);

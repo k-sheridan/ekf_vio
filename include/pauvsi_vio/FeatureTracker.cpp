@@ -75,13 +75,12 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 		if(status.at(i) == 1)
 		{
 			// the id number is not that important because it will be handled by the frame
-			VIOFeature2D feat(newPoints.at(i), oldFrame.features.at(i).getFeatureID(), i, oldFrame.features.at(i).getMatchedIDDeque(),
-					oldFrame.features.at(i).getMatchedIndexDeque(), -1, oldFrame.features.at(i).getFeatureDepth(), oldFrame.features.at(i).getFeatureDepthVariance()); // create a matched feature with id = -1
+			Feature feat(newFrame, newPoints.at(i), oldFrame.features.at(i).point); // create a matched feature with id = -1
 			//if the previous feature was described
-			if(oldFrame.features.at(i).isFeatureDescribed())
+			if(oldFrame.features.at(i).described)
 			{
 				//ROS_DEBUG("transferring feature description");
-				feat.setFeatureDescription(oldFrame.features.at(i).getFeatureDescription()); // transfer previous description to new feature
+				feat.description = (oldFrame.features.at(i).description); // transfer previous description to new feature
 				//ROS_DEBUG_STREAM_THROTTLE(0, feat.getFeatureDescription());
 			}
 
@@ -90,13 +89,14 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 			newFrame.addFeature(feat); // add this feature to the new frame
 
 			//set the forward match for the old feature
-			oldFrame.features.at(i).forwardMatched = true;
+			/*oldFrame.features.at(i).forwardMatched = true;
 			oldFrame.features.at(i).forwardMatchIndex = newFrame.features.size() - 1;
-			oldFrame.features.at(i).forwardMatchID = newFrame.features.at(newFrame.features.size() - 1).getFeatureID();
+			oldFrame.features.at(i).forwardMatchID = newFrame.features.at(newFrame.features.size() - 1).getFeatureID();*/
 		}
 		else
 		{
 			lostFeatures++;
+			oldFrame.features.at(i).point->status = Point::TRACKING_LOST; // update the status of the point to lost this will then be cleaned up
 		}
 	}
 
@@ -113,10 +113,12 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 }
 
 
+
 /*
  * gets corresponding points between the two frames as two vectors of point2f
  * checks if index and id match for saftey
  */
+/*
 void FeatureTracker::getCorrespondingPointsFromFrames(Frame lastFrame, Frame currentFrame, std::vector<cv::Point2f>& lastPoints, std::vector<cv::Point2f>& currentPoints)
 {
 
@@ -133,7 +135,7 @@ void FeatureTracker::getCorrespondingPointsFromFrames(Frame lastFrame, Frame cur
 			ROS_WARN("could not match feature id to index");
 		}
 	}
-}
+}/*
 
 /*
  * checks to see if current descriptor is similar to actual feature
@@ -143,18 +145,18 @@ void FeatureTracker::getCorrespondingPointsFromFrames(Frame lastFrame, Frame cur
 void FeatureTracker::checkFeatureConsistency(Frame& checkFrame, int killThreshold ){
 	cv::Mat newDescription = checkFrame.describeFeaturesWithBRIEF(checkFrame.image, checkFrame.features);
 
-	std::vector<VIOFeature2D> tempFeatures;
+	std::vector<Feature> tempFeatures;
 
 	for (int i = 0; i < checkFrame.features.size(); i++){
 
-		if(!checkFrame.features.at(i).isFeatureDescribed())
+		if(!checkFrame.features.at(i).described)
 			break;
 
 		cv::Mat row = newDescription.row(i);
 
 		//ROS_DEBUG_STREAM_ONCE("got feature description " << row);
 
-		int x = checkFrame.compareDescriptors(row, checkFrame.features.at(i).getFeatureDescription());
+		int x = checkFrame.compareDescriptors(row, checkFrame.features.at(i).description);
 		//int x = checkFrame.compareDescriptors(row, row);
 
 		if (x <= killThreshold){
@@ -163,7 +165,7 @@ void FeatureTracker::checkFeatureConsistency(Frame& checkFrame, int killThreshol
 			//ROS_DEBUG_STREAM("i+1: "<< checkFrame.features.at(i+1).getFeatureDescription()<<":"<<checkFrame.features.at(i+1).isFeatureDescribed());
 			//ROS_DEBUG_STREAM("description size " << checkFrame.features.at(i).getFeatureDescription().cols);
 
-			checkFrame.features.at(i).setFeatureDescription(row);
+			checkFrame.features.at(i).description = row;
 
 			//ROS_DEBUG("modified feature");
 
@@ -172,6 +174,7 @@ void FeatureTracker::checkFeatureConsistency(Frame& checkFrame, int killThreshol
 			//ROS_DEBUG("pushed back modified feature");
 		}
 		else{
+			checkFrame.features.at(i).point->status = Point::TRACKING_LOST; // set the tracking to lost
 			ROS_DEBUG("feature does'nt match enough, killing");
 		}
 	}
@@ -180,6 +183,7 @@ void FeatureTracker::checkFeatureConsistency(Frame& checkFrame, int killThreshol
 	checkFrame.features = tempFeatures;
 	//ROS_DEBUG("set new features");
 }
+
 
 /*
  * find the average change in position
@@ -208,10 +212,10 @@ double FeatureTracker::averageFeatureChange(Frame f1, Frame f2)
 
 	for(int i = 0; i < f2.features.size(); i++)
 	{
-		if(f2.features.at(i).isMatched())
+		if(f2.features.at(i).point->observations.size() >= 2)
 		{
-			cv::Point2f p1 = f1.features.at(f2.features.at(i).getMatchedIndex()).getFeaturePosition();
-			cv::Point2f p2 = f2.features.at(i).getFeaturePosition();
+			cv::Point2f p1 = f2.features.at(i).point->observations.at(1)->original_pxl;
+			cv::Point2f p2 = f2.features.at(i).original_pxl;
 
 			dx = (double)(p1.x - p2.x);
 			dy = (double)(p1.y - p2.y);

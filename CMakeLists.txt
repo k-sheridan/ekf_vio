@@ -35,8 +35,8 @@ catkin_package(
    DEPENDS eigen opencv
 )
 
-add_library(keyframeinfo include/pauvsi_vio/KeyFrameInfo.hpp)
-set_target_properties(keyframeinfo PROPERTIES LINKER_LANGUAGE CXX)
+add_library(keyframe include/pauvsi_vio/KeyFrame.h)
+set_target_properties(keyframe PROPERTIES LINKER_LANGUAGE CXX)
 
 add_library(visualmeasurement include/pauvsi_vio/Measurement.hpp)
 set_target_properties(visualmeasurement PROPERTIES LINKER_LANGUAGE CXX)
@@ -48,11 +48,11 @@ add_library(vioekf include/pauvsi_vio/VIOEKF.cpp)
 
 add_library(featureTracker include/pauvsi_vio/FeatureTracker.cpp)
 
-add_library(vioFeature3d include/pauvsi_vio/VIOFeature3D.hpp)
-set_target_properties(vioFeature3d PROPERTIES LINKER_LANGUAGE CXX)
+add_library(point include/pauvsi_vio/Point.h)
+set_target_properties(point PROPERTIES LINKER_LANGUAGE CXX)
 
-add_library(vioFeature2d include/pauvsi_vio/VIOFeature2D.hpp)
-set_target_properties(vioFeature2d PROPERTIES LINKER_LANGUAGE CXX)
+add_library(feature include/pauvsi_vio/Feature.h)
+set_target_properties(feature PROPERTIES LINKER_LANGUAGE CXX)
 
 add_library(frame include/pauvsi_vio/Frame.hpp)
 set_target_properties(frame PROPERTIES LINKER_LANGUAGE CXX)
@@ -64,9 +64,10 @@ target_link_libraries(visualmeasurement ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
 target_link_libraries(viostate ${catkin_LIBRARIES} ${Eigen_LIBRARIES} ${OpenCV_LIBRARIES} visualmeasurement)
 target_link_libraries(vioekf ${catkin_LIBRARIES} ${Eigen_LIBRARIES} viostate visualmeasurement)
 target_link_libraries(featureTracker frame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
-target_link_libraries(vioFeature3d)
-target_link_libraries(frame vioFeature3d ${Eigen_LIBRARIES})
-target_link_libraries(frame vioFeature2d viostate)
-target_link_libraries(vio frame ${catkin_LIBRARIES} featureTracker vioekf viostate visualmeasurement vioFeature3d keyframeinfo)
+target_link_libraries(feature point frame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES})
+target_link_libraries(frame point ${Eigen_LIBRARIES})
+target_link_libraries(frame feature viostate)
+target_link_libraries(keyframe frame)
+target_link_libraries(vio frame ${catkin_LIBRARIES} featureTracker vioekf viostate visualmeasurement point keyframe)
 target_link_libraries(pauvsi_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} vio)
 

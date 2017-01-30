@@ -20,13 +20,12 @@
 #include <string>
 #include <ros/ros.h>
 
-#include "VIOFeature2D.hpp"
 #include "VIOState.hpp"
-
-
+#include "Feature.h"
 
 #define DEFAULT_FEATURE_SEARCH_RANGE 5
 #define MAXIMUM_ID_NUM 1000000000 //this is the maximum size that a feature ID should be to ensure there are no overflow issues.
+#define DEFAULT_FETAURE_DEPTH 0.5
 
 class Frame
 {
@@ -37,13 +36,23 @@ private:
 
 public:
 	ros::Time timeImageCreated;
+
 	cv::Mat image;
+
 	cv::Mat K;
+
 	cv::Mat D;
-	std::vector<VIOFeature2D> features; //the feature vector for this frame
+
+	std::vector<Feature> features; //the feature vector for this frame
+
 	VIOState state;
+
 	//this ensures that all features have a unique ID
-	int nextFeatureID; // the id of the next feature that is added to this frame
+	int nextFeatureID; // the id of the next feature that is added to this frame or the next frame
+
+	bool operator==(const Frame& f){
+		return f.nextFeatureID == this->nextFeatureID;
+	}
 
 	/*
 	 * initilize and set frame
@@ -106,17 +115,74 @@ public:
 
 	bool addFeature(cv::KeyPoint _corner){
 		//ROS_DEBUG_STREAM("adding feature with ID " << nextFeatureID);
-		features.push_back(VIOFeature2D(_corner, nextFeatureID));
+		features.push_back(Feature(_corner, nextFeatureID));
 		nextFeatureID++; // iterate the nextFeatureID
 		return true;
 	}
 
-	bool addFeature(VIOFeature2D feat){
+	bool addFeature(Feature feat){
 		//ROS_DEBUG_STREAM("adding feature with ID " << nextFeatureID);
 		//set the feature id
-		feat.setFeatureID(nextFeatureID);
+		feat.id = nextFeatureID;
 		features.push_back(feat); // add it to the features vector
 		nextFeatureID++; // iterate the nextFeatureID
+
+		return true;
+	}
+
+	/*
+	 * this will use the fast algorithm to find new features in the image
+	 * it will then kill all features outside the kill radius
+	 * then it will compare each feature with all features in the frame and ensure that it is not the same
+	 * finally the remaining features will be ranked and the top n features will be added to the feature vector.
+	 *
+	 * nFeatures: number of features to add to the frame
+	 * fast_threshold: the threshold to use with the fast algorithm
+	 * kill_radius: the radius to kill features at
+	 * min_feature_dist: the minimum distance between new and old features
+	 */
+	int getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_radius, int min_feature_dist)
+	{
+		std::vector<Feature> candidates;
+
+		//get new features
+		candidates = this->getFASTCorners(fast_threshold);
+
+		//clean features by kill radius
+		this->cleanUpFeaturesByKillRadius(candidates, kill_radius);
+
+		//clean features by redundancy
+		//ROS_DEBUG_STREAM("before " << candidates.size());
+		this->removeRedundantFeature(candidates, this->features, min_feature_dist);
+		//ROS_DEBUG_STREAM("after " << candidates.size());
+
+		//rank the features
+		this->rankFeatures(candidates, fast_threshold, kill_radius);
+
+		int added = 0;
+
+		//if after all this we have too few features only add all of them
+		if(candidates.size() < nFeatures)
+		{
+			for(int i = 0; i < candidates.size(); i++)
+			{
+				Feature feat = Feature(this, candidates.at(i).original_pxl, 0);
+				this->addFeature(feat);
+				added++;
+			}
+		}
+		else
+		{
+			for(int i = 0; i < nFeatures; i++)
+			{
+				Feature feat = Feature(this, candidates.at(i).original_pxl, 0);
+				this->addFeature(feat);
+				added++;
+			}
+		}
+
+		return added;
+
 	}
 
 	/*
@@ -125,17 +191,22 @@ public:
 	 *
 	 * This function does not check for identical features
 	 */
-	std::vector<VIOFeature2D> getFASTCorners(int threshold){
+	std::vector<Feature> getFASTCorners(int threshold){
 		std::vector<cv::KeyPoint> corners;
 		cv::FAST(this->image, corners, threshold, true); // detect with nonmax suppression
 
 		int startingID = features.size(); // the starting ID is the current size of the feature vector
 
-		std::vector<VIOFeature2D> feats;
+		std::vector<Feature> feats;
 		for(int i=0; i < corners.size(); i++)
 		{
+			Feature feat;
+
+			feat.feature = corners.at(i);
+			feat.original_pxl = feat.feature.pt;
+
 			//use a negative id because it is not important to give it a relevant id yet
-			feats.push_back(VIOFeature2D(corners.at(i), -1)); // ensure that id's do not repeat
+			feats.push_back(feat); // ensure that id's do not repeat
 			//ROS_DEBUG_STREAM("corner id " << corners.at(i).response);
 		}
 
@@ -145,6 +216,7 @@ public:
 	/*
 	 * gets the a keypoint vector form the feature vector
 	 */
+	/*
 	std::vector<cv::KeyPoint> getKeyPointVectorFromFeatures(){
 		std::vector<cv::KeyPoint> kp;
 		for (int i = 0; i < this->features.size(); i++)
@@ -152,8 +224,8 @@ public:
 			kp.push_back(this->features.at(i).getFeature());
 		}
 		return kp;
-	}
-
+	}*/
+	/*
 	std::vector<cv::KeyPoint> getUndistortedKeyPointVectorFromFeatures(){
 		std::vector<cv::KeyPoint> kp;
 		for (int i = 0; i < this->features.size(); i++)
@@ -166,19 +238,20 @@ public:
 			}
 		}
 		return kp;
-	}
+	}*/
 
 	/*
 	 * gets the a keypoint vector form the feature vector
 	 */
-	std::vector<cv::KeyPoint> getKeyPointVectorFromFeatures(std::vector<VIOFeature2D> featureVector){
+	/*
+	std::vector<cv::KeyPoint> getKeyPointVectorFromFeatures(std::vector<Feature> featureVector){
 		std::vector<cv::KeyPoint> kp;
 		for (int i = 0; i < featureVector.size(); i++)
 		{
 			kp.push_back(featureVector.at(i).getFeature());
 		}
 		return kp;
-	}
+	}*/
 
 
 	/*
@@ -188,7 +261,7 @@ public:
 		std::vector<cv::Point2f> points;
 		for (int i = 0; i < this->features.size(); i++)
 		{
-			points.push_back(this->features.at(i).getFeature().pt);
+			points.push_back(this->features.at(i).original_pxl);
 		}
 		return points;
 	}
@@ -196,10 +269,10 @@ public:
 	/*
 	 * describes an individual feature
 	 */
-	cv::Mat extractBRIEFDescriptor(VIOFeature2D feature){
+	cv::Mat extractBRIEFDescriptor(Feature feature){
 		cv::Mat descriptor;
 		std::vector<cv::KeyPoint> kp(1); // must be in the form of a vector
-		kp.push_back((feature.getFeature()));
+		kp.push_back((feature.feature));
 		descriptionExtractor->compute(this->image, kp, descriptor);
 		return descriptor;
 	}
@@ -211,11 +284,11 @@ public:
 	{
 
 
-		for(int i = 0; i < this->features.size(); i++)
+		for(auto& e : this->features)
 		{
-			if(!this->features.at(i).isUndistorted())
+			if(!e.undistorted)
 			{
-				this->features.at(i).undistort(this->K, this->D);
+				e.undistort(this->K, this->D);
 			}
 		}
 	}
@@ -236,10 +309,10 @@ public:
 		// find all features which must be described
 		for(int i = 0; i < features.size(); i++)
 		{
-			if(!features.at(i).isFeatureDescribed())
+			if(!features.at(i).described)
 			{
 				featureIndexes.push_back(i);
-				featureKPs.push_back(features.at(i).getFeature());
+				featureKPs.push_back(features.at(i).feature);
 			}
 		}
 
@@ -249,7 +322,8 @@ public:
 		for(int i = 0; i < descriptions.rows; i++)
 		{
 			cv::Mat desc = descriptions.row(i);
-			features.at(featureIndexes.at(i)).setFeatureDescription(desc);
+			features.at(featureIndexes.at(i)).description = desc;
+			features.at(featureIndexes.at(i)).described = true;
 		}
 
 		return true;
@@ -258,9 +332,17 @@ public:
 	/*
 	 * take a feature vector and describe each of the features
 	 */
-	cv::Mat describeFeaturesWithBRIEF(cv::Mat image, std::vector<VIOFeature2D> featureVector){
+
+	cv::Mat describeFeaturesWithBRIEF(cv::Mat image, std::vector<Feature> featureVector){
 		//ROS_DEBUG("begin to describe feature with brief");
-		std::vector<cv::KeyPoint> kp = this->getKeyPointVectorFromFeatures(featureVector);
+		std::vector<cv::KeyPoint> kp; // feature keypoints to be described
+
+		// find all features which must be described
+		for(int i = 0; i < features.size(); i++)
+		{
+			kp.push_back(this->features.at(i).feature);
+		}
+
 		cv::Mat description;
 		descriptionExtractor->compute(image, kp, description);
 		//ROS_DEBUG_STREAM("found description with the size" << description.rows << " X " << description.cols);
@@ -289,10 +371,10 @@ public:
 		return sumError;
 	}
 
-	static bool wayToSort(VIOFeature2D i, VIOFeature2D j)
+	static bool wayToSort(Feature i, Feature j)
 	{
-		bool v = i.getQuality()<j.getQuality();
-		return i.getQuality()<j.getQuality();
+		bool v = i.quality<j.quality;
+		return i.quality<j.quality;
 	}
 
 	/* Takes Threshold for FAST corner detection and KillRadius of the Region of Interest
@@ -305,12 +387,12 @@ public:
 		int size = features.size();
 		for(int i=0; i<size; ++i)
 		{
-			if(features.at(i).getQuality() != -1.0)
+			if(features.at(i).quality != -1.0)
 			{
 				//Scaled to 80% from response value and 20% from distance from center
-				features.at(i).setQuality(0.8*features.at(i).getResponse() +
-						0.2*features.at(i).getResponse() *
-						(1/(1+exp(-(5-(10*features.at(i).getDistanceFromFrameCenter()/killRadius))))));
+				features.at(i).quality = (0.8*features.at(i).feature.response +
+						0.2*features.at(i).feature.response *
+						(1/(1+exp(-(5-(10*features.at(i).radius/killRadius))))));
 				//Implemented sigmoid function and scaled to [-5,5]. Actual sigmoid => sigmoid(killRadius/2 - DistanceFromCenter
 			}
 		}
@@ -325,18 +407,18 @@ public:
 	 *
 	 * overloaded uses referenced feature vector
 	 */
-	void rankFeatures(std::vector<VIOFeature2D>& features, int fastThreshold, int killRadius)
+	void rankFeatures(std::vector<Feature>& features, int fastThreshold, int killRadius)
 	{
 		float scaleValue = 0.2 * fastThreshold;
 		int size = features.size();
 		for(int i=0; i<size; ++i)
 		{
-			if(features.at(i).getQuality() != -1.0)
+			if(features.at(i).quality != -1.0)
 			{
 				//Scaled to 80% from response value and 20% from distance from center
-				features.at(i).setQuality(0.8*features.at(i).getResponse() +
-						0.2*features.at(i).getResponse() *
-						(1/(1+exp(-(5-(10*features.at(i).getDistanceFromFrameCenter()/killRadius))))));
+				features.at(i).quality = (0.8*features.at(i).feature.response +
+						0.2*features.at(i).feature.response *
+						(1/(1+exp(-(5-(10*features.at(i).radius/killRadius))))));
 				//Implemented sigmoid function and scaled to [-5,5]. Actual sigmoid => sigmoid(killRadius/2 - DistanceFromCenter
 			}
 		}
@@ -354,16 +436,22 @@ public:
 	void cleanUpFeaturesByKillRadius(float killRadius)
 	{
 		cv::Point2f imageCenter = cv::Point2f((float)(this->image.cols / 2), (float)(this->image.rows / 2));
-		std::vector<VIOFeature2D> cleanFeatures;
+		std::vector<Feature> cleanFeatures;
 		for(int i = 0; i < this->features.size(); i++)
 		{
-			if(this->getAndSetFeatureRadius(this->features.at(i), imageCenter) <= killRadius)
+			Feature& feat = this->features.at(i);
+
+			if(this->getAndSetFeatureRadius(feat, imageCenter) <= killRadius)
 			{
-				cleanFeatures.push_back(this->features.at(i));
+				cleanFeatures.push_back(feat);
 			}
 			else
 			{
-				ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << this->features.at(i).getDistanceFromFrameCenter());
+				ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << feat.radius);
+				if(feat.point != 0)
+				{
+					feat.point->status = Point::TRACKING_LOST; // tis will now be cleaned
+				}
 			}
 		}
 
@@ -380,10 +468,10 @@ public:
 	 * overloaded:
 	 * uses a referenced feature vector
 	 */
-	void cleanUpFeaturesByKillRadius(std::vector<VIOFeature2D>& feats, float killRadius)
+	void cleanUpFeaturesByKillRadius(std::vector<Feature>& feats, float killRadius)
 	{
 		cv::Point2f imageCenter = cv::Point2f((float)(this->image.cols / 2), (float)(this->image.rows / 2));
-		std::vector<VIOFeature2D> cleanFeatures;
+		std::vector<Feature> cleanFeatures;
 		for(int i = 0; i < features.size(); i++)
 		{
 			if(this->getAndSetFeatureRadius(features.at(i), imageCenter) <= killRadius)
@@ -403,11 +491,11 @@ public:
 	/*
 	 * this will check the feature's radius and both set an its radius
 	 */
-	float getAndSetFeatureRadius(VIOFeature2D& feat, cv::Point2f imageCenter){
-		float dx = feat.getFeaturePosition().x - imageCenter.x;
-		float dy = feat.getFeaturePosition().y - imageCenter.y;
-		feat.setDistanceFromFrameCenter(sqrt(dx * dx + dy * dy));
-		return feat.getDistanceFromFrameCenter();
+	float getAndSetFeatureRadius(Feature& feat, cv::Point2f imageCenter){
+		float dx = feat.original_pxl.x - imageCenter.x;
+		float dy = feat.original_pxl.y - imageCenter.y;
+		feat.radius = (sqrt(dx * dx + dy * dy));
+		return feat.radius;
 	}
 
 	/*
@@ -422,16 +510,16 @@ public:
 	 * its features with the compare vector and checking their
 	 * distances with min_feature_dist
 	 */
-	void removeRedundantFeature(std::vector<VIOFeature2D>& toClean, std::vector<VIOFeature2D> compare, int min_feature_dist)
+	void removeRedundantFeature(std::vector<Feature>& toClean, std::vector<Feature> compare, int min_feature_dist)
 	{
-		std::vector<VIOFeature2D> cleaned;
+		std::vector<Feature> cleaned;
 		bool removed = false;
 
 		for(int i = 0; i < toClean.size(); i++)
 		{
 			for(int j = 0; j < compare.size(); j++)
 			{
-				if(manhattan(toClean.at(i).getFeature().pt, compare.at(j).getFeature().pt) < min_feature_dist)
+				if(manhattan(toClean.at(i).original_pxl, compare.at(j).original_pxl) < min_feature_dist)
 				{
 					removed = true;
 					break;
@@ -452,56 +540,14 @@ public:
 		toClean = cleaned;
 	}
 
-	/*
-	 * this will use the fast algorithm to find new features in the image
-	 * it will then kill all features outside the kill radius
-	 * then it will compare each feature with all features in the frame and ensure that it is not the same
-	 * finally the remaining features will be ranked and the top n features will be added to the feature vector.
-	 *
-	 * nFeatures: number of features to add to the frame
-	 * fast_threshold: the threshold to use with the fast algorithm
-	 * kill_radius: the radius to kill features at
-	 * min_feature_dist: the minimum distance between new and old features
-	 */
-	void getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_radius, int min_feature_dist)
+
+	double getAverageSceneDepth()
 	{
-		std::vector<VIOFeature2D> candidates;
-
-		//get new features
-		candidates = this->getFASTCorners(fast_threshold);
-
-		//clean features by kill radius
-		this->cleanUpFeaturesByKillRadius(candidates, kill_radius);
-
-		//clean features by redundancy
-		//ROS_DEBUG_STREAM("before " << candidates.size());
-		this->removeRedundantFeature(candidates, this->features, min_feature_dist);
-		//ROS_DEBUG_STREAM("after " << candidates.size());
-
-		//rank the features
-		this->rankFeatures(candidates, fast_threshold, kill_radius);
-
-		//if after all this we have too few features only add all of them
-		if(candidates.size() < nFeatures)
-		{
-			for(int i = 0; i < candidates.size(); i++)
-			{
-				this->addFeature(candidates.at(i));
-			}
-		}
-		else
-		{
-			for(int i = 0; i < nFeatures; i++)
-			{
-				this->addFeature(candidates.at(i));
-			}
-		}
-
+		return DEFAULT_FETAURE_DEPTH;
 	}
 
 
 };
-
 
 
 #endif /* PAUVSI_M7_INCLUDE_PAUVSI_VO_FRAME_H_ */

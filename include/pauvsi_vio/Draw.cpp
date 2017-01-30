@@ -122,116 +122,24 @@ cv::Scalar HSVtoBGR(float fH, float fS, float fV) {
   return cv::Scalar(fB*255, fG*255, fR*255);
 }
 
-
-
 void VIO::drawKeyFrames()
 {
-	cv::Mat img1, img2, img3, img4, img5;
+	cv::Mat img1, img2;
+
 	img1 = currentFrame().image;
-	img2 = frameBuffer.at(keyFrames.at(0).frameBufferIndex).image;
-	img3 = frameBuffer.at(keyFrames.at(1).frameBufferIndex).image;
-	img4 = frameBuffer.at(keyFrames.at(2).frameBufferIndex).image;
-	img5 = frameBuffer.at(keyFrames.at(3).frameBufferIndex).image;
+/*
+	if(keyFrames.size() == 0)
+		return;
 
-	cv::cvtColor(img1, img1, CV_GRAY2BGR);
-	cv::cvtColor(img2, img2, CV_GRAY2BGR);
-	cv::cvtColor(img3, img3, CV_GRAY2BGR);
-	cv::cvtColor(img4, img4, CV_GRAY2BGR);
-	cv::cvtColor(img5, img5, CV_GRAY2BGR);
+	img2 = keyFrames.at(0).frame->image;
 
-	cv::Matx33f F;
-	cv::Matx33f tK;
+	cv::Mat final;
+	cv::vconcat(img1, img2, final);*/
 
-	//do work on images
-	Frame cf = currentFrame();
-	cf.K.copyTo(tK);
-
-	for(int i = 0; i < cf.features.size(); i++)
-	{
-		cv::Matx31f u;
-		u(0) = cf.features.at(i).getFeaturePosition().x;
-		u(1) = cf.features.at(i).getFeaturePosition().y;
-
-		cv::Scalar color = HSVtoBGR((cf.features.at(i).getFeatureDepth() / 5.0) * 255.0, 1.0, 1.0);
-
-		cv::drawMarker(img1, cv::Point2f(u(0), u(1)), color, cv::MARKER_DIAMOND, 6);
-	}
-	F = keyFrames.at(0).F;
-	//ROS_DEBUG_STREAM("feat: " <<  keyFrames.at(0).matchedFeatures.size());
-	for(auto e : keyFrames.at(0).matchedFeatures)
-	{
-		cv::Matx31f u;
-		u(0) = e.getFeaturePosition().x;
-		u(1) = e.getFeaturePosition().y;
-
-		cv::drawMarker(img2, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
-
-		img2 = drawEpiLines(F, e.getUndistorted(), tK, img2);
-	}
-	//F = keyFrames.at(1).F;
-	for(auto e : keyFrames.at(1).matchedFeatures)
-	{
-		cv::Matx31f u;
-		u(0) = e.getFeaturePosition().x;
-		u(1) = e.getFeaturePosition().y;
-
-		cv::drawMarker(img3, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
-
-		//img3 = drawEpiLines(F, e.getUndistorted(), tK, img3);
-	}
-	//F = keyFrames.at(2).F;
-	for(auto e : keyFrames.at(2).matchedFeatures)
-	{
-		cv::Matx31f u;
-		u(0) = e.getFeaturePosition().x;
-		u(1) = e.getFeaturePosition().y;
-
-		cv::drawMarker(img4, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
-
-		//img4 = drawEpiLines(F, e.getUndistorted(), tK, img4);
-	}
-
-	//F = tK.t() * keyFrames.at(3).F * tK; // convert the essential mat into the fundamental mat
-	//F = keyFrames.at(3).F;
-
-	for(auto e : keyFrames.at(3).matchedFeatures)
-	{
-		cv::Matx31f u;
-		u(0) = e.getFeaturePosition().x;
-		u(1) = e.getFeaturePosition().y;
-
-		cv::drawMarker(img5, cv::Point2f(u(0), u(1)), cv::Scalar(0, 255, 255), cv::MARKER_DIAMOND, 12);
-
-		//img5 = drawEpiLines(F, e.getUndistorted(), tK, img5);
-
-	}
-
-
-
-	cv::Mat img2_s, img3_s, img4_s, img5_s;
-	cv::resize(img2, img2_s, cv::Size(320, 256));
-	cv::resize(img3, img3_s, cv::Size(320, 256));
-	cv::resize(img4, img4_s, cv::Size(320, 256));
-	cv::resize(img5, img5_s, cv::Size(320, 256));
-
-
-	cv::Mat final = cv::Mat(cv::Size(640, 1024), CV_8UC3);
-	//cv::Mat roi1 = cv::Mat(final, cv::Rect(0, 0, 640, 512));
-	img1.copyTo(final(cv::Rect(0, 0, 640, 512)));
-	//cv::Mat roi2 = cv::Mat(final, cv::Rect(0, 512, 320, 256));
-	img2_s.copyTo(final(cv::Rect(0, 512, 320, 256)));
-	//cv::Mat roi3 = cv::Mat(final, cv::Rect(320, 512, 320, 256));
-	img3_s.copyTo(final(cv::Rect(320, 512, 320, 256)));
-	//cv::Mat roi4 = cv::Mat(final, cv::Rect(0, 768, 320, 256));
-	img4_s.copyTo(final(cv::Rect(0, 768, 320, 256)));
-	//cv::Mat roi5 = cv::Mat(final, cv::Rect(320, 768, 320, 256));
-	img5_s.copyTo(final(cv::Rect(320, 768, 320, 256)));
-
-
-	//cv::namedWindow("debug", cv::WINDOW_AUTOSIZE);
-	cv::imshow("debug", final);
+	cv::imshow("debug", img1);
 	cv::waitKey(1);
 }
+
 
 // LEGACY - VERSION 2
 
@@ -307,6 +215,7 @@ float VIO::distancePointLine(const cv::Point_<T> point, const cv::Vec<T,3>& line
 	return abs(line(0)*point.x + line(1)*point.y + line(2)) / sqrt(line(0)*line(0)+line(1)*line(1));
 }
 
+/*
 void VIO::viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> ft2, Frame f1, Frame f2, std::vector<cv::Point2f> pt1_new, std::vector<cv::Point2f> pt2_new)
 {
 	cv::Mat img1 = f1.image;
@@ -381,58 +290,7 @@ void VIO::viewMatches(std::vector<VIOFeature2D> ft1, std::vector<VIOFeature2D> f
 	cv::waitKey(30);
 }
 
-cv::Mat VIO::reproject3dPoints(cv::Mat img_in, VIOState x)
-{
-	tf::StampedTransform base2cam;
-	try{
-		this->ekf.tf_listener.lookupTransform(this->camera_frame, this->CoM_frame, ros::Time(0), base2cam);
-	}
-	catch(tf::TransformException& e){
-		ROS_WARN_STREAM(e.what());
-	}
 
-	tf::Transform cam2world = (tf::Transform(x.getTFQuaternion(), tf::Vector3(x.x(), x.y(), x.z())) * base2cam).inverse();
-
-	tf::Quaternion tf_q = cam2world.getRotation();
-	cv::Mat temp = img_in;
-
-	Eigen::Quaternionf q;
-	q.w() = tf_q.w();
-	q.x() = tf_q.x();
-	q.y() = tf_q.y();
-	q.z() = tf_q.z();
-
-	cv::Matx33f tK = currentFrame().K;
-
-	cv::Matx33f R;
-	cv::eigen2cv(q.matrix(), R);
-
-	cv::Matx31f t;
-	t(0) = cam2world.getOrigin().getX();
-	t(1) = cam2world.getOrigin().getY();
-	t(2) = cam2world.getOrigin().getZ();
-
-	cv::Matx34f P;
-	cv::hconcat(R, t, P);
-
-	//ROS_DEBUG_STREAM(active3DFeatures.begin() << " and " << active3DFeatures.end());
-
-	for(int i = 0; i < active3DFeatures.size(); i++)
-	{
-		cv::Matx41f X;
-		X(0) = active3DFeatures.at(i).position(0);
-		X(1) = active3DFeatures.at(i).position(1);
-		X(2) = active3DFeatures.at(i).position(2);
-		X(3) = 1.0;
-
-		cv::Matx31f u = tK * P * X;
-
-		cv::drawMarker(temp, cv::Point2f(u(0) / u(2), u(1) / u(2)), cv::Scalar(0, 255, 255), cv::MARKER_CROSS, 6, 1);
-		ROS_DEBUG_STREAM("reproj Pt: " << u(0)/u(2) << ", " << u(1)/u(2));
-	}
-
-	return temp;
-}
 
 /*
  * shows cv::Mat
@@ -445,6 +303,7 @@ void VIO::viewImage(cv::Mat img){
 /*
  * draws frame with its features
  */
+/*
 void VIO::viewImage(Frame frame){
 	cv::Mat img;
 	cv::drawKeypoints(frame.image, frame.getKeyPointVectorFromFeatures(), img, cv::Scalar(0, 0, 255));
@@ -452,4 +311,5 @@ void VIO::viewImage(Frame frame){
 	this->viewImage(img);
 
 }
+*/
 
