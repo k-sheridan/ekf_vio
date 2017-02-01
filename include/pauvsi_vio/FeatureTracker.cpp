@@ -91,6 +91,9 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 			//ROS_DEBUG_STREAM("old: " << oldFrame.features.at(i).getMatchedIDDeque().size() << " new: " << feat.getMatchedIDDeque().size());
 
 			newFrame.addFeature(feat); // add this feature to the new frame
+			ROS_ASSERT(*(newFrame.features.back().frame) == newFrame);
+			ROS_ASSERT(*(newFrame.features.back().point->observations.at(0)->frame) == newFrame);
+			ROS_ASSERT(*(newFrame.features.back().point->observations.at(1)->frame) == oldFrame);
 
 			//set the forward match for the old feature
 			/*oldFrame.features.at(i).forwardMatched = true;
