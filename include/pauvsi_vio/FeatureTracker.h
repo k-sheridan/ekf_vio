@@ -51,7 +51,7 @@ public:
 	void getAndAddNewFeatures(Frame& frame, int nFeatures, int fast_threshold, float kill_radius, int min_feature_dist);
 
 	double averageFeatureChange(std::vector<cv::Point2f> points1, std::vector<cv::Point2f> points2);
-	double averageFeatureChange(Frame f1, Frame f2);
+	double averageFeatureChange(Frame& f1, Frame& f2);
 
 protected:
 

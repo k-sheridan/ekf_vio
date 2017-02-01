@@ -17,7 +17,7 @@ struct KeyFrame
 
 	KeyFrame()
 	{
-		frame = 0;
+		frame = NULL;
 	}
 
 };

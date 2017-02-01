@@ -76,6 +76,10 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 		{
 			// the id number is not that important because it will be handled by the frame
 			Feature feat(&newFrame, newPoints.at(i), oldFrame.features.at(i).point); // create a matched feature with id = -1
+			ROS_DEBUG_STREAM("frame index: " << feat.frame);
+			ROS_ASSERT(oldFrame.features.at(i).point == feat.point);
+			ROS_ASSERT(oldFrame.features.at(i).point->observations.size() == feat.point->observations.size());
+
 			//if the previous feature was described
 			if(oldFrame.features.at(i).described)
 			{
@@ -204,18 +208,21 @@ double FeatureTracker::averageFeatureChange(std::vector<cv::Point2f> points1, st
 	return diff / (double)points1.size();
 }
 
-double FeatureTracker::averageFeatureChange(Frame f1, Frame f2)
+double FeatureTracker::averageFeatureChange(Frame& lf, Frame& cf)
 {
 	int numMatched = 0;
 	double delta = 0;
 	double dx, dy;
 
-	for(int i = 0; i < f2.features.size(); i++)
+	for(int i = 0; i < cf.features.size(); i++)
 	{
-		if(f2.features.at(i).point->observations.size() >= 2)
+		if(cf.features.at(i).point->observations.size() >= 2)
 		{
-			cv::Point2f p1 = f2.features.at(i).point->observations.at(1)->original_pxl;
-			cv::Point2f p2 = f2.features.at(i).original_pxl;
+			ROS_DEBUG_STREAM("from avgFeatChange: " << cf.features.at(i).point->observations.at(1)->frame);
+			cv::Point2f p1 = cf.features.at(i).point->observations.at(1)->undistort_pxl;
+			ROS_ASSERT(cf.features.at(i).undistorted);
+			cv::Point2f p2 = cf.features.at(i).undistort_pxl;
+			ROS_DEBUG_STREAM("undistorted px: " << p2 << " and " << p1);
 
 			dx = (double)(p1.x - p2.x);
 			dy = (double)(p1.y - p2.y);

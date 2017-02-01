@@ -20,6 +20,7 @@ Feature::Feature(Frame* _frame, cv::Point2f px, Point* pt, int _id)
 	described = false;
 	undistorted = false;
 	frame = _frame;
+	ROS_DEBUG_STREAM("feature's frame Pointer: " << frame);
 	feature.pt = px;
 	original_pxl = px;
 	radius = -1; // the radius is not very important
@@ -37,6 +38,7 @@ Feature::Feature(Frame* _frame, cv::Point2f px, Point* pt, int _id)
 	}
 	else{
 		ROS_DEBUG_STREAM("null pointer");
+		point = NULL;
 	}
 }
 

@@ -20,6 +20,11 @@ Point::Point(Feature* ft){
 
 void Point::addObservation(Feature* ft)
 {
-	//status = TRACKING_GOOD;
+	status = TRACKING_GOOD;
 	observations.push_front(ft);
+
+	if(observations.size() > 1)
+	{
+		ROS_DEBUG_STREAM("most recent obs frame: " << observations.front()->frame << " last obs frame: " << observations.back()->frame);
+	}
 }

@@ -13,37 +13,37 @@ cv::Mat drawEpiLines(cv::Matx33f F, cv::Point2f pt, cv::Matx33f tK, cv::Mat img)
 	cv::Matx31f u;
 
 	u(0) = pt.x;
-			u(1) = pt.y;
-			//u(2) = 1.0;
-			/*u = tK * u;
+	u(1) = pt.y;
+	//u(2) = 1.0;
+	/*u = tK * u;
 			u(0) /= u(2);
 			u(1) /= u(2);*/
 
-			// Draw the epipolar lines
-			std::vector<cv::Vec3f> lines1;
-			std::vector<cv::Point2f> ptt;
-			ptt.push_back(cv::Point2f(u(0), u(1)));
-			cv::computeCorrespondEpilines(ptt, 2, F, lines1);
+	// Draw the epipolar lines
+	std::vector<cv::Vec3f> lines1;
+	std::vector<cv::Point2f> ptt;
+	ptt.push_back(cv::Point2f(u(0), u(1)));
+	cv::computeCorrespondEpilines(ptt, 2, F, lines1);
 
-			//ROS_DEBUG_STREAM("abc: " << lines1[0]);
+	//ROS_DEBUG_STREAM("abc: " << lines1[0]);
 
-			cv::Matx31f pt1, pt2;
-			pt1(0) = -2;
-			pt1(1) = -(lines1[0][2] + lines1[0][0]*-2)/lines1[0][1];
-			pt1(2) = 1.0;
-			pt1 = tK * pt1;
+	cv::Matx31f pt1, pt2;
+	pt1(0) = -2;
+	pt1(1) = -(lines1[0][2] + lines1[0][0]*-2)/lines1[0][1];
+	pt1(2) = 1.0;
+	pt1 = tK * pt1;
 
-			pt2(0) = 2;
-			pt2(1) = -(lines1[0][2]+lines1[0][0]*2)/lines1[0][1];
-			pt2(2) = 1.0;
-			pt2 = tK * pt2;
+	pt2(0) = 2;
+	pt2(1) = -(lines1[0][2]+lines1[0][0]*2)/lines1[0][1];
+	pt2(2) = 1.0;
+	pt2 = tK * pt2;
 
-			cv::line(img,
-					cv::Point(pt1(0), pt1(1)),
-					cv::Point(pt2(0), pt2(1)),
-					cv::Scalar(rand()%255, rand()%255, rand()%255));
+	cv::line(img,
+			cv::Point(pt1(0), pt1(1)),
+			cv::Point(pt2(0), pt2(1)),
+			cv::Scalar(rand()%255, rand()%255, rand()%255));
 
-			return img;
+	return img;
 }
 
 /*cv::Vec3b HSVtoBGR(const cv::Vec3f& hsv)
@@ -76,50 +76,50 @@ cv::Mat drawEpiLines(cv::Matx33f F, cv::Point2f pt, cv::Matx33f tK, cv::Mat img)
   \param fS Hue component, used as input, range: [0, 1]
   \param fV Hue component, used as input, range: [0, 1]
 
-*/
+ */
 cv::Scalar HSVtoBGR(float fH, float fS, float fV) {
 	float fR, fG, fB;
 
-  float fC = fV * fS; // Chroma
-  float fHPrime = fmod(fH / 60.0, 6);
-  float fX = fC * (1 - fabs(fmod(fHPrime, 2) - 1));
-  float fM = fV - fC;
+	float fC = fV * fS; // Chroma
+	float fHPrime = fmod(fH / 60.0, 6);
+	float fX = fC * (1 - fabs(fmod(fHPrime, 2) - 1));
+	float fM = fV - fC;
 
-  if(0 <= fHPrime && fHPrime < 1) {
-    fR = fC;
-    fG = fX;
-    fB = 0;
-  } else if(1 <= fHPrime && fHPrime < 2) {
-    fR = fX;
-    fG = fC;
-    fB = 0;
-  } else if(2 <= fHPrime && fHPrime < 3) {
-    fR = 0;
-    fG = fC;
-    fB = fX;
-  } else if(3 <= fHPrime && fHPrime < 4) {
-    fR = 0;
-    fG = fX;
-    fB = fC;
-  } else if(4 <= fHPrime && fHPrime < 5) {
-    fR = fX;
-    fG = 0;
-    fB = fC;
-  } else if(5 <= fHPrime && fHPrime < 6) {
-    fR = fC;
-    fG = 0;
-    fB = fX;
-  } else {
-    fR = 0;
-    fG = 0;
-    fB = 0;
-  }
+	if(0 <= fHPrime && fHPrime < 1) {
+		fR = fC;
+		fG = fX;
+		fB = 0;
+	} else if(1 <= fHPrime && fHPrime < 2) {
+		fR = fX;
+		fG = fC;
+		fB = 0;
+	} else if(2 <= fHPrime && fHPrime < 3) {
+		fR = 0;
+		fG = fC;
+		fB = fX;
+	} else if(3 <= fHPrime && fHPrime < 4) {
+		fR = 0;
+		fG = fX;
+		fB = fC;
+	} else if(4 <= fHPrime && fHPrime < 5) {
+		fR = fX;
+		fG = 0;
+		fB = fC;
+	} else if(5 <= fHPrime && fHPrime < 6) {
+		fR = fC;
+		fG = 0;
+		fB = fX;
+	} else {
+		fR = 0;
+		fG = 0;
+		fB = 0;
+	}
 
-  fR += fM;
-  fG += fM;
-  fB += fM;
+	fR += fM;
+	fG += fM;
+	fB += fM;
 
-  return cv::Scalar(fB*255, fG*255, fR*255);
+	return cv::Scalar(fB*255, fG*255, fR*255);
 }
 
 void VIO::drawKeyFrames()
@@ -128,15 +128,52 @@ void VIO::drawKeyFrames()
 
 	img1 = currentFrame().image;
 
+	if(frameBuffer.back().isFrameSet())
+	{
+		img2 = frameBuffer.back().image;
+	}
+
 	cv::cvtColor(img1, img1, CV_GRAY2BGR);
 	cv::cvtColor(img2, img2, CV_GRAY2BGR);
 
+	ROS_DEBUG_STREAM("test: " << currentFrame().features.at(0).point->observations.back()->frame);
 
-	ROS_DEBUG_STREAM("KeyFrame Features: " << keyFrames.back().frame->features.size());
+	for(auto& e : currentFrame().features)
+	{
+		cv::drawMarker(img1, e.original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
+		ROS_DEBUG_STREAM("this feature's point info: obs count: " << e.point->observations.size() << " status: " << e.point->status);
 
+		if(frameBuffer.back().isFrameSet())
+		{
+			if(e.point->observations.size() > frameBuffer.size() - 1)
+			{
+				ROS_DEBUG_STREAM("plotting: " << e.point->observations.at(1)->original_pxl);
+				cv::drawMarker(img2, e.point->observations.at(1)->original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
+				cv::drawMarker(img1, e.original_pxl, cv::Scalar(255, 255, 0), cv::MARKER_SQUARE);
 
-	cv::imshow("debug", img1);
-	cv::waitKey(1);
+				ROS_DEBUG_STREAM("frame link: " << e.point->observations.at(0)->frame);
+				ROS_DEBUG_STREAM("test2: " << currentFrame().features.at(0).frame);
+			}
+			else
+			{
+				ROS_DEBUG_STREAM("frame link outside: " << e.point->observations.at(0)->frame);
+			}
+		}
+	}
+
+	ROS_DEBUG_STREAM("test3: " << currentFrame().features.at(0).frame);
+
+	if(frameBuffer.back().isFrameSet())
+	{
+		cv::Mat final;
+		cv::vconcat(img1, img2, final);
+		cv::imshow("debug", final);
+		cv::waitKey(1);
+	}
+	else{
+		cv::imshow("debug", img1);
+		cv::waitKey(1);
+	}
 }
 
 
@@ -310,5 +347,5 @@ void VIO::viewImage(Frame frame){
 	this->viewImage(img);
 
 }
-*/
+ */
 
