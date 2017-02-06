@@ -340,14 +340,18 @@ void Frame::rankFeatures(std::vector<Feature>& features, int fastThreshold, int 
 void Frame::cleanUpFeaturesByKillRadius(float killRadius)
 {
 	cv::Point2f imageCenter = cv::Point2f((float)(this->image.cols / 2), (float)(this->image.rows / 2));
-	std::vector<Feature> cleanFeatures;
-	for(int i = 0; i < this->features.size(); i++)
+	std::vector<Feature> oldFeatures = this->features;
+	this->features.clear(); // clear this vector to get new features
+
+	// this ensures that all pointers are still valid
+	for(auto& e : oldFeatures)
 	{
-		Feature& feat = this->features.at(i);
+		Feature& feat = e;
 
 		if(this->getAndSetFeatureRadius(feat, imageCenter) <= killRadius)
 		{
-			cleanFeatures.push_back(feat);
+			this->features.push_back(feat);
+			this->features.back().point->observations.at(0) = &this->features.back(); // set the new point observation
 		}
 		else
 		{
@@ -358,9 +362,6 @@ void Frame::cleanUpFeaturesByKillRadius(float killRadius)
 			}
 		}
 	}
-
-	//finally set the local feature vector to the new featureVector
-	this->features = cleanFeatures;
 }
 
 /*

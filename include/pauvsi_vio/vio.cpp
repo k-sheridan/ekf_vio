@@ -135,8 +135,8 @@ void VIO::run()
 	{
 		if(lastFrame().features.size() > 0)
 		{
-			ROS_DEBUG_STREAM("current frame address: " << &frameBuffer.at(0));
-			ROS_DEBUG_STREAM("last frame address: " << &frameBuffer.at(1));
+			//ROS_DEBUG_STREAM("current frame address: " << &frameBuffer.at(0));
+			//ROS_DEBUG_STREAM("last frame address: " << &frameBuffer.at(1));
 			feature_tracker.flowFeaturesToNewFrame(this->frameBuffer.at(1), this->frameBuffer.at(0));
 			currentFrame().cleanUpFeaturesByKillRadius(this->KILL_RADIUS);
 			//this->checkFeatureConsistency(currentFrame, this->FEATURE_SIMILARITY_THRESHOLD);
@@ -169,7 +169,7 @@ void VIO::run()
 		{
 			feature_tracker.map.push_back(Point(&(*it))); // add a new map point linking it to the feature and therefore the frame
 			it->point = &feature_tracker.map.back(); // link the feature to the point and therefore all other matches
-			//ROS_DEBUG_STREAM("point map pointer: " << &feature_tracker.map.back() << " feature point: " << it->point);
+			//it->point->observations.at(0) = &(*it); // i must refer the point to its place in the frame
 		}
 
 		//currentFrame.describeFeaturesWithBRIEF();

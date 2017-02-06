@@ -49,13 +49,13 @@ std::vector<cv::DMatch> FeatureTracker::matchFeaturesWithFlann(cv::Mat query, cv
 bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 	std::vector<cv::Point2f> oldPoints = oldFrame.getPoint2fVectorFromFeatures();
-	ROS_DEBUG_STREAM_ONCE("got " << oldPoints.size() << " old point2fs from the oldframe which has " << oldFrame.features.size() << " features");
+	//ROS_DEBUG_STREAM_ONCE("got " << oldPoints.size() << " old point2fs from the oldframe which has " << oldFrame.features.size() << " features");
 	std::vector<cv::Point2f> newPoints;
 
 	std::vector<uchar> status; // status vector for each point
 	cv::Mat error; // error vector for each point
 
-	ROS_DEBUG_ONCE("running lucas kande optical flow algorithm");
+	//ROS_DEBUG_ONCE("running lucas kande optical flow algorithm");
 	/*
 	 * this calculates the new positions of the old features in the new image
 	 * status tells us whether or not a point index has been flowed over to the new frame
@@ -65,7 +65,7 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 	cv::calcOpticalFlowPyrLK(oldFrame.image, newFrame.image, oldPoints, newPoints, status, error, cv::Size(21, 21), 3,
 			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), 0, this->MIN_EIGEN_VALUE);
 
-	ROS_DEBUG_STREAM_ONCE("ran optical flow and got " << newPoints.size() << " points out");
+	//ROS_DEBUG_STREAM_ONCE("ran optical flow and got " << newPoints.size() << " points out");
 
 	int lostFeatures = 0;
 	//next add these features into the new Frame
@@ -76,9 +76,9 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 		{
 			// the id number is not that important because it will be handled by the frame
 			Feature feat(&newFrame, newPoints.at(i), oldFrame.features.at(i).point); // create a matched feature with id = -1
-			ROS_DEBUG_STREAM("frame index: " << feat.frame);
-			ROS_ASSERT(oldFrame.features.at(i).point == feat.point);
-			ROS_ASSERT(oldFrame.features.at(i).point->observations.size() == feat.point->observations.size());
+			//ROS_DEBUG_STREAM("frame index: " << feat.frame);
+			//ROS_ASSERT(oldFrame.features.at(i).point == feat.point);
+			//ROS_ASSERT(oldFrame.features.at(i).point->observations.size() == feat.point->observations.size());
 
 			//if the previous feature was described
 			if(oldFrame.features.at(i).described)
@@ -90,11 +90,14 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 			//ROS_DEBUG_STREAM("old: " << oldFrame.features.at(i).getMatchedIDDeque().size() << " new: " << feat.getMatchedIDDeque().size());
 
-			//TODO find the cause of this bug and remove this hacky fix
+			//find the cause of this bug and remove this hacky fix
 			// i have to reset the last observations pointer for some reason
-			feat.point->observations.at(1) = &oldFrame.features.at(i);
-
+			//feat.point->observations.at(1) = &oldFrame.features.at(i);
 			newFrame.addFeature(feat); // add this feature to the new frame
+			newFrame.features.back().point->observations.at(0) = &newFrame.features.back(); // i must refer the feature
+
+			/*ROS_ASSERT(&newFrame.features.at(newFrame.features.size() - 1) == &newFrame.features.back());
+
 			//assert to check that everything checks out
 			ROS_ASSERT(*(newFrame.features.back().frame) == newFrame);
 			ROS_ASSERT(*(newFrame.features.back().point->observations.at(0)->frame) == newFrame);
@@ -111,8 +114,9 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 			ROS_ASSERT(*(newFrame.features.back().point->observations.at(1)->frame) == oldFrame);
 
+
 			//set the forward match for the old feature
-			/*oldFrame.features.at(i).forwardMatched = true;
+			oldFrame.features.at(i).forwardMatched = true;
 			oldFrame.features.at(i).forwardMatchIndex = newFrame.features.size() - 1;
 			oldFrame.features.at(i).forwardMatchID = newFrame.features.at(newFrame.features.size() - 1).getFeatureID();*/
 		}
