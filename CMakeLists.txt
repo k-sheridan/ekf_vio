@@ -18,6 +18,15 @@ find_package(Eigen3 REQUIRED)
 
 find_package(OpenCV REQUIRED)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
+
+# g2o #######################
+find_package(G2O REQUIRED)
+include_directories(SYSTEM ${G2O_INCLUDE_DIR} ${G2O_INCLUDE_DIRS})
+link_directories(${G2O_LIBRARY_DIRS})
+link_libraries(${G2O_LIBRARIES})
+message("G2o-libraries " ${G2O_LIBRARIES})
+
 
 include_directories(
 	${OpenCV_INCLUDE_DIRS}
@@ -64,6 +73,6 @@ target_link_libraries(frame feature viostate point ${Eigen_LIBRARIES} ${catkin_L
 target_link_libraries(featureTracker frame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 target_link_libraries(feature point ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES})
 target_link_libraries(keyframe frame)
-target_link_libraries(vio frame ${catkin_LIBRARIES} featureTracker vioekf viostate visualmeasurement point keyframe)
+target_link_libraries(vio frame ${catkin_LIBRARIES} ${G2O_LIBRARIES} featureTracker vioekf viostate visualmeasurement point keyframe)
 target_link_libraries(pauvsi_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} vio)
 
