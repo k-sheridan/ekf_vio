@@ -90,9 +90,25 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 
 			//ROS_DEBUG_STREAM("old: " << oldFrame.features.at(i).getMatchedIDDeque().size() << " new: " << feat.getMatchedIDDeque().size());
 
+			//TODO find the cause of this bug and remove this hacky fix
+			// i have to reset the last observations pointer for some reason
+			feat.point->observations.at(1) = &oldFrame.features.at(i);
+
 			newFrame.addFeature(feat); // add this feature to the new frame
+			//assert to check that everything checks out
 			ROS_ASSERT(*(newFrame.features.back().frame) == newFrame);
 			ROS_ASSERT(*(newFrame.features.back().point->observations.at(0)->frame) == newFrame);
+			ROS_DEBUG_STREAM("oldFrame feature: " << &oldFrame.features.at(i) << " point feature pointer: " << newFrame.features.back().point->observations.at(1));
+			ROS_DEBUG_STREAM((newFrame.features.back().point->observations.at(1)->frame));
+			ROS_DEBUG_STREAM("old frame address: " << &oldFrame);
+			ROS_DEBUG_STREAM((newFrame.features.back().point->observations.at(0)->frame));
+			ROS_DEBUG_STREAM("new frame address: " << &newFrame);
+
+			if(newFrame.features.back().point->observations.size() > 2)
+			{
+				ROS_DEBUG_STREAM("### third frame pointer " << newFrame.features.back().point->observations.at(2)->frame);
+			}
+
 			ROS_ASSERT(*(newFrame.features.back().point->observations.at(1)->frame) == oldFrame);
 
 			//set the forward match for the old feature
@@ -221,11 +237,11 @@ double FeatureTracker::averageFeatureChange(Frame& lf, Frame& cf)
 	{
 		if(cf.features.at(i).point->observations.size() >= 2)
 		{
-			ROS_DEBUG_STREAM("from avgFeatChange: " << cf.features.at(i).point->observations.at(1)->frame);
+			//ROS_DEBUG_STREAM("from avgFeatChange: " << cf.features.at(i).point->observations.at(1)->frame);
 			cv::Point2f p1 = cf.features.at(i).point->observations.at(1)->undistort_pxl;
 			ROS_ASSERT(cf.features.at(i).undistorted);
 			cv::Point2f p2 = cf.features.at(i).undistort_pxl;
-			ROS_DEBUG_STREAM("undistorted px: " << p2 << " and " << p1);
+			//ROS_DEBUG_STREAM("undistorted px: " << p2 << " and " << p1);
 
 			dx = (double)(p1.x - p2.x);
 			dy = (double)(p1.y - p2.y);

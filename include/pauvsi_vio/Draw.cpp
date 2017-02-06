@@ -128,42 +128,42 @@ void VIO::drawKeyFrames()
 
 	img1 = currentFrame().image;
 
-	if(frameBuffer.back().isFrameSet())
+	if(frameBuffer.at(1).isFrameSet())
 	{
-		img2 = frameBuffer.back().image;
+		img2 = frameBuffer.at(1).image;
 	}
 
 	cv::cvtColor(img1, img1, CV_GRAY2BGR);
 	cv::cvtColor(img2, img2, CV_GRAY2BGR);
 
-	ROS_DEBUG_STREAM("test: " << currentFrame().features.at(0).point->observations.back()->frame);
+	//ROS_DEBUG_STREAM("test: " << currentFrame().features.at(0).point->observations.back()->frame);
 
 	for(auto& e : currentFrame().features)
 	{
 		cv::drawMarker(img1, e.original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
-		ROS_DEBUG_STREAM("this feature's point info: obs count: " << e.point->observations.size() << " status: " << e.point->status);
+		//ROS_DEBUG_STREAM("this feature's point info: obs count: " << e.point->observations.size() << " status: " << e.point->status);
 
-		if(frameBuffer.back().isFrameSet())
+		if(frameBuffer.at(1).isFrameSet())
 		{
-			if(e.point->observations.size() > frameBuffer.size() - 1)
+			if(e.point->observations.size() > 1)
 			{
-				ROS_DEBUG_STREAM("plotting: " << e.point->observations.at(1)->original_pxl);
+				//ROS_DEBUG_STREAM("plotting: " << e.point->observations.at(1)->original_pxl);
 				cv::drawMarker(img2, e.point->observations.at(1)->original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
 				cv::drawMarker(img1, e.original_pxl, cv::Scalar(255, 255, 0), cv::MARKER_SQUARE);
 
-				ROS_DEBUG_STREAM("frame link: " << e.point->observations.at(0)->frame);
-				ROS_DEBUG_STREAM("test2: " << currentFrame().features.at(0).frame);
+				//ROS_DEBUG_STREAM("frame link: " << e.point->observations.at(0)->frame);
+				//ROS_DEBUG_STREAM("test2: " << currentFrame().features.at(0).frame);
 			}
 			else
 			{
-				ROS_DEBUG_STREAM("frame link outside: " << e.point->observations.at(0)->frame);
+				//ROS_DEBUG_STREAM("frame link outside: " << e.point->observations.at(0)->frame);
 			}
 		}
 	}
 
-	ROS_DEBUG_STREAM("test3: " << currentFrame().features.at(0).frame);
+	//ROS_DEBUG_STREAM("test3: " << currentFrame().features.at(0).frame);
 
-	if(frameBuffer.back().isFrameSet())
+	if(frameBuffer.at(1).isFrameSet())
 	{
 		cv::Mat final;
 		cv::vconcat(img1, img2, final);

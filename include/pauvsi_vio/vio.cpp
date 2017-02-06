@@ -136,6 +136,7 @@ void VIO::run()
 		if(lastFrame().features.size() > 0)
 		{
 			ROS_DEBUG_STREAM("current frame address: " << &frameBuffer.at(0));
+			ROS_DEBUG_STREAM("last frame address: " << &frameBuffer.at(1));
 			feature_tracker.flowFeaturesToNewFrame(this->frameBuffer.at(1), this->frameBuffer.at(0));
 			currentFrame().cleanUpFeaturesByKillRadius(this->KILL_RADIUS);
 			//this->checkFeatureConsistency(currentFrame, this->FEATURE_SIMILARITY_THRESHOLD);
@@ -168,7 +169,7 @@ void VIO::run()
 		{
 			feature_tracker.map.push_back(Point(&(*it))); // add a new map point linking it to the feature and therefore the frame
 			it->point = &feature_tracker.map.back(); // link the feature to the point and therefore all other matches
-			ROS_DEBUG_STREAM("point map pointer: " << &feature_tracker.map.back() << " feature point: " << it->point);
+			//ROS_DEBUG_STREAM("point map pointer: " << &feature_tracker.map.back() << " feature point: " << it->point);
 		}
 
 		//currentFrame.describeFeaturesWithBRIEF();
@@ -194,7 +195,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 {
 	//RECALIBRATION
 	static bool consecutiveRecalibration = false;
-	ROS_DEBUG_STREAM_COND(cf.features.size() && cf.features.at(0).point->observations.size() ," test ##### " << cf.features.at(0).point->observations.back()->frame);
+	//ROS_DEBUG_STREAM_COND(cf.features.size() && cf.features.at(0).point->observations.size() ," test ##### " << cf.features.at(0).point->observations.back()->frame);
 	double avgFeatureChange = feature_tracker.averageFeatureChange(lf, cf); // get the feature change between f1 and f2
 
 	ROS_DEBUG_STREAM("avg pixel change: " << avgFeatureChange);
