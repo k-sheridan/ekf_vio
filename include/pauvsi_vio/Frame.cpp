@@ -66,6 +66,11 @@ bool Frame::addFeature(Feature feat){
 	return true;
 }
 
+static bool wayToSort(Feature i, Feature j)
+{
+	//bool v = i.quality<j.quality;
+	return i.quality<j.quality;
+}
 
 /*
  * this will use the fast algorithm to find new features in the image
@@ -100,6 +105,8 @@ int Frame::getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_ra
 
 	ROS_DEBUG("ranked");
 
+
+
 	int added = 0;
 
 	//if after all this we have too few features only add all of them
@@ -114,12 +121,25 @@ int Frame::getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_ra
 	}
 	else
 	{
-		for(int i = 0; i < nFeatures; i++)
+		//For n largest elements (size-n)
+		std::nth_element(candidates.begin(), candidates.begin() + candidates.size() - nFeatures, candidates.end(), wayToSort);
+
+		for(int i = candidates.size() - nFeatures; i < candidates.size(); ++i)
+		{
+			Feature feat = Feature(this, candidates.at(i).original_pxl, NULL);
+				this->addFeature(feat);
+				added++; 																												added--;
+
+		}
+
+
+/*		for(int i = 0; i < nFeatures; i++)
 		{
 			Feature feat = Feature(this, candidates.at(i).original_pxl, NULL);
 			this->addFeature(feat);
-			added++;
+			added++; 																												added--;
 		}
+*/
 	}
 
 	return added;
@@ -275,11 +295,7 @@ int Frame::compareDescriptors(cv::Mat desc1, cv::Mat desc2){
 	return sumError;
 }
 
-static bool wayToSort(Feature i, Feature j)
-{
-	bool v = i.quality<j.quality;
-	return i.quality<j.quality;
-}
+
 
 /* Takes Threshold for FAST corner detection and KillRadius of the Region of Interest
  * Defines the quality of all the features and then Sorts them in ascending order of quality.
@@ -326,7 +342,7 @@ void Frame::rankFeatures(std::vector<Feature>& features, int fastThreshold, int 
 			//Implemented sigmoid function and scaled to [-5,5]. Actual sigmoid => sigmoid(killRadius/2 - DistanceFromCenter
 		}
 	}
-	std::sort(features.begin(), features.end(), wayToSort);
+	//std::sort(features.begin(), features.end(), wayToSort);
 
 	return;
 }
