@@ -128,8 +128,7 @@ int Frame::getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_ra
 		{
 			Feature feat = Feature(this, candidates.at(i).original_pxl, NULL);
 				this->addFeature(feat);
-				added++; 																												added--;
-
+				added++;
 		}
 
 
@@ -137,7 +136,7 @@ int Frame::getAndAddNewFeatures(int nFeatures, int fast_threshold, float kill_ra
 		{
 			Feature feat = Feature(this, candidates.at(i).original_pxl, NULL);
 			this->addFeature(feat);
-			added++; 																												added--;
+			added++;
 		}
 */
 	}
