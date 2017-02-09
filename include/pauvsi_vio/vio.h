@@ -220,6 +220,8 @@ public:
 		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
 	}
 
+	void structureOnlyBundleAdjustment(Frame* cf, KeyFrame kf);
+
 
 
 	//TRIANGULATION
