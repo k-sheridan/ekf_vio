@@ -111,9 +111,11 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	//ROS_DEBUG_STREAM("transitioning state with dt = " << dt);
 	//ROS_DEBUG_STREAM("state before: " << x.vector);
 	// get the imu 2 com transform
+
+	//TODO either base or odom
 	tf::StampedTransform imu2odom;
 	try{
-		tf_listener.lookupTransform(this->odom_frame, this->imu_frame, ros::Time(0), imu2odom);
+		tf_listener.lookupTransform(this->CoM_frame, this->imu_frame, ros::Time(0), imu2odom);
 	}
 	catch(tf::TransformException& e){
 		ROS_WARN_STREAM(e.what());

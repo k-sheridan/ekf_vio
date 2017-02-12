@@ -124,6 +124,12 @@ public:
 		return Eigen::Vector3d(this->x(), this->y(), this->z());
 	}
 
+	Eigen::Quaterniond getQuaternion(){
+		Eigen::Quaterniond q;
+		q = Eigen::Quaterniond(q0(), q1(), q2(), q3());
+		return q;
+	}
+
 	void setQuaternion(tf::Quaternion q)
 	{
 		vector(6, 0) = q.getW();

@@ -29,6 +29,7 @@
 #include <tf2_ros/message_filter.h>
 #include <tf2_ros/transform_listener.h>
 
+
 #include "g2o/config.h"
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
@@ -49,7 +50,7 @@
 #include "KeyFrame.h"
 
 
-#define SUPER_DEBUG false
+#define SUPER_DEBUG true
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -211,6 +212,7 @@ public:
 	void updateKeyFrameInfo();
 
 	tf::Transform cameraTransformFromState(VIOState x, tf::Transform b2c);
+	VIOState transformState(VIOState x, tf::Transform trans);
 
 	void pose_gauss_newton(const std::vector< cv::Point3d > &wX,
 	                       const std::vector< cv::Point2d > &x,
@@ -220,7 +222,7 @@ public:
 		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
 	}
 
-	void structureOnlyBundleAdjustment(Frame* cf, KeyFrame kf);
+	void structureOnlyBundleAdjustment(Frame& cf, KeyFrame& kf);
 
 
 
