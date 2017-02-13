@@ -11,11 +11,13 @@
 Point::Point()
 {
 	status = TRACKING_GOOD;
+	sigma = 1000; // starting depth certainty
 }
 
 Point::Point(Feature* ft){
 	status = TRACKING_GOOD;
 	observations.push_front(ft); // add this observation to the deque
+	sigma = 1000; // starting depth certainty
 }
 
 void Point::addObservation(Feature* ft)
@@ -34,4 +36,22 @@ void Point::addObservation(Feature* ft)
 	{
 		ROS_DEBUG_STREAM("*most recent obs frame: " << observations.front()->frame << " last obs frame: " << observations.back()->frame);
 	}*/
+}
+
+
+void Point::update(Eigen::Vector3d z, double variance)
+{
+	ROS_ASSERT(this->sigma > 0 || variance > 0);
+	double K = this->sigma / (this->sigma + variance);
+
+	this->pos(0) = this->pos(0) + K * (z(0) - this->pos(0));
+	this->pos(1) = this->pos(1) + K * (z(1) - this->pos(1));
+	this->pos(2) = this->pos(2) + K * (z(2) - this->pos(2));
+
+	this->sigma = (1-K) * this->sigma;
+}
+
+Eigen::Vector3d Point::getWorldCoordinate()
+{
+	return this->pos;
 }

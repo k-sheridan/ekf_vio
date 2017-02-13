@@ -29,6 +29,9 @@
 #include <tf2_ros/message_filter.h>
 #include <tf2_ros/transform_listener.h>
 
+#include <eigen3/Eigen/src/StlSupport/StdVector.h>
+
+#include <unordered_set>
 
 #include "g2o/config.h"
 #include "g2o/core/sparse_optimizer.h"
@@ -81,6 +84,7 @@
 #define DEFAULT_MIN_FUNDAMENTAL_PXL_DELTA 0.3
 #define DEFAULT_MAX_FUNDAMENTAL_ERROR 5e-7
 #define DEFAULT_MAX_GN_ITERS 10
+#define DEFAULT_ROBUST_HUBER true
 
 #define PI_OVER_180 0.01745329251
 
@@ -109,6 +113,7 @@ public:
 	int FRAME_BUFFER_LENGTH;
 	double MAX_TRIAG_ERROR;
 	double MIN_TRIAG_Z;
+	bool ROBUST_HUBER;
 
 	int MAX_GN_ITERS;
 	int MIN_TRIAG_FEATURES;
@@ -222,7 +227,7 @@ public:
 		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
 	}
 
-	void structureOnlyBundleAdjustment(Frame& cf, KeyFrame& kf);
+	void twoViewBundleAdjustment(Frame& cf, KeyFrame& kf, bool structureOnly = true);
 
 
 

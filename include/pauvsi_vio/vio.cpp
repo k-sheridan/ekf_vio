@@ -328,6 +328,8 @@ void VIO::readROSParameters()
 	ros::param::param<int>("~min_triag_features", MIN_TRIAG_FEATURES, DEFAULT_MIN_TRIAG_FEATURES);
 
 	ros::param::param<int>("~max_gauss_newton_iterations", MAX_GN_ITERS, DEFAULT_MAX_GN_ITERS);
+
+	ros::param::param<bool>("~robust_huber_kernel", ROBUST_HUBER, DEFAULT_ROBUST_HUBER);
 }
 
 /*
