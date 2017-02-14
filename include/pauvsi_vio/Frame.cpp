@@ -460,9 +460,21 @@ void Frame::removeRedundantFeature(std::vector<Feature>& toClean, std::vector<Fe
 	toClean = cleaned;
 }
 
-
-double Frame::getAverageSceneDepth()
+/*
+ * the transformation must be from world coordinates to camera coordinates (aka form the transform with the inverse of camera pose)
+ */
+double Frame::getAverageSceneDepth(Eigen::Isometry3d trans)
 {
-	return DEFAULT_FETAURE_DEPTH;
+	double total_depth = 0;
+	int total_points = 0;
+	for(auto& ft : this->features)
+	{
+		if(ft.point == NULL || ft.point->status == Point::TRACKING_LOST)
+			continue;
+		total_depth += (trans * (ft.point->pos))(2); // add the z parts together
+		total_points++;
+	}
+
+	return total_depth / total_points;
 }
 

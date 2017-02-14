@@ -35,7 +35,7 @@ VIO::VIO()
 	//setup pointcloudPublisher
 	if(PUBLISH_ACTIVE_FEATURES)
 	{
-		featurePub = nh.advertise<sensor_msgs::PointCloud>("/vio/features", 100);
+		featurePub = nh.advertise<sensor_msgs::PointCloud>("/vio/points", 100);
 	}
 	initialized = false; //not intialized yet
 
@@ -122,6 +122,49 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 	}
 }
 
+void VIO::publishPoints()
+{
+	if(this->PUBLISH_ACTIVE_FEATURES)
+	{
+
+		sensor_msgs::PointCloud pc;
+
+		std::vector<geometry_msgs::Point32> point;
+		std::vector<sensor_msgs::ChannelFloat32> colors;
+
+		pc.header.frame_id = this->world_frame;
+
+		for(auto& pt_map : this->feature_tracker.map)
+		{
+			//debugFeature(this->active3DFeatures.at(i));
+
+			std::vector<float> intensity;
+			sensor_msgs::ChannelFloat32 c;
+
+			intensity.push_back(255);
+			//intensity.push_back(this->active3DFeatures.at(i).color[1]);
+			//intensity.push_back(this->active3DFeatures.at(i).color[2]);
+
+			c.values = intensity;
+			c.name = "intensity";
+
+			geometry_msgs::Point32 pt;
+			pt.x = pt_map.pos.x();
+			pt.y = pt_map.pos.y();
+			pt.z = pt_map.pos.z();
+
+			point.push_back(pt);
+			colors.push_back(c);
+
+		}
+
+		pc.points = point;
+		pc.channels = colors;
+
+		this->featurePub.publish(pc);
+	}
+}
+
 /*
  * runs:
  * feature detection, ranking, flowing
@@ -163,14 +206,40 @@ void VIO::run()
 		ROS_DEBUG_STREAM("low on features getting more: " << currentFrame().features.size());
 		int featuresAdded = currentFrame().getAndAddNewFeatures(this->NUM_FEATURES - currentFrame().features.size(), this->FAST_THRESHOLD, this->KILL_RADIUS, this->MIN_NEW_FEATURE_DISTANCE);
 		ROS_DEBUG_STREAM("got more: " << currentFrame().features.size());
-		//TODO check that everything is linked correctly
+
+		//TODO check that the depth and isometry is used correctl
+		ros::Time t_start = ros::Time::now();
+		// this should contain the rotation and translation from the base of the system to the camera
+		tf::StampedTransform b2c;
+		try {
+			this->ekf.tf_listener.lookupTransform(this->CoM_frame, this->camera_frame,
+					ros::Time(0), b2c);
+		} catch (tf::TransformException& e) {
+			ROS_WARN_STREAM(e.what());
+		}
+
+		Eigen::Isometry3d c2w = transformState(currentFrame().state, b2c).getIsometry(); // get the camera to world transform
+		Eigen::Isometry3d w2c = c2w.inverse(Eigen::TransformTraits::Affine); // invert the transform
+
+		// now calculate the average scene depth to init points with
+		double avg_scene_depth = START_SCENE_DEPTH; // set the scene depth to default
+		if(feature_tracker.map.size())
+		{
+			avg_scene_depth = currentFrame().getAverageSceneDepth(w2c);
+			ROS_DEBUG_STREAM("calculated avg scene depth is " << avg_scene_depth);
+		}
+
 		//this block adds a map point for the new feature added and links it to the new feature
 		for(std::vector<Feature>::iterator it = currentFrame().features.end() - featuresAdded; it != currentFrame().features.end(); it++)
 		{
 			feature_tracker.map.push_back(Point(&(*it))); // add a new map point linking it to the feature and therefore the frame
 			it->point = &feature_tracker.map.back(); // link the feature to the point and therefore all other matches
-			//it->point->observations.at(0) = &(*it); // i must refer the point to its place in the frame
+
+			//initialize the 3d point
+			it->point->initializePoint(c2w, &(*it), avg_scene_depth, DEFAULT_SCENE_DEPTH_CERTAINTY); // initialize the 3d point at the avg scene depth and with a very high uncertainty
+			ROS_DEBUG_STREAM_THROTTLE(1, "3d pt init: " << it->point->pos);
 		}
+		ROS_DEBUG_STREAM("3d point init dt: " << 1000 * (ros::Time::now().toSec() - t_start.toSec()));
 
 		//currentFrame.describeFeaturesWithBRIEF();
 
@@ -178,6 +247,7 @@ void VIO::run()
 	}
 
 	this->broadcastWorldToOdomTF();
+	//this->publishPoints();
 
 	//ROS_DEBUG_STREAM("imu readings: " << this->imuMessageBuffer.size());
 	ROS_DEBUG_STREAM("frame: " << this->frameBuffer.size() << " init: " << initialized);
@@ -330,6 +400,8 @@ void VIO::readROSParameters()
 	ros::param::param<int>("~max_gauss_newton_iterations", MAX_GN_ITERS, DEFAULT_MAX_GN_ITERS);
 
 	ros::param::param<bool>("~robust_huber_kernel", ROBUST_HUBER, DEFAULT_ROBUST_HUBER);
+
+	ros::param::param<double>("~average_scene_depth", START_SCENE_DEPTH, DEFAULT_SCENE_DEPTH);
 }
 
 /*

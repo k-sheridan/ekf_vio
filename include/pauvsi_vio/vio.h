@@ -53,7 +53,7 @@
 #include "KeyFrame.h"
 
 
-#define SUPER_DEBUG true
+#define SUPER_DEBUG false
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -85,13 +85,15 @@
 #define DEFAULT_MAX_FUNDAMENTAL_ERROR 5e-7
 #define DEFAULT_MAX_GN_ITERS 10
 #define DEFAULT_ROBUST_HUBER true
+#define DEFAULT_SCENE_DEPTH 0.5
+#define DEFAULT_SCENE_DEPTH_CERTAINTY 1000
 
 #define PI_OVER_180 0.01745329251
 
 #define MAXIMUM_KEYFRAMES 1
 #define DEFAULT_MINIMUM_KEYFRAME_FEATURE_RATIO 0.6
 
-
+//using namespace std;
 
 class VIO
 {
@@ -120,6 +122,8 @@ public:
 	double IDEAL_FUNDAMENTAL_PXL_DELTA;
 	double MIN_FUNDAMENTAL_PXL_DELTA;
 	double MAXIMUM_FUNDAMENTAL_ERROR;
+
+	double START_SCENE_DEPTH;
 
 	bool initialized;
 
@@ -179,6 +183,8 @@ public:
 	ros::Time broadcastOdomToTempIMUTF(double roll, double pitch, double yaw, double x, double y, double z);
 
 	void recalibrateState(double avgPixelChange, double threshold, bool consecutive);
+
+	void publishPoints();
 
 	void run();
 

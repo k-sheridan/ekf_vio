@@ -158,6 +158,14 @@ public:
 		return v;
 	}
 
+	Eigen::Isometry3d getIsometry()
+	{
+		Eigen::Isometry3d iso;
+		iso = this->getQuaternion();
+		iso.translation() = this->getr();
+		return iso;
+	}
+
 private:
 
 	Eigen::Vector3d omega;

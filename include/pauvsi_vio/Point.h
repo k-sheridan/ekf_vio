@@ -39,6 +39,8 @@ public:
 	void update(Eigen::Vector3d z, double variance);
 
 	Eigen::Vector3d getWorldCoordinate();
+
+	void initializePoint(Eigen::Isometry3d transform, Feature* ft, double start_depth, double start_sigma);
 };
 
 

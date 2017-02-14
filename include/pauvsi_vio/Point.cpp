@@ -55,3 +55,12 @@ Eigen::Vector3d Point::getWorldCoordinate()
 {
 	return this->pos;
 }
+
+/*
+ * please give the transform from camera coord to world coord
+ */
+void Point::initializePoint(Eigen::Isometry3d transform, Feature* ft, double start_depth, double start_sigma)
+{
+	this->pos = transform * (start_depth * ft->getDirectionVector());
+	this->sigma = start_sigma;
+}
