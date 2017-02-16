@@ -12,12 +12,14 @@ Point::Point()
 {
 	status = TRACKING_GOOD;
 	sigma = 1000; // starting depth certainty
+	this->theMap == NULL;
 }
 
 Point::Point(Feature* ft){
 	status = TRACKING_GOOD;
 	observations.push_front(ft); // add this observation to the deque
 	sigma = 1000; // starting depth certainty
+	this->theMap == NULL;
 }
 
 void Point::addObservation(Feature* ft)
@@ -59,8 +61,28 @@ Eigen::Vector3d Point::getWorldCoordinate()
 /*
  * please give the transform from camera coord to world coord
  */
-void Point::initializePoint(Eigen::Isometry3d transform, Feature* ft, double start_depth, double start_sigma)
+void Point::initializePoint(tf::Transform transform, Feature* ft, double start_depth, double start_sigma)
 {
-	this->pos = transform * (start_depth * ft->getDirectionVector());
+	Eigen::Vector3d eig_dir = (start_depth * ft->getDirectionVector());
+	tf::Vector3 dir_vec = tf::Vector3(eig_dir(0), eig_dir(1), eig_dir(2));
+	tf::Vector3 world_point = transform * dir_vec;
+
+	this->pos(0) = world_point.getX();
+	this->pos(1) = world_point.getY();
+	this->pos(2) = world_point.getZ();
+
 	this->sigma = start_sigma;
+}
+
+void Point::safelyDelete(){
+	//first nullify all references to me
+	ROS_ASSERT(this->thisPoint->pos == this->pos);
+
+
+	ROS_DEBUG_STREAM("point deleting itself");
+
+	//peace out delete my self
+	// we had a good run
+	this->theMap->erase(this->thisPoint);
+	ROS_DEBUG_STREAM("I deleted myself");
 }

@@ -238,7 +238,7 @@ public:
 	void removeRedundantFeature(std::vector<Feature>& toClean, std::vector<Feature> compare, int min_feature_dist);
 
 
-	double getAverageSceneDepth(Eigen::Isometry3d trans);
+	double getAverageSceneDepth(tf::Transform w2c);
 
 
 };

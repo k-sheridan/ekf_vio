@@ -373,7 +373,8 @@ void Frame::cleanUpFeaturesByKillRadius(float killRadius)
 			ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << feat.radius);
 			if(feat.point != 0)
 			{
-				feat.point->status = Point::TRACKING_LOST; // tis will now be cleaned
+				//feat.point->setStatus(Point::TRACKING_LOST); // tis will now be cleaned
+				feat.point->safelyDelete();
 			}
 		}
 	}
@@ -432,6 +433,7 @@ float Frame::manhattan(cv::Point2f p1, cv::Point2f p2){
  */
 void Frame::removeRedundantFeature(std::vector<Feature>& toClean, std::vector<Feature> compare, int min_feature_dist)
 {
+	ros::Time t_start = ros::Time::now();
 	std::vector<Feature> cleaned;
 	bool removed = false;
 
@@ -458,20 +460,27 @@ void Frame::removeRedundantFeature(std::vector<Feature>& toClean, std::vector<Fe
 
 	//ROS_DEBUG_STREAM("After cleaning " << toClean.size() << " features, we are left with " << cleaned.size() << " features");
 	toClean = cleaned;
+
+	ROS_DEBUG_STREAM("time for redundancy check: " << 1000 * (ros::Time::now().toSec() - t_start.toSec()));
 }
 
 /*
  * the transformation must be from world coordinates to camera coordinates (aka form the transform with the inverse of camera pose)
  */
-double Frame::getAverageSceneDepth(Eigen::Isometry3d trans)
+double Frame::getAverageSceneDepth(tf::Transform w2c)
 {
+	double a = w2c.getBasis().getRow(2).getX();
+	double b = w2c.getBasis().getRow(2).getY();
+	double c = w2c.getBasis().getRow(2).getZ();
+	double d = w2c.getOrigin().z();
+
 	double total_depth = 0;
 	int total_points = 0;
 	for(auto& ft : this->features)
 	{
-		if(ft.point == NULL || ft.point->status == Point::TRACKING_LOST)
+		if(ft.point == NULL)
 			continue;
-		total_depth += (trans * (ft.point->pos))(2); // add the z parts together
+		total_depth += a * ft.point->pos(0) + b * ft.point->pos(1) + c * ft.point->pos(2) + d; // add the z parts together
 		total_points++;
 	}
 

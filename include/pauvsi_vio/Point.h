@@ -23,7 +23,9 @@ public:
 		TRACKING_LOST
 	};
 
-	PointStatus status;
+
+	std::list<Point>::iterator thisPoint; // the iterator of this point in the map
+	std::list<Point>* theMap; // a pointer to the map which this point is stored in
 
 	std::deque<Feature*> observations; // this is  a list of observations of this 3d point from different frames
 
@@ -40,7 +42,21 @@ public:
 
 	Eigen::Vector3d getWorldCoordinate();
 
-	void initializePoint(Eigen::Isometry3d transform, Feature* ft, double start_depth, double start_sigma);
+	void initializePoint(tf::Transform transform, Feature* ft, double start_depth, double start_sigma);
+
+	void setStatus(PointStatus _stat){
+		this->status = _stat;
+	}
+
+	PointStatus getStatus(){
+		return this->status;
+	}
+
+	void safelyDelete();
+
+private:
+
+	PointStatus status;
 };
 
 

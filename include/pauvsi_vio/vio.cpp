@@ -189,7 +189,11 @@ void VIO::run()
 
 		//MOTION ESTIMATION
 		this->lastState = this->state;
+
+		ros::Time t_start = ros::Time::now();
 		this->state = this->estimateMotion(this->lastState, this->lastFrame(), this->currentFrame());
+		ROS_DEBUG_STREAM("time for motion estimation: " << 1000 * (ros::Time::now().toSec() - t_start.toSec()));
+
 		//set the currentFrames new state
 		this->currentFrame().state = this->state;
 	}
@@ -218,8 +222,8 @@ void VIO::run()
 			ROS_WARN_STREAM(e.what());
 		}
 
-		Eigen::Isometry3d c2w = transformState(currentFrame().state, b2c).getIsometry(); // get the camera to world transform
-		Eigen::Isometry3d w2c = c2w.inverse(Eigen::TransformTraits::Affine); // invert the transform
+		tf::Transform c2w = cameraTransformFromState(currentFrame().state, b2c); // get the camera to world transform
+		tf::Transform w2c = c2w.inverse(); // invert the transform
 
 		// now calculate the average scene depth to init points with
 		double avg_scene_depth = START_SCENE_DEPTH; // set the scene depth to default
@@ -234,11 +238,15 @@ void VIO::run()
 		{
 			feature_tracker.map.push_back(Point(&(*it))); // add a new map point linking it to the feature and therefore the frame
 			it->point = &feature_tracker.map.back(); // link the feature to the point and therefore all other matches
+			it->point->theMap = &feature_tracker.map; // link the map
+			it->point->thisPoint = --feature_tracker.map.end(); // give the point its iterator in the map
 
 			//initialize the 3d point
 			it->point->initializePoint(c2w, &(*it), avg_scene_depth, DEFAULT_SCENE_DEPTH_CERTAINTY); // initialize the 3d point at the avg scene depth and with a very high uncertainty
-			ROS_DEBUG_STREAM_THROTTLE(1, "3d pt init: " << it->point->pos);
+			ROS_DEBUG_STREAM_THROTTLE(1, "3d pt init: " << it->point->thisPoint->pos);
+			//ROS_ASSERT(it->point->pos(0) == it->point->thisPoint->pos(0));
 		}
+
 		ROS_DEBUG_STREAM("3d point init dt: " << 1000 * (ros::Time::now().toSec() - t_start.toSec()));
 
 		//currentFrame.describeFeaturesWithBRIEF();
@@ -266,7 +274,12 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 	//RECALIBRATION
 	static bool consecutiveRecalibration = false;
 	//ROS_DEBUG_STREAM_COND(cf.features.size() && cf.features.at(0).point->observations.size() ," test ##### " << cf.features.at(0).point->observations.back()->frame);
-	double avgFeatureChange = feature_tracker.averageFeatureChange(lf, cf); // get the feature change between f1 and f2
+
+	double avgFeatureChange = 0;
+	if(!initialized)
+	{
+		avgFeatureChange = feature_tracker.averageFeatureChange(lf, cf); // get the feature change between f1 and f2
+	}
 
 	ROS_DEBUG_STREAM("avg pixel change: " << avgFeatureChange);
 

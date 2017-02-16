@@ -125,7 +125,7 @@ void VIO::twoViewBundleAdjustment(Frame& cf, KeyFrame& kf, bool structureOnly) {
 	{
 		//check if the 3d point is still being tracked
 
-		if(kf_ft.point->status == Point::TRACKING_GOOD)
+		if(kf_ft.point->getStatus() == Point::TRACKING_GOOD && kf_ft.point != NULL)
 		{
 			g2o::VertexSBAPointXYZ * v_p = new g2o::VertexSBAPointXYZ(); // create a vertex for this 3d point
 
