@@ -49,7 +49,7 @@
 #include "KeyFrame.h"
 
 
-#define SUPER_DEBUG false
+#define SUPER_DEBUG true
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -220,7 +220,7 @@ public:
 		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
 	}
 
-	void structureOnlyBundleAdjustment(Frame* cf, KeyFrame kf);
+	void twoViewBA(Frame& cf, KeyFrame& kf);
 
 
 
