@@ -10,16 +10,16 @@
 
 Point::Point()
 {
-	status = TRACKING_GOOD;
 	sigma = 1000; // starting depth certainty
 	this->theMap == NULL;
+	_initialized = false;
 }
 
 Point::Point(Feature* ft){
-	status = TRACKING_GOOD;
 	observations.push_front(ft); // add this observation to the deque
 	sigma = 1000; // starting depth certainty
 	this->theMap == NULL;
+	_initialized = false;
 }
 
 void Point::addObservation(Feature* ft)
@@ -30,7 +30,6 @@ void Point::addObservation(Feature* ft)
 		ROS_DEBUG_STREAM("this feature frame " << ft->frame << " last frame: " << observations.at(0)->frame);
 	}*/
 
-	status = TRACKING_GOOD;
 	observations.push_front(ft);
 
 	/*
@@ -55,6 +54,7 @@ void Point::update(Eigen::Vector3d z, double variance)
 
 Eigen::Vector3d Point::getWorldCoordinate()
 {
+	ROS_ASSERT(this->initialized());
 	return this->pos;
 }
 
@@ -72,12 +72,18 @@ void Point::initializePoint(tf::Transform transform, Feature* ft, double start_d
 	this->pos(2) = world_point.getZ();
 
 	this->sigma = start_sigma;
+
+	this->_initialized = true;
 }
 
 void Point::safelyDelete(){
 	//first nullify all references to me
 	ROS_ASSERT(this->thisPoint->pos == this->pos);
-
+	for(auto& e : this->observations)
+	{
+		e->point = NULL;
+		e->pointLost = true;
+	}
 
 	ROS_DEBUG_STREAM("point deleting itself");
 

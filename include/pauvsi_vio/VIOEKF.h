@@ -33,6 +33,8 @@ public:
 
 	virtual ~VIOEKF();
 
+	tf::StampedTransform imu2odom;
+
 	bool stillPredicting;
 	VIOState x_start_state;
 

@@ -18,12 +18,6 @@ class Point{
 
 public:
 
-	enum PointStatus{
-		TRACKING_GOOD,
-		TRACKING_LOST
-	};
-
-
 	std::list<Point>::iterator thisPoint; // the iterator of this point in the map
 	std::list<Point>* theMap; // a pointer to the map which this point is stored in
 
@@ -44,19 +38,15 @@ public:
 
 	void initializePoint(tf::Transform transform, Feature* ft, double start_depth, double start_sigma);
 
-	void setStatus(PointStatus _stat){
-		this->status = _stat;
-	}
-
-	PointStatus getStatus(){
-		return this->status;
+	bool initialized(){
+		return _initialized;
 	}
 
 	void safelyDelete();
 
 private:
 
-	PointStatus status;
+	bool _initialized;
 };
 
 

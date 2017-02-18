@@ -72,6 +72,14 @@ VIOState VIOEKF::predict(VIOState lastState, ros::Time predictionTime)
 		stillPredicting = true;
 	}
 
+	//TODO either base or odom
+	try{
+		tf_listener.lookupTransform(this->CoM_frame, this->imu_frame, ros::Time(0), imu2odom);
+	}
+	catch(tf::TransformException& e){
+		ROS_WARN_STREAM(e.what());
+	}
+
 	VIOState state = lastState;
 	std::vector<sensor_msgs::Imu> imuMsgs;
 	int imuMsgsSize = this->getMessagesBetweenTimes(lastState.getTime(), predictionTime, imuMsgs);
@@ -111,15 +119,6 @@ VIOState VIOEKF::transitionState(VIOState x, double dt)
 	//ROS_DEBUG_STREAM("transitioning state with dt = " << dt);
 	//ROS_DEBUG_STREAM("state before: " << x.vector);
 	// get the imu 2 com transform
-
-	//TODO either base or odom
-	tf::StampedTransform imu2odom;
-	try{
-		tf_listener.lookupTransform(this->CoM_frame, this->imu_frame, ros::Time(0), imu2odom);
-	}
-	catch(tf::TransformException& e){
-		ROS_WARN_STREAM(e.what());
-	}
 
 	//convert the imu readings to tf::Vectors and remove their biases
 	tf::Vector3 alpha_tf(x.getAlpha()(0), x.getAlpha()(1), x.getAlpha()(2));

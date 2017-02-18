@@ -12,6 +12,7 @@ Feature::Feature(){
 	set = false;
 	described = false;
 	undistorted = false;
+	pointLost = false;
 }
 
 Feature::Feature(Frame* _frame, cv::Point2f px, Point* pt, int _id)
@@ -40,6 +41,7 @@ Feature::Feature(Frame* _frame, cv::Point2f px, Point* pt, int _id)
 		//ROS_DEBUG_STREAM("null pointer");
 		point = NULL;
 	}
+	pointLost = false;
 }
 
 void Feature::undistort(cv::Mat K, cv::Mat D)
@@ -59,7 +61,12 @@ Eigen::Vector3d Feature::getDirectionVector()
 {
 	ROS_ASSERT(this->undistorted && set);
 	ROS_ASSERT(this->point != NULL);
-	ROS_ASSERT(this->point->getStatus() == Point::TRACKING_GOOD); // force tracking to be good if using point
 	return Eigen::Vector3d(undistort_pxl.x, undistort_pxl.y, 1.0);
+}
+
+Eigen::Vector2d Feature::getUndistortedMeasurement()
+{
+	ROS_ASSERT(this->undistorted && set);
+	return Eigen::Vector2d(undistort_pxl.x, undistort_pxl.y);
 }
 

@@ -15,6 +15,13 @@
 #include "opencv2/features2d/features2d.hpp"
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/video.hpp"
+
+#include "opencv2/core/ocl.hpp"
+#include "opencv2/opencv.hpp"
+#include <opencv2/opencv_modules.hpp>
+#include <opencv2/core/utility.hpp>
+#include <opencv2/imgproc.hpp>
+
 #include <vector>
 #include <string>
 #include <ros/ros.h>

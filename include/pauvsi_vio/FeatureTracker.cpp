@@ -62,8 +62,10 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 	 * last value is a minimum eigen value thresh
 	 * it will kill bad features
 	 */
+	ros::Time t_start = ros::Time::now();
 	cv::calcOpticalFlowPyrLK(oldFrame.image, newFrame.image, oldPoints, newPoints, status, error, cv::Size(21, 21), 3,
 			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 30, 0.01), 0, this->MIN_EIGEN_VALUE);
+	ROS_DEBUG_STREAM("ran flow in :" << 1000 * (ros::Time::now().toSec() - t_start.toSec()));
 
 	//ROS_DEBUG_STREAM_ONCE("ran optical flow and got " << newPoints.size() << " points out");
 

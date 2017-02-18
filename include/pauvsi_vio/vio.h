@@ -42,6 +42,7 @@
 #include "g2o/solvers/dense/linear_solver_dense.h"
 #include "g2o/types/icp/types_icp.h"
 #include "g2o/solvers/structure_only/structure_only_solver.h"
+#include <g2o/types/sba/types_six_dof_expmap.h>
 
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 
@@ -53,7 +54,7 @@
 #include "KeyFrame.h"
 
 
-#define SUPER_DEBUG false
+#define SUPER_DEBUG true
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -73,11 +74,11 @@
 #define DEFAULT_RECALIBRATION_THRESHOLD 0.02
 #define DEFAULT_QUEUE_SIZE 10
 #define DEFAULT_ACTIVE_FEATURES_TOPIC "/pauvsi_vio/activefeatures"
-#define DEFAULT_PUBLISH_ACTIVE_FEATURES true
+#define DEFAULT_PUBLISH_ACTIVE_FEATURES false
 #define DEFAULT_MIN_TRIANGUALTION_DIST 0.1
 #define DEFAULT_INIT_PXL_DELTA 1
 #define DEFAULT_FRAME_BUFFER_LENGTH 20
-#define DEFAULT_MAX_TRIAG_ERROR 2000
+#define DEFAULT_MAX_TRIAG_ERROR 1
 #define DEFAULT_MIN_TRIAG_Z 0.02
 #define DEFAULT_MIN_TRIAG_FEATURES 40
 #define DEFAULT_IDEAL_FUNDAMENTAL_PXL_DELTA 0.3
@@ -233,7 +234,7 @@ public:
 		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
 	}
 
-	void twoViewBundleAdjustment(Frame& cf, KeyFrame& kf, bool structureOnly = true);
+	void twoViewBundleAdjustment(Frame& cf, KeyFrame& kf, bool structureOnly = false);
 
 
 

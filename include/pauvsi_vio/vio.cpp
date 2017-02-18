@@ -80,6 +80,9 @@ void VIO::cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msg
 	ROS_DEBUG_STREAM((ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime");
 
 	//this->viewImage(this->currentFrame());
+#if SUPER_DEBUG
+	this->drawKeyFrames();
+#endif
 }
 
 void VIO::imuCallback(const sensor_msgs::ImuConstPtr& msg)
@@ -178,6 +181,7 @@ void VIO::run()
 	{
 		if(lastFrame().features.size() > 0)
 		{
+			ROS_DEBUG_STREAM("flow and clean start");
 			//ROS_DEBUG_STREAM("current frame address: " << &frameBuffer.at(0));
 			//ROS_DEBUG_STREAM("last frame address: " << &frameBuffer.at(1));
 			feature_tracker.flowFeaturesToNewFrame(this->frameBuffer.at(1), this->frameBuffer.at(0));
@@ -185,6 +189,7 @@ void VIO::run()
 			//this->checkFeatureConsistency(currentFrame, this->FEATURE_SIMILARITY_THRESHOLD);
 
 			currentFrame().undistortFeatures(); // undistort the new features
+			ROS_DEBUG_STREAM("flow and clean end");
 		}
 
 		//MOTION ESTIMATION
@@ -206,13 +211,12 @@ void VIO::run()
 
 	if(currentFrame().features.size() < this->NUM_FEATURES)
 	{
+		ros::Time t_start = ros::Time::now();
 		//add n new unique features
 		ROS_DEBUG_STREAM("low on features getting more: " << currentFrame().features.size());
 		int featuresAdded = currentFrame().getAndAddNewFeatures(this->NUM_FEATURES - currentFrame().features.size(), this->FAST_THRESHOLD, this->KILL_RADIUS, this->MIN_NEW_FEATURE_DISTANCE);
 		ROS_DEBUG_STREAM("got more: " << currentFrame().features.size());
 
-		//TODO check that the depth and isometry is used correctl
-		ros::Time t_start = ros::Time::now();
 		// this should contain the rotation and translation from the base of the system to the camera
 		tf::StampedTransform b2c;
 		try {
@@ -233,6 +237,7 @@ void VIO::run()
 			ROS_DEBUG_STREAM("calculated avg scene depth is " << avg_scene_depth);
 		}
 
+		ROS_DEBUG_STREAM("need to add " << featuresAdded << "points. current map size: " << feature_tracker.map.size());
 		//this block adds a map point for the new feature added and links it to the new feature
 		for(std::vector<Feature>::iterator it = currentFrame().features.end() - featuresAdded; it != currentFrame().features.end(); it++)
 		{
@@ -243,15 +248,17 @@ void VIO::run()
 
 			//initialize the 3d point
 			it->point->initializePoint(c2w, &(*it), avg_scene_depth, DEFAULT_SCENE_DEPTH_CERTAINTY); // initialize the 3d point at the avg scene depth and with a very high uncertainty
-			ROS_DEBUG_STREAM_THROTTLE(1, "3d pt init: " << it->point->thisPoint->pos);
+			ROS_ASSERT(it->point->initialized());
 			//ROS_ASSERT(it->point->pos(0) == it->point->thisPoint->pos(0));
 		}
+		ROS_DEBUG_STREAM("map size after adding: " << feature_tracker.map.size());
 
-		ROS_DEBUG_STREAM("3d point init dt: " << 1000 * (ros::Time::now().toSec() - t_start.toSec()));
 
 		//currentFrame.describeFeaturesWithBRIEF();
 
 		currentFrame().undistortFeatures(); // undistort the new features
+
+		ROS_DEBUG_STREAM("3d point init dt: " << 1000 * (ros::Time::now().toSec() - t_start.toSec()));
 	}
 
 	this->broadcastWorldToOdomTF();
@@ -275,7 +282,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 	static bool consecutiveRecalibration = false;
 	//ROS_DEBUG_STREAM_COND(cf.features.size() && cf.features.at(0).point->observations.size() ," test ##### " << cf.features.at(0).point->observations.back()->frame);
 
-	double avgFeatureChange = 0;
+	double avgFeatureChange = 10000000;
 	if(!initialized)
 	{
 		avgFeatureChange = feature_tracker.averageFeatureChange(lf, cf); // get the feature change between f1 and f2
@@ -311,7 +318,14 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 
 		//NEXT
 		//We must predict motion using either the triangulated 3d points or the key frames and their corresponding points
-		this->updateKeyFrameInfo(); // finds new keyframes for the currentframe
+		this->updateKeyFrameInfo(); // update the keyframe
+
+		frameBuffer.front().state = pred;
+
+		double start_time = ros::Time::now().toSec();
+		ROS_DEBUG("starting BA");
+		this->twoViewBundleAdjustment(frameBuffer.front(), keyFrames.front());
+		ROS_DEBUG_STREAM("bundle adjustment time: " << 1000 * (ros::Time::now().toSec() - start_time));
 
 
 		//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate
@@ -337,11 +351,6 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 
 		this->ekf.imuMessageBuffer = newBuff; // replace the buffer
 	}
-
-#if SUPER_DEBUG
-	this->updateKeyFrameInfo();
-	this->drawKeyFrames();
-#endif
 
 	return newX;
 }

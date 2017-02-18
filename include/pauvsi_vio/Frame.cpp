@@ -354,6 +354,7 @@ void Frame::rankFeatures(std::vector<Feature>& features, int fastThreshold, int 
  */
 void Frame::cleanUpFeaturesByKillRadius(float killRadius)
 {
+	ros::Time t_start = ros::Time::now();
 	cv::Point2f imageCenter = cv::Point2f((float)(this->image.cols / 2), (float)(this->image.rows / 2));
 	std::vector<Feature> oldFeatures = this->features;
 	this->features.clear(); // clear this vector to get new features
@@ -378,6 +379,8 @@ void Frame::cleanUpFeaturesByKillRadius(float killRadius)
 			}
 		}
 	}
+
+	ROS_DEBUG_STREAM("clean by kill radius time: " << 1000 * (ros::Time::now().toSec() - t_start.toSec()));
 }
 
 /*

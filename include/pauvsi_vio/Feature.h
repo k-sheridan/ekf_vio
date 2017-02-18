@@ -45,6 +45,7 @@ public:
 	float quality; // this quality is for the ranking process
 
 	Point* point;
+	bool pointLost;
 
 	cv::Mat description;
 
@@ -61,6 +62,8 @@ public:
 	void undistort(cv::Mat K, cv::Mat D);
 
 	Eigen::Vector3d getDirectionVector();
+
+	Eigen::Vector2d getUndistortedMeasurement();
 
 
 };
