@@ -185,7 +185,9 @@ void VIO::run()
 			//ROS_DEBUG_STREAM("current frame address: " << &frameBuffer.at(0));
 			//ROS_DEBUG_STREAM("last frame address: " << &frameBuffer.at(1));
 			feature_tracker.flowFeaturesToNewFrame(this->frameBuffer.at(1), this->frameBuffer.at(0));
+			ROS_DEBUG("cleaning features");
 			currentFrame().cleanUpFeaturesByKillRadius(this->KILL_RADIUS);
+			ROS_DEBUG("cleaned up features");
 			//this->checkFeatureConsistency(currentFrame, this->FEATURE_SIMILARITY_THRESHOLD);
 
 			currentFrame().undistortFeatures(); // undistort the new features
@@ -324,7 +326,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 
 		double start_time = ros::Time::now().toSec();
 		ROS_DEBUG("starting BA");
-		this->twoViewBundleAdjustment(frameBuffer.front(), keyFrames.front());
+		//this->twoViewBundleAdjustment(frameBuffer.front(), keyFrames.front());
 		ROS_DEBUG_STREAM("bundle adjustment time: " << 1000 * (ros::Time::now().toSec() - start_time));
 
 

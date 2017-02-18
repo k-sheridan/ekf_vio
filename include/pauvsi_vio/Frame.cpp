@@ -375,6 +375,7 @@ void Frame::cleanUpFeaturesByKillRadius(float killRadius)
 			if(feat.point != 0)
 			{
 				//feat.point->setStatus(Point::TRACKING_LOST); // tis will now be cleaned
+				ROS_ASSERT(feat.point != NULL);
 				feat.point->safelyDelete();
 			}
 		}
