@@ -5,6 +5,8 @@ project(pauvsi_vio)
 
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
+set(G2O_ROOT /opt/ros/${ROS_DISTRO}/include/g2o)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
 
 if(NOT WIN32)
