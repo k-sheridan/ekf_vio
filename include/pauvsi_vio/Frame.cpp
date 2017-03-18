@@ -371,11 +371,11 @@ void Frame::cleanUpFeaturesByKillRadius(float killRadius)
 		else
 		{
 			ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << feat.radius);
-			if(feat.point != 0)
-			{
-				feat.point->status = Point::TRACKING_LOST; // tis will now be cleaned
-			}
+
+			ROS_ASSERT(feat.point != NULL);
+			feat.point->safelyDeletePoint(); //delete and dereference point
 		}
+
 	}
 }
 

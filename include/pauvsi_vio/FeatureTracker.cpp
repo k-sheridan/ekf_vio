@@ -123,7 +123,9 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 		else
 		{
 			lostFeatures++;
-			oldFrame.features.at(i).point->status = Point::TRACKING_LOST; // update the status of the point to lost this will then be cleaned up
+
+			ROS_ASSERT(oldFrame.features.at(i).point != NULL);
+			oldFrame.features.at(i).point->safelyDeletePoint(); // deleting this point and dereferencing it
 		}
 	}
 
@@ -201,8 +203,8 @@ void FeatureTracker::checkFeatureConsistency(Frame& checkFrame, int killThreshol
 			//ROS_DEBUG("pushed back modified feature");
 		}
 		else{
-			checkFrame.features.at(i).point->status = Point::TRACKING_LOST; // set the tracking to lost
 			ROS_DEBUG("feature does'nt match enough, killing");
+			checkFrame.features.at(i).point->safelyDeletePoint(); // set the tracking to lost
 		}
 	}
 

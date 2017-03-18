@@ -18,13 +18,6 @@ class Point{
 
 public:
 
-	enum PointStatus{
-		TRACKING_GOOD,
-		TRACKING_LOST
-	};
-
-	PointStatus status;
-
 	std::deque<Feature*> observations; // this is  a list of observations of this 3d point from different frames
 
 	Point();
@@ -32,6 +25,8 @@ public:
 	Point(Feature* ft);
 
 	void addObservation(Feature* ft);
+
+	void safelyDeletePoint();
 };
 
 
