@@ -75,7 +75,11 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 		if(status.at(i) == 1)
 		{
 			// the id number is not that important because it will be handled by the frame
+			ROS_ASSERT(oldFrame.features.at(i).point != NULL);
 			Feature feat(&newFrame, newPoints.at(i), oldFrame.features.at(i).point); // create a matched feature with id = -1
+
+			ROS_DEBUG("created new feature");
+
 			//ROS_DEBUG_STREAM("frame index: " << feat.frame);
 			//ROS_ASSERT(oldFrame.features.at(i).point == feat.point);
 			//ROS_ASSERT(oldFrame.features.at(i).point->observations.size() == feat.point->observations.size());
@@ -94,7 +98,7 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 			// i have to reset the last observations pointer for some reason
 			//feat.point->observations.at(1) = &oldFrame.features.at(i);
 			newFrame.addFeature(feat); // add this feature to the new frame
-			newFrame.features.back().point->observations.at(0) = &newFrame.features.back(); // i must refer the feature
+			newFrame.features.back().point->observations().at(0) = &newFrame.features.back(); // i must refer the feature
 
 			/*ROS_ASSERT(&newFrame.features.at(newFrame.features.size() - 1) == &newFrame.features.back());
 
@@ -129,7 +133,7 @@ bool FeatureTracker::flowFeaturesToNewFrame(Frame& oldFrame, Frame& newFrame){
 		}
 	}
 
-	ROS_DEBUG_STREAM_COND(lostFeatures, "optical flow lost " << lostFeatures <<  " feature(s)");
+	ROS_DEBUG_STREAM("optical flow lost " << lostFeatures <<  " feature(s)");
 
 	//if user wants to kill by similarity
 	if(KILL_BY_DISSIMILARITY)
@@ -241,10 +245,10 @@ double FeatureTracker::averageFeatureChange(Frame& lf, Frame& cf)
 
 	for(int i = 0; i < cf.features.size(); i++)
 	{
-		if(cf.features.at(i).point->observations.size() >= 2)
+		if(cf.features.at(i).point->observations().size() >= 2)
 		{
 			//ROS_DEBUG_STREAM("from avgFeatChange: " << cf.features.at(i).point->observations.at(1)->frame);
-			cv::Point2f p1 = cf.features.at(i).point->observations.at(1)->undistort_pxl;
+			cv::Point2f p1 = cf.features.at(i).point->observations().at(1)->undistort_pxl;
 			ROS_ASSERT(cf.features.at(i).undistorted);
 			cv::Point2f p2 = cf.features.at(i).undistort_pxl;
 			//ROS_DEBUG_STREAM("undistorted px: " << p2 << " and " << p1);

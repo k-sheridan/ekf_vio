@@ -145,10 +145,11 @@ void VIO::drawKeyFrames()
 
 		if(frameBuffer.size() >= FRAME_BUFFER_LENGTH)
 		{
-			if(e.point->observations.size() > FRAME_BUFFER_LENGTH)
+			if(e.point->observations().size() > FRAME_BUFFER_LENGTH)
 			{
+				ROS_ASSERT(e.point != NULL);
 				//ROS_DEBUG_STREAM("plotting: " << e.point->observations.at(1)->original_pxl);
-				cv::drawMarker(img2, e.point->observations.at(FRAME_BUFFER_LENGTH - 1)->original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
+				cv::drawMarker(img2, e.point->observations().at(FRAME_BUFFER_LENGTH - 1)->original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
 				cv::drawMarker(img1, e.original_pxl, cv::Scalar(255, 255, 0), cv::MARKER_SQUARE);
 
 				//ROS_DEBUG_STREAM("frame link: " << e.point->observations.at(0)->frame);

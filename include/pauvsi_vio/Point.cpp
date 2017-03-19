@@ -10,11 +10,12 @@
 
 Point::Point()
 {
-
+	deleted = false;
 }
 
 Point::Point(Feature* ft){
-	observations.push_front(ft); // add this observation to the deque
+	_observations.push_front(ft); // add this observation to the deque
+	deleted = false;
 }
 
 void Point::addObservation(Feature* ft)
@@ -25,7 +26,7 @@ void Point::addObservation(Feature* ft)
 		ROS_DEBUG_STREAM("this feature frame " << ft->frame << " last frame: " << observations.at(0)->frame);
 	}*/
 
-	observations.push_front(ft);
+	_observations.push_front(ft);
 
 	/*
 	if(observations.size() > 1)
@@ -37,5 +38,22 @@ void Point::addObservation(Feature* ft)
 
 void Point::safelyDeletePoint()
 {
+	ROS_DEBUG_STREAM("deleting point with " << this->observations().size() << " obs");
 
+	deleted = true;
+
+	/*
+	for(auto e : this->observations)
+	{
+		ROS_ASSERT(e != NULL);
+		e->point = NULL;
+	}*/
+
+	ROS_DEBUG_STREAM("point deleting itself");
+
+	//peace out delete my self
+	// we had a good run
+	this->theMap->erase(this->thisPoint);
+
+	ROS_DEBUG("point deleted");
 }

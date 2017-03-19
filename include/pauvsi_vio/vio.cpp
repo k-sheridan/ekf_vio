@@ -165,11 +165,16 @@ void VIO::run()
 		ROS_DEBUG_STREAM("got more: " << currentFrame().features.size());
 		//TODO check that everything is linked correctly
 		//this block adds a map point for the new feature added and links it to the new feature
+
 		for(std::vector<Feature>::iterator it = currentFrame().features.end() - featuresAdded; it != currentFrame().features.end(); it++)
 		{
 			feature_tracker.map.push_back(Point(&(*it))); // add a new map point linking it to the feature and therefore the frame
 			it->point = &feature_tracker.map.back(); // link the feature to the point and therefore all other matches
+
 			//it->point->observations.at(0) = &(*it); // i must refer the point to its place in the frame
+
+			it->point->theMap = &feature_tracker.map; // link the map
+			it->point->thisPoint = --feature_tracker.map.end(); // give the point its iterator in the map
 		}
 
 		//currentFrame.describeFeaturesWithBRIEF();

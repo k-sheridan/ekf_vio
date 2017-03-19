@@ -37,7 +37,7 @@ Feature::Feature(Frame* _frame, cv::Point2f px, Point* pt, int _id)
 		point->addObservation(this); // add my self to the point's observations
 	}
 	else{
-		//ROS_DEBUG_STREAM("null pointer");
+		ROS_DEBUG_STREAM("null pointer");
 		point = NULL;
 	}
 }

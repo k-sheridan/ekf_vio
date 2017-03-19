@@ -366,11 +366,11 @@ void Frame::cleanUpFeaturesByKillRadius(float killRadius)
 		if(this->getAndSetFeatureRadius(feat, imageCenter) <= killRadius)
 		{
 			this->features.push_back(feat);
-			this->features.back().point->observations.at(0) = &this->features.back(); // set the new point observation
+			this->features.back().point->observations().at(0) = &this->features.back(); // set the new point observation
 		}
 		else
 		{
-			ROS_DEBUG_STREAM_THROTTLE(2, "removing a feature with radius " << feat.radius);
+			ROS_DEBUG_STREAM("removing a feature with radius " << feat.radius);
 
 			ROS_ASSERT(feat.point != NULL);
 			feat.point->safelyDeletePoint(); //delete and dereference point

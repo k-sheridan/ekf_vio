@@ -16,15 +16,29 @@ class Feature;
 
 class Point{
 
+
+private:
+
+	bool deleted;
+
+	std::deque<Feature*> _observations; // this is  a list of observations of this 3d point from different frames
+
+
 public:
 
-	std::deque<Feature*> observations; // this is  a list of observations of this 3d point from different frames
+	std::list<Point>::iterator thisPoint; // the iterator of this point in the map
+	std::list<Point>* theMap; // a pointer to the map which this point is stored in
 
 	Point();
 
 	Point(Feature* ft);
 
 	void addObservation(Feature* ft);
+
+	std::deque<Feature*>& observations(){
+		ROS_ASSERT(!deleted);
+		return this->_observations;
+	}
 
 	void safelyDeletePoint();
 };
