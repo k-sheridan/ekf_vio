@@ -55,7 +55,7 @@
 #include "KeyFrame.h"
 
 
-#define SUPER_DEBUG false
+#define SUPER_DEBUG true
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"

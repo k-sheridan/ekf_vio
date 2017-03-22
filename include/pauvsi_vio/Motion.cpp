@@ -14,7 +14,15 @@
  */
 void VIO::updateKeyFrameInfo() {
 
-	if(keyFrames.size() == 0)
+
+	//clean up old keyframes and excess keyframes
+	while(!keyFrames.empty() && (keyFrames.back().frame->finalFrame || keyFrames.size() > MAX_KEYFRAMES))
+	{
+		ROS_DEBUG("removing an old keyframe");
+		keyFrames.pop_back();
+	}
+
+	if(keyFrames.empty())
 	{
 		keyFrames.push_front(KeyFrame(&currentFrame(), currentFrame().features.size())); // in the case f no keyframes use the current frame
 	}

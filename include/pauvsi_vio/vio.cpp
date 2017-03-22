@@ -118,8 +118,12 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 	if(this->frameBuffer.size() > this->FRAME_BUFFER_LENGTH)
 	{
 		this->frameBuffer.pop_back();
+
 		//TODO remove any reference
 	}
+
+	this->frameBuffer.back().finalFrame = true;
+
 }
 
 /*
@@ -208,6 +212,11 @@ void VIO::run()
 	ROS_DEBUG_STREAM("frame: " << this->frameBuffer.size() << " init: " << initialized);
 	ROS_DEBUG_STREAM("map points: " << this->feature_tracker.map.size());
 	ROS_DEBUG_STREAM(currentFrame().features.size());
+
+#if SUPER_DEBUG
+	//this->updateKeyFrameInfo();
+	this->drawKeyFrames();
+#endif
 }
 
 
@@ -278,11 +287,6 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 
 		this->ekf.imuMessageBuffer = newBuff; // replace the buffer
 	}
-
-#if SUPER_DEBUG
-	//this->updateKeyFrameInfo();
-	this->drawKeyFrames();
-#endif
 
 	return newX;
 }

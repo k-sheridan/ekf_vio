@@ -54,6 +54,8 @@ public:
 
 	double avgSceneDepth;
 
+	bool finalFrame;
+
 	//this ensures that all features have a unique ID
 	int nextFeatureID; // the id of the next feature that is added to this frame or the next frame
 

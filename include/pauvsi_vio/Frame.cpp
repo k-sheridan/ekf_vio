@@ -18,6 +18,8 @@ Frame::Frame(cv::Mat img, ros::Time t)
 	state = VIOState();
 	avgSceneDepth = DEFAULT_SCENE_DEPTH_LOCAL;
 
+	finalFrame = false;
+
 }
 
 /*
@@ -41,6 +43,8 @@ Frame::Frame(cv::Mat img, ros::Time t, int startingID)
 	state = VIOState();
 	avgSceneDepth = DEFAULT_SCENE_DEPTH_LOCAL;
 
+	finalFrame = false;
+
 }
 
 
@@ -51,6 +55,8 @@ Frame::Frame()
 	nextFeatureID = 0; // assume that this frame starts at zero featureID
 	state = VIOState();
 	avgSceneDepth = DEFAULT_SCENE_DEPTH_LOCAL;
+
+	finalFrame = false;
 
 }
 
