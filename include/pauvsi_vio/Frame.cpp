@@ -16,6 +16,8 @@ Frame::Frame(cv::Mat img, ros::Time t)
 	frameSet = true;
 	nextFeatureID = 0;
 	state = VIOState();
+	avgSceneDepth = DEFAULT_SCENE_DEPTH_LOCAL;
+
 }
 
 /*
@@ -37,6 +39,8 @@ Frame::Frame(cv::Mat img, ros::Time t, int startingID)
 		nextFeatureID = startingID;
 	}
 	state = VIOState();
+	avgSceneDepth = DEFAULT_SCENE_DEPTH_LOCAL;
+
 }
 
 
@@ -46,6 +50,8 @@ Frame::Frame()
 	frameSet = false;
 	nextFeatureID = 0; // assume that this frame starts at zero featureID
 	state = VIOState();
+	avgSceneDepth = DEFAULT_SCENE_DEPTH_LOCAL;
+
 }
 
 
@@ -461,8 +467,28 @@ void Frame::removeRedundantFeature(std::vector<Feature>& toClean, std::vector<Fe
 }
 
 
-double Frame::getAverageSceneDepth()
+/*
+ * the transformation must be from world coordinates to camera coordinates (aka form the transform with the inverse of camera pose)
+ */
+double Frame::computeAverageSceneDepth(tf::Transform w2c)
 {
-	return DEFAULT_FETAURE_DEPTH;
+	double a = w2c.getBasis().getRow(2).getX();
+	double b = w2c.getBasis().getRow(2).getY();
+	double c = w2c.getBasis().getRow(2).getZ();
+	double d = w2c.getOrigin().z();
+
+	double total_depth = 0;
+	int total_points = 0;
+	for(auto& ft : this->features)
+	{
+		if(ft.point == NULL)
+			continue;
+		total_depth += a * ft.point->getWorldCoordinate()(0) + b * ft.point->getWorldCoordinate()(1) + c * ft.point->getWorldCoordinate()(2) + d; // add the z parts together
+		total_points++;
+	}
+
+	this->avgSceneDepth = total_depth / total_points;
+
+	return this->avgSceneDepth;
 }
 

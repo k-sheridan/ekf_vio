@@ -29,6 +29,11 @@
 #include <tf2_ros/message_filter.h>
 #include <tf2_ros/transform_listener.h>
 
+
+#include <eigen3/Eigen/src/StlSupport/StdVector.h>
+
+#include <unordered_set>
+
 #include "g2o/config.h"
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
@@ -38,6 +43,7 @@
 #include "g2o/solvers/dense/linear_solver_dense.h"
 #include "g2o/types/icp/types_icp.h"
 #include "g2o/solvers/structure_only/structure_only_solver.h"
+#include <g2o/types/sba/types_six_dof_expmap.h>
 
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 
@@ -49,7 +55,7 @@
 #include "KeyFrame.h"
 
 
-#define SUPER_DEBUG true
+#define SUPER_DEBUG false
 
 
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
@@ -80,6 +86,10 @@
 #define DEFAULT_MIN_FUNDAMENTAL_PXL_DELTA 0.3
 #define DEFAULT_MAX_FUNDAMENTAL_ERROR 5e-7
 #define DEFAULT_MAX_GN_ITERS 10
+#define DEFAULT_SCENE_DEPTH 0.5
+#define DEFAULT_MAX_KEYFRAMES 2
+
+#define ROBUST_HUBER true
 
 #define PI_OVER_180 0.01745329251
 
@@ -109,11 +119,14 @@ public:
 	double MAX_TRIAG_ERROR;
 	double MIN_TRIAG_Z;
 
+	int MAX_KEYFRAMES;
+
 	int MAX_GN_ITERS;
 	int MIN_TRIAG_FEATURES;
 	double IDEAL_FUNDAMENTAL_PXL_DELTA;
 	double MIN_FUNDAMENTAL_PXL_DELTA;
 	double MAXIMUM_FUNDAMENTAL_ERROR;
+	double START_SCENE_DEPTH;
 
 	bool initialized;
 
@@ -211,6 +224,7 @@ public:
 	void updateKeyFrameInfo();
 
 	tf::Transform cameraTransformFromState(VIOState x, tf::Transform b2c);
+	VIOState transformState(VIOState x, tf::Transform trans);
 
 	void pose_gauss_newton(const std::vector< cv::Point3d > &wX,
 	                       const std::vector< cv::Point2d > &x,
@@ -220,7 +234,8 @@ public:
 		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
 	}
 
-	void twoViewBA(Frame& cf, KeyFrame& kf);
+	void motionOnlyBundleAdjustment(Frame& cf);
+	void structureOnlyBundleAdjustment(Frame& cf, KeyFrame& kf);
 
 
 

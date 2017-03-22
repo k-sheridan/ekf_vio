@@ -151,18 +151,36 @@ void VIO::run()
 		this->currentFrame().state = this->state;
 	}
 
+
+	//compute the avg SCENE DEPTH and update the KEYFRAMES
+
+	// this should contain the rotation and translation from the base of the system to the camera
+	tf::StampedTransform b2c;
+	try {
+		this->ekf.tf_listener.lookupTransform(this->CoM_frame, this->camera_frame,
+				ros::Time(0), b2c);
+	} catch (tf::TransformException& e) {
+		ROS_WARN_STREAM(e.what());
+	}
+
+	tf::Transform c2w = cameraTransformFromState(currentFrame().state, b2c); // get the camera to world transform
+	tf::Transform w2c = c2w.inverse(); // invert the transform
+	currentFrame().avgSceneDepth = START_SCENE_DEPTH;
+	if(currentFrame().features.size()) {currentFrame().computeAverageSceneDepth(w2c);} // if the current frame has features
+
+	this->updateKeyFrameInfo(); // finally update the keyframe list
+
+
 	//check the number of 2d features in the current frame
 	//if this is below the required amount refill the feature vector with
 	//the best new feature. It must not be redundant.
 
-	//ROS_DEBUG_STREAM("feature count: " << currentFrame.features.size());
-
 	if(currentFrame().features.size() < this->NUM_FEATURES)
 	{
 		//add n new unique features
-		ROS_DEBUG_STREAM("low on features getting more: " << currentFrame().features.size());
+		//ROS_DEBUG_STREAM("low on features getting more: " << currentFrame().features.size());
 		int featuresAdded = currentFrame().getAndAddNewFeatures(this->NUM_FEATURES - currentFrame().features.size(), this->FAST_THRESHOLD, this->KILL_RADIUS, this->MIN_NEW_FEATURE_DISTANCE);
-		ROS_DEBUG_STREAM("got more: " << currentFrame().features.size());
+		//ROS_DEBUG_STREAM("got more: " << currentFrame().features.size());
 		//TODO check that everything is linked correctly
 		//this block adds a map point for the new feature added and links it to the new feature
 
@@ -177,12 +195,14 @@ void VIO::run()
 			it->point->thisPoint = --feature_tracker.map.end(); // give the point its iterator in the map
 		}
 
-		//currentFrame.describeFeaturesWithBRIEF();
 
-		currentFrame().undistortFeatures(); // undistort the new features
 	}
 
+
+
 	this->broadcastWorldToOdomTF();
+
+
 
 	//ROS_DEBUG_STREAM("imu readings: " << this->imuMessageBuffer.size());
 	ROS_DEBUG_STREAM("frame: " << this->frameBuffer.size() << " init: " << initialized);
@@ -232,8 +252,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 		VIOState pred = ekf.predict(x, cf.timeImageCreated);
 
 		//NEXT
-		//We must predict motion using either the triangulated 3d points or the key frames and their corresponding points
-		this->updateKeyFrameInfo(); // finds new keyframes for the currentframe
+		//We must predict motion
 
 
 		//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate
@@ -261,7 +280,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 	}
 
 #if SUPER_DEBUG
-	this->updateKeyFrameInfo();
+	//this->updateKeyFrameInfo();
 	this->drawKeyFrames();
 #endif
 
@@ -333,6 +352,10 @@ void VIO::readROSParameters()
 	ros::param::param<int>("~min_triag_features", MIN_TRIAG_FEATURES, DEFAULT_MIN_TRIAG_FEATURES);
 
 	ros::param::param<int>("~max_gauss_newton_iterations", MAX_GN_ITERS, DEFAULT_MAX_GN_ITERS);
+
+	ros::param::param<double>("~average_scene_depth", START_SCENE_DEPTH, DEFAULT_SCENE_DEPTH);
+
+	ros::param::param<int>("~max_keyframes", MAX_KEYFRAMES, DEFAULT_MAX_KEYFRAMES);
 }
 
 /*

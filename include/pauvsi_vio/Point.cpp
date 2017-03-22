@@ -40,13 +40,16 @@ void Point::safelyDeletePoint()
 {
 	ROS_DEBUG_STREAM("deleting point with " << this->observations().size() << " obs");
 
-	deleted = true;
 
-	/*
-	for(auto e : this->observations)
+	/*for(auto e : this->observations())
 	{
 		ROS_ASSERT(e != NULL);
-		e->point = NULL;
+		ROS_ASSERT(e->frame != NULL);
+		if(e != NULL && e->frame->isKeyframe)
+		{
+			ROS_ASSERT(e->frame->linkedKeyframe != NULL);
+			e->frame->linkedKeyframe->numFeatures--; // decrement the feature counter in the keyframe to say that this frame has one less linked feature
+		}
 	}*/
 
 	ROS_DEBUG_STREAM("point deleting itself");
@@ -54,6 +57,8 @@ void Point::safelyDeletePoint()
 	//peace out delete my self
 	// we had a good run
 	this->theMap->erase(this->thisPoint);
+
+	deleted = true;
 
 	ROS_DEBUG("point deleted");
 }

@@ -10,14 +10,25 @@
 
 #include <Frame.h>
 
+class Frame;
+
 struct KeyFrame
 {
 
 	Frame* frame;
 
+	int numFeatures;
+
 	KeyFrame()
 	{
 		frame = NULL;
+		numFeatures = 0;
+	}
+
+	KeyFrame(Frame* _f, int _numFeats)
+	{
+		frame = _f;
+		numFeatures = _numFeats;
 	}
 
 };

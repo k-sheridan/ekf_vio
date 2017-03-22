@@ -11,6 +11,9 @@
 #include <eigen3/Eigen/Geometry>
 
 #include "Feature.h"
+#include "KeyFrame.h"
+
+#define DEFAULT_STARTING_SIGMA 1000
 
 class Feature;
 
@@ -20,6 +23,9 @@ class Point{
 private:
 
 	bool deleted;
+
+	double sigma; // the certainty of this point's depth
+	Eigen::Vector3d pos; // this is the world coordinate of the point
 
 	std::deque<Feature*> _observations; // this is  a list of observations of this 3d point from different frames
 
@@ -38,6 +44,17 @@ public:
 	std::deque<Feature*>& observations(){
 		ROS_ASSERT(!deleted);
 		return this->_observations;
+	}
+
+	Eigen::Vector3d getWorldCoordinate()
+	{
+		ROS_ASSERT(!deleted);
+		return this->pos;
+	}
+
+	bool isDeleted()
+	{
+		return deleted;
 	}
 
 	void safelyDeletePoint();

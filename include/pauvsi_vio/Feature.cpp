@@ -55,10 +55,17 @@ void Feature::undistort(cv::Mat K, cv::Mat D)
 	this->undistorted = true;
 }
 
+
 Eigen::Vector3d Feature::getDirectionVector()
 {
 	ROS_ASSERT(this->undistorted && set);
-	ROS_ASSERT(this->point != NULL); // force tracking to be good if using point
+	ROS_ASSERT(this->point != NULL);
 	return Eigen::Vector3d(undistort_pxl.x, undistort_pxl.y, 1.0);
+}
+
+Eigen::Vector2d Feature::getUndistortedMeasurement()
+{
+	ROS_ASSERT(this->undistorted && set);
+	return Eigen::Vector2d(undistort_pxl.x, undistort_pxl.y);
 }
 

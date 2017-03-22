@@ -62,6 +62,8 @@ public:
 
 	Eigen::Vector3d getDirectionVector();
 
+	Eigen::Vector2d getUndistortedMeasurement();
+
 
 };
 

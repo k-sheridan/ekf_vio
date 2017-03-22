@@ -124,13 +124,14 @@ cv::Scalar HSVtoBGR(float fH, float fS, float fV) {
 
 void VIO::drawKeyFrames()
 {
+	ROS_ASSERT(keyFrames.size());
 	cv::Mat img1, img2;
 
 	img1 = currentFrame().image;
 
-	if(frameBuffer.size() >= FRAME_BUFFER_LENGTH)
+	if(keyFrames.size())
 	{
-		img2 = frameBuffer.at(FRAME_BUFFER_LENGTH - 1).image;
+		img2 = keyFrames.front().frame->image;
 	}
 
 	cv::cvtColor(img1, img1, CV_GRAY2BGR);
@@ -143,30 +144,23 @@ void VIO::drawKeyFrames()
 		cv::drawMarker(img1, e.original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
 		//ROS_DEBUG_STREAM("this feature's point info: obs count: " << e.point->observations.size() << " status: " << e.point->status);
 
-		if(frameBuffer.size() >= FRAME_BUFFER_LENGTH)
+		for(auto& kf_ft : keyFrames.front().frame->features)
 		{
-			if(e.point->observations().size() > FRAME_BUFFER_LENGTH)
+			if(e.point == kf_ft.point)
 			{
-				ROS_ASSERT(e.point != NULL);
-				//ROS_DEBUG_STREAM("plotting: " << e.point->observations.at(1)->original_pxl);
-				cv::drawMarker(img2, e.point->observations().at(FRAME_BUFFER_LENGTH - 1)->original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
-				cv::drawMarker(img1, e.original_pxl, cv::Scalar(255, 255, 0), cv::MARKER_SQUARE);
-
-				//ROS_DEBUG_STREAM("frame link: " << e.point->observations.at(0)->frame);
-				//ROS_DEBUG_STREAM("test2: " << currentFrame().features.at(0).frame);
-				//ROS_DEBUG_STREAM(e.point->observations.at(0)->original_pxl.x - e.point->observations.at(1)->original_pxl.x);
-				//ROS_ASSERT(e.point->observations.at(0) == &e);
-			}
-			else
-			{
-				//ROS_DEBUG_STREAM("frame link outside: " << e.point->observations.at(0)->frame);
+				if(!kf_ft.point->isDeleted() && kf_ft.frame != NULL)
+				{
+					cv::drawMarker(img2, kf_ft.original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
+					cv::drawMarker(img1, e.original_pxl, cv::Scalar(255, 255, 0), cv::MARKER_SQUARE);
+					break;
+				}
 			}
 		}
 	}
 
 	//ROS_DEBUG_STREAM("test3: " << currentFrame().features.at(0).frame);
 
-	if(frameBuffer.size() >= FRAME_BUFFER_LENGTH && frameBuffer.back().isFrameSet())
+	if(keyFrames.size())
 	{
 		cv::Mat final;
 		cv::vconcat(img1, img2, final);

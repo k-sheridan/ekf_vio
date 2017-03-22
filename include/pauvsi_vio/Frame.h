@@ -26,9 +26,11 @@
 
 #define DEFAULT_FEATURE_SEARCH_RANGE 5
 #define MAXIMUM_ID_NUM 1000000000 //this is the maximum size that a feature ID should be to ensure there are no overflow issues.
-#define DEFAULT_FETAURE_DEPTH 0.5
+#define DEFAULT_SCENE_DEPTH_LOCAL 0.5
 
 class Feature;
+
+class KeyFrame;
 
 class Frame
 {
@@ -49,6 +51,8 @@ public:
 	std::vector<Feature> features; //the feature vector for this frame
 
 	VIOState state;
+
+	double avgSceneDepth;
 
 	//this ensures that all features have a unique ID
 	int nextFeatureID; // the id of the next feature that is added to this frame or the next frame
@@ -239,7 +243,7 @@ public:
 	void removeRedundantFeature(std::vector<Feature>& toClean, std::vector<Feature> compare, int min_feature_dist);
 
 
-	double getAverageSceneDepth();
+	double computeAverageSceneDepth(tf::Transform w2c);
 
 
 };
