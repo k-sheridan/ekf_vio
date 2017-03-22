@@ -197,6 +197,8 @@ void VIO::run()
 
 			it->point->theMap = &feature_tracker.map; // link the map
 			it->point->thisPoint = --feature_tracker.map.end(); // give the point its iterator in the map
+
+			it->point->initializePoint(c2w, &(*it), currentFrame().avgSceneDepth); // initialize this 3d point with the avg or default depth of the current frame
 		}
 
 

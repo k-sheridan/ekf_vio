@@ -19,6 +19,7 @@ Frame::Frame(cv::Mat img, ros::Time t)
 	avgSceneDepth = DEFAULT_SCENE_DEPTH_LOCAL;
 
 	finalFrame = false;
+	isKeyframe = false;
 
 }
 
@@ -44,7 +45,7 @@ Frame::Frame(cv::Mat img, ros::Time t, int startingID)
 	avgSceneDepth = DEFAULT_SCENE_DEPTH_LOCAL;
 
 	finalFrame = false;
-
+	isKeyframe = false;
 }
 
 
@@ -57,6 +58,7 @@ Frame::Frame()
 	avgSceneDepth = DEFAULT_SCENE_DEPTH_LOCAL;
 
 	finalFrame = false;
+	isKeyframe = false;
 
 }
 
@@ -488,7 +490,10 @@ double Frame::computeAverageSceneDepth(tf::Transform w2c)
 	for(auto& ft : this->features)
 	{
 		if(ft.point == NULL)
+		{
+			ROS_WARN("in avg scene depth computation the point ptr is NULL");
 			continue;
+		}
 		total_depth += a * ft.point->getWorldCoordinate()(0) + b * ft.point->getWorldCoordinate()(1) + c * ft.point->getWorldCoordinate()(2) + d; // add the z parts together
 		total_points++;
 	}

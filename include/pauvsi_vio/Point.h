@@ -58,6 +58,8 @@ public:
 	}
 
 	void safelyDeletePoint();
+
+	void initializePoint(tf::Transform transform, Feature* ft, double start_depth);
 };
 
 

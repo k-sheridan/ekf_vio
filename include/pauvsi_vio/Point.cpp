@@ -11,11 +11,13 @@
 Point::Point()
 {
 	deleted = false;
+	this->sigma = DEFAULT_STARTING_SIGMA;
 }
 
 Point::Point(Feature* ft){
 	_observations.push_front(ft); // add this observation to the deque
 	deleted = false;
+	this->sigma = DEFAULT_STARTING_SIGMA;
 }
 
 void Point::addObservation(Feature* ft)
@@ -61,4 +63,22 @@ void Point::safelyDeletePoint()
 	deleted = true;
 
 	ROS_DEBUG("point deleted");
+}
+
+/*
+ * please give the transform from camera coord to world coord
+ */
+void Point::initializePoint(tf::Transform transform, Feature* ft, double start_depth)
+{
+	Eigen::Vector3d eig_dir = (start_depth * ft->getDirectionVector());
+	tf::Vector3 dir_vec = tf::Vector3(eig_dir(0), eig_dir(1), eig_dir(2));
+	tf::Vector3 world_point = transform * dir_vec;
+
+	this->pos(0) = world_point.getX();
+	this->pos(1) = world_point.getY();
+	this->pos(2) = world_point.getZ();
+
+	//this->sigma = start_sigma;
+
+	//this->_initialized = true;
 }

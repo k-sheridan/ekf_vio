@@ -25,6 +25,7 @@ void VIO::updateKeyFrameInfo() {
 	if(keyFrames.empty())
 	{
 		keyFrames.push_front(KeyFrame(&currentFrame(), currentFrame().features.size())); // in the case f no keyframes use the current frame
+		keyFrames.front().frame->isKeyframe = true;
 	}
 	else
 	{
