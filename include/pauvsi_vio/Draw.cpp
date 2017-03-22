@@ -139,20 +139,21 @@ void VIO::drawKeyFrames()
 
 	//ROS_DEBUG_STREAM("test: " << currentFrame().features.at(0).point->observations.back()->frame);
 
+	Frame* fptr = keyFrames.front().frame;
+
 	for(auto& e : currentFrame().features)
 	{
 		cv::drawMarker(img1, e.original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
 		//ROS_DEBUG_STREAM("this feature's point info: obs count: " << e.point->observations.size() << " status: " << e.point->status);
 
-		for(auto& kf_ft : keyFrames.front().frame->features)
+		if(e.point != NULL && !e.point->isDeleted())
 		{
-			if(e.point == kf_ft.point)
+			for(auto kf_ft : e.point->observations())
 			{
-				if(!kf_ft.point->isDeleted() && kf_ft.frame != NULL)
+				if(kf_ft->frame == fptr)
 				{
-					cv::drawMarker(img2, kf_ft.original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
+					cv::drawMarker(img2, kf_ft->original_pxl, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE);
 					cv::drawMarker(img1, e.original_pxl, cv::Scalar(255, 255, 0), cv::MARKER_SQUARE);
-					break;
 				}
 			}
 		}

@@ -138,7 +138,7 @@ void VIO::structureOnlyBundleAdjustment(Frame& cf, KeyFrame& kf) {
 	{
 		//check if the 3d point is still being tracked
 
-		if(kf_ft.point != NULL)
+		if(kf_ft.point->isDeleted() != true)
 		{
 			ROS_DEBUG_STREAM("point ID : " << point_id);
 			//ROS_DEBUG_STREAM("point address: " << kf_ft.point << " point init: " << kf_ft.point->initialized());
