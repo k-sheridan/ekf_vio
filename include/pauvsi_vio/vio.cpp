@@ -169,10 +169,14 @@ void VIO::run()
 
 	tf::Transform c2w = cameraTransformFromState(currentFrame().state, b2c); // get the camera to world transform
 	tf::Transform w2c = c2w.inverse(); // invert the transform
+
+	currentFrame().tfTransform2EigenAffine(w2c, currentFrame().transform_frame_to_world); // add the frame to world transform that was computed to the frame as an affine transform
+
 	currentFrame().avgSceneDepth = START_SCENE_DEPTH;
 	if(currentFrame().features.size()) {currentFrame().computeAverageSceneDepth(w2c);} // if the current frame has features
 
 	this->updateKeyFrameInfo(); // finally update the keyframe list
+	//ROS_DEBUG_STREAM("avg scene depth: " << currentFrame().avgSceneDepth);
 
 
 	//check the number of 2d features in the current frame
@@ -362,6 +366,7 @@ void VIO::readROSParameters()
 	ros::param::param<double>("~average_scene_depth", START_SCENE_DEPTH, DEFAULT_SCENE_DEPTH);
 
 	ros::param::param<int>("~max_keyframes", MAX_KEYFRAMES, DEFAULT_MAX_KEYFRAMES);
+	ros::param::param<double>("~new_keyframe_ratio", NEW_KEYFRAME_RATIO, DEFAULT_NEW_KEYFRAME_RATIO);
 }
 
 /*

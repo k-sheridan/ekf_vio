@@ -82,3 +82,83 @@ void Point::initializePoint(tf::Transform transform, Feature* ft, double start_d
 
 	//this->_initialized = true;
 }
+
+
+/*
+ * adapted from SVO, Forster et al
+ * this performs structure only bundle adjustment on this point using all keyframes still in the buffer
+ *
+ * This function uses the gauss newton optimization method to find the optimal 3d point for a set of keyframes
+ */
+void Point::SBA(int iterations)
+{
+	Eigen::Vector3d old_point = this->pos;
+	double chi2 = 0.0;
+	Eigen::Matrix3d A;
+	Eigen::Vector3d b;
+
+	//this bock assumes that there are no observations which point to an out of buffer frame
+	std::vector<Feature*> vertices;
+	vertices.push_back(this->_observations.front()); // push the first observation onto the vector
+	for(auto e : this->_observations)
+	{
+		if(e->frame->isKeyframe)
+		{
+			vertices.push_back(e);
+			ROS_DEBUG_STREAM("added a keyframe to the SBA problem");
+		}
+	}
+
+	if(vertices.size() < 2){
+		ROS_DEBUG_STREAM("NOT ENOUGH KEYFRAMES FOR SBA PROBLEM TO SOLVE");
+	}
+
+	for(size_t i = 0; i < iterations; i++)
+	{
+		A.setZero();
+		b.setZero();
+		double new_chi2 = 0.0;
+
+		// compute residuals
+		for(auto it = vertices.begin(); it != vertices.end(); ++it)
+		{
+			Matrix23d J;
+			const Eigen::Vector3d p_in_f((*it)->frame->transform_frame_to_world * this->pos); // the 3d point projected into this keyframe's coordinate system
+
+			Point::jacobian_xyz2uv(p_in_f, (*it)->frame->transform_frame_to_world.rotation(), J); // this gets the jacobian of the projection function
+
+			const Eigen::Vector2d e((*it)->getUndistortedMeasurement() - Point::toPixel(p_in_f)); // this is the pixel error of this point
+
+			new_chi2 += e.squaredNorm(); // add the pixel error to chi
+
+			A.noalias() += J.transpose() * J; //add this observation to this iteration's problem
+			b.noalias() -= J.transpose() * e;
+		}
+
+
+		// solve linear system
+		const Eigen::Vector3d dp(A.ldlt().solve(b));
+
+		// check if error increased
+		if((i > 0 && new_chi2 > chi2) || (bool) std::isnan((double)dp[0]))
+		{
+
+			ROS_DEBUG_STREAM("it " << i << "\t FAILURE \t new_chi2 = " << new_chi2);
+			this->pos = old_point; // roll-back
+			break;
+		}
+
+		// update the model
+		Eigen::Vector3d new_point = this->pos + dp;
+		old_point = this->pos;
+		this->pos = new_point;
+		chi2 = new_chi2;
+
+		ROS_DEBUG_STREAM("it " << i << "\t Success \t new_chi2 = " << new_chi2 << "\t norm(b) = " << b.norm());
+
+		// stop when converged
+		if(dp.norm() <= EPS_SBA)
+			break;
+	}
+
+}

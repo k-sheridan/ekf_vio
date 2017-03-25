@@ -54,6 +54,8 @@ public:
 
 	double avgSceneDepth;
 
+	Eigen::Affine3d transform_frame_to_world; // this is a transform which maps a point in the world coordinate frame to a coordinate in the camera frame
+
 	bool finalFrame;
 	bool isKeyframe;
 
@@ -247,6 +249,21 @@ public:
 
 
 	double computeAverageSceneDepth(tf::Transform w2c);
+
+	void static tfTransform2EigenAffine(tf::Transform& in , Eigen::Affine3d& out){
+		for(int i=0; i<3; i++)
+		{
+			out.matrix()(i,3) = in.getOrigin()[i];
+			for(int j=0; j<3; j++)
+			{
+				out.matrix()(i,j) = in.getBasis()[i][j];
+			}
+		}
+		// Fill in identity in last row
+		for (int col = 0 ; col < 3; col ++)
+			out.matrix()(3, col) = 0;
+		out.matrix()(3,3) = 1;
+	};
 
 
 };

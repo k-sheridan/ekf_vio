@@ -87,14 +87,13 @@
 #define DEFAULT_MAX_FUNDAMENTAL_ERROR 5e-7
 #define DEFAULT_MAX_GN_ITERS 10
 #define DEFAULT_SCENE_DEPTH 0.5
-#define DEFAULT_MAX_KEYFRAMES 2
+
+#define DEFAULT_MAX_KEYFRAMES 5
+#define DEFAULT_NEW_KEYFRAME_RATIO 0.15
 
 #define ROBUST_HUBER true
 
 #define PI_OVER_180 0.01745329251
-
-#define MAXIMUM_KEYFRAMES 1
-#define DEFAULT_MINIMUM_KEYFRAME_FEATURE_RATIO 0.6
 
 
 
@@ -120,6 +119,7 @@ public:
 	double MIN_TRIAG_Z;
 
 	int MAX_KEYFRAMES;
+	double NEW_KEYFRAME_RATIO;
 
 	int MAX_GN_ITERS;
 	int MIN_TRIAG_FEATURES;
@@ -235,7 +235,7 @@ public:
 	}
 
 	void motionOnlyBundleAdjustment(Frame& cf);
-	void structureOnlyBundleAdjustment(Frame& cf, KeyFrame& kf);
+	void generalBundleAdjustment(Frame& cf, std::deque<KeyFrame>& kf);
 
 
 
