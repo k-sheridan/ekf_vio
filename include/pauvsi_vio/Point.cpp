@@ -41,26 +41,31 @@ void Point::addObservation(Feature* ft)
 void Point::safelyDeletePoint()
 {
 	ROS_DEBUG_STREAM("deleting point with " << this->observations().size() << " obs");
+	//ROS_ASSERT(this->observations().size() <= 100);
 
+	//pop the first observations because that must have been deleted
+	// if I don't pop the front I will try to write to freed potentially overwritten memory
+	this->_observations.pop_front();
 
-	/*for(auto e : this->observations())
+	for(auto& e : this->observations())
 	{
-		ROS_ASSERT(e != NULL);
-		ROS_ASSERT(e->frame != NULL);
-		if(e != NULL && e->frame->isKeyframe)
+		ROS_DEBUG_STREAM("check feature" << e->id);
+		e->point = NULL; // null the point reference
+
+		if(e->frame->finalFrame) // this is the last frame in the buffer do not search past this point due to potential dangling pointer
 		{
-			ROS_ASSERT(e->frame->linkedKeyframe != NULL);
-			e->frame->linkedKeyframe->numFeatures--; // decrement the feature counter in the keyframe to say that this frame has one less linked feature
+			ROS_DEBUG("breaking out of point deletion dereferencer because the final frame has been passed");
+			break;
 		}
-	}*/
+	}
 
 	ROS_DEBUG_STREAM("point deleting itself");
+
+	deleted = true;
 
 	//peace out delete my self
 	// we had a good run
 	this->theMap->erase(this->thisPoint);
-
-	deleted = true;
 
 	ROS_DEBUG("point deleted");
 }
@@ -106,6 +111,11 @@ void Point::SBA(int iterations)
 		{
 			vertices.push_back(e);
 			ROS_DEBUG_STREAM("added a keyframe to the SBA problem");
+		}
+		if(e->frame->finalFrame) // this is the last frame in the buffer do not search past this point due to potential dangling pointer
+		{
+			ROS_DEBUG("breaking out of keyframe search because the final frame has been passed");
+			break;
 		}
 	}
 

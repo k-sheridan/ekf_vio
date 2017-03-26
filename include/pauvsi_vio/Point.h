@@ -31,6 +31,8 @@ private:
 	double sigma; // the certainty of this point's depth
 	Eigen::Vector3d pos; // this is the world coordinate of the point
 
+
+
 	std::deque<Feature*> _observations; // this is  a list of observations of this 3d point from different frames
 
 
