@@ -41,22 +41,20 @@ void Point::addObservation(Feature* ft)
 void Point::safelyDeletePoint()
 {
 	ROS_DEBUG_STREAM("deleting point with " << this->observations().size() << " obs");
-	//ROS_ASSERT(this->observations().size() <= 100);
+	ROS_ASSERT(this->observations().size() <= 100);
 
-	//pop the first observations because that must have been deleted
-	// if I don't pop the front I will try to write to freed potentially overwritten memory
-	this->_observations.pop_front();
 
 	for(auto& e : this->observations())
 	{
 		ROS_DEBUG_STREAM("check feature" << e->id);
 		e->point = NULL; // null the point reference
 
+		/*
 		if(e->frame->finalFrame) // this is the last frame in the buffer do not search past this point due to potential dangling pointer
 		{
 			ROS_DEBUG("breaking out of point deletion dereferencer because the final frame has been passed");
 			break;
-		}
+		}*/
 	}
 
 	ROS_DEBUG_STREAM("point deleting itself");

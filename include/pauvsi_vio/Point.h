@@ -53,10 +53,20 @@ public:
 		return this->_observations;
 	}
 
+	void forceObservationPopBack()
+	{
+		this->_observations.pop_back();
+	}
+
 	Eigen::Vector3d getWorldCoordinate()
 	{
 		ROS_ASSERT(!deleted);
 		return this->pos;
+	}
+
+	double getSigma()
+	{
+		return sigma;
 	}
 
 	bool isDeleted()

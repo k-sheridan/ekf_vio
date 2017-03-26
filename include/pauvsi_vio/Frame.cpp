@@ -387,6 +387,10 @@ void Frame::cleanUpFeaturesByKillRadius(float killRadius)
 			ROS_DEBUG_STREAM("removing a feature with radius " << feat.radius);
 
 			ROS_ASSERT(feat.point != NULL);
+			//pop the first observations because that must have been deleted
+			// if I don't pop the front I will try to write to freed potentially overwritten memory
+			feat.point->observations().front() = &feat;
+
 			feat.point->safelyDeletePoint(); //delete and dereference point
 		}
 
@@ -411,6 +415,7 @@ void Frame::cleanUpFeaturesByKillRadius(std::vector<Feature>& feats, float killR
 		if(this->getAndSetFeatureRadius(features.at(i), imageCenter) <= killRadius)
 		{
 			cleanFeatures.push_back(features.at(i));
+			//cleanFeatures.back().point->observations().front() = &cleanFeatures.back();
 		}
 		else
 		{

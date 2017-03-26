@@ -117,22 +117,22 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 	// pop back if que is longer than the size
 	if(this->frameBuffer.size() > this->FRAME_BUFFER_LENGTH)
 	{
-		/*
+
 		//remove any reference
 		for(auto& e : this->frameBuffer.back().features)
 		{
-			if(e.point != NULL && !e.point->isDeleted())
+			if(e.point != NULL)
 			{
-				ROS_DEBUG_STREAM("removing the point's final observation");
+				ROS_DEBUG_STREAM("removing the point's final observation sigma: " << e.point->getSigma());
 				//i can't make this assertion because it appears that the point was deleted
 				ROS_ASSERT(e.point->observations().back()->frame == &this->frameBuffer.back());
-				e.point->observations().pop_back(); // remove references to this feature in its linked 3d point's observations
+				e.point->forceObservationPopBack(); // remove references to this feature in its linked 3d point's observations
 			}
 			else
 			{
 				ROS_DEBUG_STREAM("point was null skipping");
 			}
-		}*/
+		}
 
 		this->frameBuffer.pop_back();
 
