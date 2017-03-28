@@ -57,9 +57,6 @@
 #include "KeyFrame.h"
 
 
-#define SUPER_DEBUG true
-
-
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
 #define DEFAULT_IMU_TOPIC "/IMU_Full"
 #define DEFAULT_FAST_THRESHOLD 50
