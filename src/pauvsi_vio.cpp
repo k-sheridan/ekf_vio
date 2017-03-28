@@ -1,6 +1,7 @@
 #include <ros/ros.h>
 #include "pauvsi_vio/vio.h"
 
+//#define ROSCONSOLE_MIN_SEVERITY ROSCONSOLE_SEVERITY_INFO
 
 int main(int argc, char **argv)
 {

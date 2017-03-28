@@ -8,6 +8,8 @@
 #ifndef PAUVSI_M7_PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIOSTATE_HPP_
 #define PAUVSI_M7_PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIOSTATE_HPP_
 
+#include "config.h"
+
 #include <eigen3/Eigen/Geometry>
 #include <iostream>
 #include <sensor_msgs/Imu.h>

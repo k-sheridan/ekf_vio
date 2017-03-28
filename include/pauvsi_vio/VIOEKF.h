@@ -8,6 +8,8 @@
 #ifndef PAUVSI_M7_PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIOEKF_H_
 #define PAUVSI_M7_PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIOEKF_H_
 
+#include "config.h"
+
 #include <vector>
 #include <string>
 #include <ros/ros.h>

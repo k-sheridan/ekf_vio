@@ -8,6 +8,8 @@
 #ifndef PAUVSI_VIO_INCLUDE_VIO_H_
 #define PAUVSI_VIO_INCLUDE_VIO_H_
 
+#include "config.h"
+
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/features2d.hpp>

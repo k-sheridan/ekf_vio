@@ -77,7 +77,7 @@ void VIO::cameraCallback(const sensor_msgs::ImageConstPtr& img, const sensor_msg
 	this->run();
 
 	//get the run time
-	ROS_DEBUG_STREAM((ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime");
+	ROS_INFO_STREAM((ros::Time::now().toSec() - start.toSec()) * 1000 << " milliseconds runtime");
 
 	//this->viewImage(this->currentFrame());
 }

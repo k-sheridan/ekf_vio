@@ -1,0 +1,15 @@
+/*
+ * config.h
+ *
+ *  Created on: Mar 28, 2017
+ *      Author: kevin
+ */
+
+#ifndef PAUVSI_VIO_INCLUDE_PAUVSI_VIO_CONFIG_H_
+#define PAUVSI_VIO_INCLUDE_PAUVSI_VIO_CONFIG_H_
+
+
+#define ROSCONSOLE_MIN_SEVERITY ROSCONSOLE_SEVERITY_INFO
+
+
+#endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_CONFIG_H_ */

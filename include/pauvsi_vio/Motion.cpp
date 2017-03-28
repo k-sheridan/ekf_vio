@@ -44,7 +44,7 @@ void VIO::updateKeyFrameInfo() {
 			keyFrames.front().frame->isKeyframe = true;
 
 			// optimize the position of each point in the frame currently
-			ROS_DEBUG("PERFORMING BA ON ALL POINTS");
+			ROS_INFO("PERFORMING BA ON ALL POINTS");
 			for(auto e : currentFrame().features)
 			{
 				e.point->SBA(10);
@@ -86,7 +86,7 @@ VIOState VIO::transformState(VIOState x, tf::Transform trans) {
 void VIO::optimizePose(int iterations)
 {
 
-	ROS_DEBUG("SETTING UP MOTION ONLY BA");
+	ROS_INFO("SETTING UP MOTION ONLY BA");
 
 	g2o::SparseOptimizer optimizer; // this is the g2o optimizer which ultimately solves the problem
 	optimizer.setVerbose(true); // set the verbosity of the optimizer

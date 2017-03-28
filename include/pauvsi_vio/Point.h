@@ -10,6 +10,8 @@
 
 #include <eigen3/Eigen/Geometry>
 
+#include "config.h"
+
 #include "Feature.h"
 #include "KeyFrame.h"
 
