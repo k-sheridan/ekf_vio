@@ -102,7 +102,7 @@ void Point::SBA(int iterations)
 
 	//this bock assumes that there are no observations which point to an out of buffer frame
 	std::vector<Feature*> vertices;
-	vertices.push_back(this->_observations.front()); // push the first observation onto the vector
+
 	for(auto e : this->_observations)
 	{
 		if(e->frame->isKeyframe)
@@ -119,7 +119,10 @@ void Point::SBA(int iterations)
 
 	if(vertices.size() < 2){
 		ROS_DEBUG_STREAM("NOT ENOUGH KEYFRAMES FOR SBA PROBLEM TO SOLVE");
+		return;
 	}
+
+	ROS_DEBUG_STREAM("point before: " << this->pos);
 
 	for(size_t i = 0; i < iterations; i++)
 	{
@@ -162,11 +165,15 @@ void Point::SBA(int iterations)
 		this->pos = new_point;
 		chi2 = new_chi2;
 
+		ROS_DEBUG_STREAM("point between " << new_point);
+
 		ROS_DEBUG_STREAM("it " << i << "\t Success \t new_chi2 = " << new_chi2 << "\t norm(b) = " << b.norm());
 
 		// stop when converged
 		if(dp.norm() <= EPS_SBA)
 			break;
 	}
+
+	ROS_DEBUG_STREAM("point after: " << this->pos);
 
 }

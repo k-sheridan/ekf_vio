@@ -61,7 +61,7 @@
 #define DEFAULT_CAMERA_TOPIC "/camera/image"
 #define DEFAULT_IMU_TOPIC "/IMU_Full"
 #define DEFAULT_FAST_THRESHOLD 50
-#define DEFAULT_2D_KILL_RADIUS 210
+#define DEFAULT_2D_KILL_RADIUS 205
 #define DEFAULT_FEATURE_SIMILARITY_THRESHOLD 10
 #define DEFAULT_MIN_EIGEN_VALUE 1e-4
 #define DEFAULT_NUM_FEATURES 50
@@ -89,7 +89,7 @@
 #define DEFAULT_SCENE_DEPTH 0.5
 
 #define DEFAULT_MAX_KEYFRAMES 5
-#define DEFAULT_NEW_KEYFRAME_RATIO 0.15
+#define DEFAULT_NEW_KEYFRAME_RATIO 0.10
 
 #define ROBUST_HUBER true
 
@@ -118,6 +118,7 @@ public:
 	double MAX_TRIAG_ERROR;
 	double MIN_TRIAG_Z;
 
+
 	int MAX_KEYFRAMES;
 	double NEW_KEYFRAME_RATIO;
 
@@ -133,6 +134,10 @@ public:
 	std::string ACTIVE_FEATURES_TOPIC;
 
 	typedef Eigen::Matrix<double, 3, 4> Matrix3x4d;
+
+	typedef Eigen::Matrix<double,6,6> Matrix6d;
+	typedef Eigen::Matrix<double,2,6> Matrix26d;
+	typedef Eigen::Matrix<double,6,1> Vector6d;
 
 	//frames
 	std::string imu_frame;
@@ -214,6 +219,7 @@ public:
 
 	void drawKeyFrames();
 
+	void publishPoints();
 
 
 
@@ -234,8 +240,12 @@ public:
 		return abs(p2.x - p1.x) + abs(p2.y - p1.y);
 	}
 
+	/*
 	void motionOnlyBundleAdjustment(Frame& cf);
 	void generalBundleAdjustment(Frame& cf, std::deque<KeyFrame>& kf);
+	*/
+
+	void optimizePose(int iterations);
 
 
 

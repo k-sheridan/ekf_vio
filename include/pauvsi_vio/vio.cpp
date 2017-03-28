@@ -124,6 +124,7 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 			if(e.point != NULL)
 			{
 				ROS_DEBUG_STREAM("removing the point's final observation sigma: " << e.point->getSigma());
+				ROS_ASSERT(e.point->getSigma() == 1000);
 				//i can't make this assertion because it appears that the point was deleted
 				ROS_ASSERT(e.point->observations().back()->frame == &this->frameBuffer.back());
 				e.point->forceObservationPopBack(); // remove references to this feature in its linked 3d point's observations
@@ -140,6 +141,50 @@ void VIO::setCurrentFrame(cv::Mat img, ros::Time t)
 
 	this->frameBuffer.back().finalFrame = true;
 
+}
+
+
+void VIO::publishPoints()
+{
+	if(this->PUBLISH_ACTIVE_FEATURES)
+	{
+
+		sensor_msgs::PointCloud pc;
+
+		std::vector<geometry_msgs::Point32> point;
+		std::vector<sensor_msgs::ChannelFloat32> colors;
+
+		pc.header.frame_id = this->world_frame;
+
+		for(auto& pt_map : this->feature_tracker.map)
+		{
+			//debugFeature(this->active3DFeatures.at(i));
+
+			std::vector<float> intensity;
+			sensor_msgs::ChannelFloat32 c;
+
+			intensity.push_back(255);
+			//intensity.push_back(this->active3DFeatures.at(i).color[1]);
+			//intensity.push_back(this->active3DFeatures.at(i).color[2]);
+
+			c.values = intensity;
+			c.name = "intensity";
+
+			geometry_msgs::Point32 pt;
+			pt.x = pt_map.getWorldCoordinate().x();
+			pt.y = pt_map.getWorldCoordinate().y();
+			pt.z = pt_map.getWorldCoordinate().z();
+
+			point.push_back(pt);
+			colors.push_back(c);
+
+		}
+
+		pc.points = point;
+		pc.channels = colors;
+
+		this->featurePub.publish(pc);
+	}
 }
 
 /*
@@ -192,7 +237,7 @@ void VIO::run()
 	if(currentFrame().features.size()) {currentFrame().computeAverageSceneDepth(w2c);} // if the current frame has features
 
 	this->updateKeyFrameInfo(); // finally update the keyframe list
-	//ROS_DEBUG_STREAM("avg scene depth: " << currentFrame().avgSceneDepth);
+	ROS_DEBUG_STREAM("avg scene depth: " << currentFrame().avgSceneDepth);
 
 
 	//check the number of 2d features in the current frame
@@ -219,6 +264,9 @@ void VIO::run()
 			it->point->thisPoint = --feature_tracker.map.end(); // give the point its iterator in the map
 
 			it->point->initializePoint(c2w, &(*it), currentFrame().avgSceneDepth); // initialize this 3d point with the avg or default depth of the current frame
+
+			//ROS_DEBUG_STREAM("new point pos: " << it->point->getWorldCoordinate());
+			//ROS_DEBUG_STREAM("pixel: " << it->getUndistortedMeasurement() << " projected " << it->point->toPixel(it->frame->transform_frame_to_world * it->point->getWorldCoordinate()));
 		}
 
 
@@ -239,6 +287,8 @@ void VIO::run()
 	//this->updateKeyFrameInfo();
 	this->drawKeyFrames();
 #endif
+
+	publishPoints();
 }
 
 

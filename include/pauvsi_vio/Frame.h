@@ -98,6 +98,7 @@ public:
 		return ros::Time::now().toSec() - this->timeImageCreated.toSec();
 	}
 
+
 	bool addFeature(cv::KeyPoint _corner);
 
 	bool addFeature(Feature feat);

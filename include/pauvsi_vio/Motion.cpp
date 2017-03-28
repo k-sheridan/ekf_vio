@@ -40,9 +40,15 @@ void VIO::updateKeyFrameInfo() {
 
 		if(keyFrameRatio >= NEW_KEYFRAME_RATIO)
 		{
-			ROS_DEBUG_STREAM("creating new keyframe with ratio: " << keyFrameRatio);
 			keyFrames.push_front(KeyFrame(&currentFrame(), currentFrame().features.size())); // in the case f no keyframes use the current frame
 			keyFrames.front().frame->isKeyframe = true;
+
+			// optimize the position of each point in the frame currently
+			ROS_DEBUG("PERFORMING BA ON ALL POINTS");
+			for(auto e : currentFrame().features)
+			{
+				e.point->SBA(10);
+			}
 		}
 
 	}
@@ -73,10 +79,14 @@ VIOState VIO::transformState(VIOState x, tf::Transform trans) {
 	return x;
 }
 
+
 /*
- * structure only bundle adjustment between two frames
+ * motion only bundle adjustment
  */
-void VIO::motionOnlyBundleAdjustment(Frame& cf) {
+void VIO::optimizePose(int iterations)
+{
+
+
 	g2o::SparseOptimizer optimizer; // this is the g2o optimizer which ultimately solves the problem
 	optimizer.setVerbose(true); // set the verbosity of the optimizer
 
@@ -107,25 +117,7 @@ void VIO::motionOnlyBundleAdjustment(Frame& cf) {
 		ROS_WARN_STREAM(e.what());
 	}
 
-	VIOState x_currentfFrame = transformState(cf.state, b2c);
-
-	//VIOState x_keyFrame = transformState(kf.frame->state, b2c);
-
-	//ROS_DEBUG_STREAM_ONCE("dx of b2c: " << b2c.getOrigin().getX());
-	//double baseline_val = (cf.state.getr() - kf.frame->state.getr()).norm(); // this is the estimated distance between the two frames
-	//g2o::VertexSCam::setKcam(1.0, 1.0, 0.0, 0.0, baseline_val); // set up the camera parameters
-
-	// setup vertex 1 aka keyFrame1
-	//const int KEYFRAME_VERTEX_ID = 0;
-
-	//g2o::VertexSE3Expmap * kf_vertex = new g2o::VertexSE3Expmap(); // create a new vertex for this frame;
-
-	//kf_vertex->setId(KEYFRAME_VERTEX_ID); // the id of the first keyframe is 0
-
-	//kf_vertex->setEstimate(g2o::SE3Quat(x_keyFrame.getQuaternion(), x_keyFrame.getr())); // set the estimate of this frame
-	//kf_vertex->setFixed(true); // the keyframe's position is fixed
-
-	//optimizer.addVertex(kf_vertex); // add this vertex to the optimizer
+	VIOState x_currentfFrame = transformState(currentFrame().state, b2c);
 
 	//setup vertex 2 aka current Frame
 	const int CURRENTFRAME_VERTEX_ID = 0;
@@ -147,13 +139,51 @@ void VIO::motionOnlyBundleAdjustment(Frame& cf) {
 	int point_id = POINTS_STARTING_ID; // start the next vertex ids from 2
 	int number_of_points = 0;
 
-	ROS_DEBUG("camera vertices have been setup");
+	ROS_DEBUG("camera vertex has been setup");
 	// setup the rest of the graph optimization problem
 	//TODO setup points
 
 	for(auto& ft : currentFrame().features)
 	{
+		//skip this feature if point is NULL
+		if(ft.point == NULL)
+		{
+			continue;
+		}
 
+
+		g2o::VertexSBAPointXYZ * v_p = new g2o::VertexSBAPointXYZ(); // create a vertex for this 3d point
+
+		v_p->setId(point_id); // set the vertex's id
+		v_p->setMarginalized(true);
+		v_p->setFixed(true);
+		v_p->setEstimate(ft.point->getWorldCoordinate()); // set the initial estimate
+
+		number_of_points++;
+
+		optimizer.addVertex(v_p); // add this point to the problem
+		ROS_DEBUG_STREAM("added this 3d point: " << v_p->estimate() << " with dimension " << v_p->Dimension);
+		ROS_DEBUG_STREAM("supposed to be " << ft.point->getWorldCoordinate());
+
+		// now we must set up the edges between these three vertices
+		g2o::EdgeProjectXYZ2UV * e1 = new g2o::EdgeProjectXYZ2UV(); // here is the first edge
+
+		e1->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(v_p)); // set the 3d point
+		e1->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(cf_vertex)); // set the camera
+		e1->setMeasurement(ft.getUndistortedMeasurement()); //[u, v]
+		e1->setParameterId(0, 0); // set this edge to the camera params
+
+		if(ROBUST_HUBER)
+		{
+			g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+			//TODO set the huber delta for each edge
+			ROS_DEBUG_STREAM("huber width: " << rk->delta());
+			e1->setRobustKernel(rk);
+		}
+
+		optimizer.addEdge(e1); // finally add the edge
+
+		point_id++;
 	}
 
 
@@ -162,7 +192,8 @@ void VIO::motionOnlyBundleAdjustment(Frame& cf) {
 	ROS_WARN_STREAM_COND(!initStatus, "something went wrong when initializing the bundle adjustment problem");
 	ROS_DEBUG("initilized g2o");
 
-	//optimizer.setVerbose(true);
+	optimizer.setVerbose(true);
+
 
 
 }
