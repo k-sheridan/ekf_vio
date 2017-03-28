@@ -96,6 +96,7 @@ void Point::initializePoint(tf::Transform transform, Feature* ft, double start_d
 void Point::SBA(int iterations)
 {
 	Eigen::Vector3d old_point = this->pos;
+	Eigen::Vector3d original = this->pos;
 	double chi2 = 0.0;
 	Eigen::Matrix3d A;
 	Eigen::Vector3d b;
@@ -173,6 +174,21 @@ void Point::SBA(int iterations)
 		if(dp.norm() <= EPS_SBA)
 			break;
 	}
+
+	//compute the depth to the current frame
+
+	double depth = (vertices.back()->frame->transform_frame_to_world * this->pos).z();
+
+	if(depth > DEFAULT_MIN_POINT_Z && depth < DEFAULT_MAX_POINT_Z && chi2 != 0.0)
+	{
+		ROS_DEBUG_STREAM("GOOD POINT DEPTH: "  << depth);
+		this->sigma = chi2 / vertices.size();
+	}
+	else
+	{
+		this->pos = original;
+	}
+
 
 	ROS_DEBUG_STREAM("point after: " << this->pos);
 

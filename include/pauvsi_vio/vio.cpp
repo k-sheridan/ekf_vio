@@ -334,6 +334,8 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 
 		//NEXT
 		//We must predict motion
+		//this will optimize the pose of the current frame using 3d point observations
+		this->optimizePose(10);
 
 
 		//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate
@@ -419,7 +421,6 @@ void VIO::readROSParameters()
 	ros::param::param<int>("~frame_buffer_length", FRAME_BUFFER_LENGTH, DEFAULT_FRAME_BUFFER_LENGTH);
 
 	ros::param::param<double>("~max_triangulation_error", MAX_TRIAG_ERROR, DEFAULT_MAX_TRIAG_ERROR);
-	ros::param::param<double>("~min_triangulation_z", MIN_TRIAG_Z, DEFAULT_MIN_TRIAG_Z);
 
 	ros::param::param<double>("~ideal_fundamental_matrix_pxl_delta", IDEAL_FUNDAMENTAL_PXL_DELTA, DEFAULT_IDEAL_FUNDAMENTAL_PXL_DELTA);
 	ros::param::param<double>("~min_fundamental_matrix_pxl_delta", MIN_FUNDAMENTAL_PXL_DELTA, DEFAULT_MIN_FUNDAMENTAL_PXL_DELTA);
@@ -433,6 +434,11 @@ void VIO::readROSParameters()
 
 	ros::param::param<int>("~max_keyframes", MAX_KEYFRAMES, DEFAULT_MAX_KEYFRAMES);
 	ros::param::param<double>("~new_keyframe_ratio", NEW_KEYFRAME_RATIO, DEFAULT_NEW_KEYFRAME_RATIO);
+
+	ros::param::param<double>("~max_point_sigma", MAX_POINT_SIGMA, DEFAULT_MAX_POINT_SIGMA);
+
+	//ros::param::param<double>("~min_point_z", MIN_POINT_Z, DEFAULT_MIN_POINT_Z);
+	//ros::param::param<double>("~max_point_z", MAX_POINT_Z, DEFAULT_MAX_POINT_Z);
 }
 
 /*

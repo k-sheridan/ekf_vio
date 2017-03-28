@@ -13,6 +13,9 @@
 #include "Feature.h"
 #include "KeyFrame.h"
 
+#define DEFAULT_MIN_POINT_Z 0.02
+#define DEFAULT_MAX_POINT_Z 10
+
 #define DEFAULT_STARTING_SIGMA 1000
 
 #define EPS_SBA 0.0000000001

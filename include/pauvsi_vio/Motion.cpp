@@ -86,6 +86,7 @@ VIOState VIO::transformState(VIOState x, tf::Transform trans) {
 void VIO::optimizePose(int iterations)
 {
 
+	ROS_DEBUG("SETTING UP MOTION ONLY BA");
 
 	g2o::SparseOptimizer optimizer; // this is the g2o optimizer which ultimately solves the problem
 	optimizer.setVerbose(true); // set the verbosity of the optimizer
@@ -146,7 +147,7 @@ void VIO::optimizePose(int iterations)
 	for(auto& ft : currentFrame().features)
 	{
 		//skip this feature if point is NULL
-		if(ft.point == NULL)
+		if(ft.point == NULL || ft.point->getSigma() > MAX_POINT_SIGMA)
 		{
 			continue;
 		}
@@ -186,6 +187,12 @@ void VIO::optimizePose(int iterations)
 		point_id++;
 	}
 
+	if(point_id < 3)
+	{
+		ROS_DEBUG("too few good 3d points for motion only BA");
+		return;
+	}
+
 
 	ROS_DEBUG("preparing to initilize g2o");
 	bool initStatus = optimizer.initializeOptimization(); // set up the problem for optimization
@@ -193,6 +200,8 @@ void VIO::optimizePose(int iterations)
 	ROS_DEBUG("initilized g2o");
 
 	optimizer.setVerbose(true);
+
+
 
 
 
