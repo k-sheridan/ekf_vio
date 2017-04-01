@@ -86,12 +86,12 @@
 #define DEFAULT_MAX_GN_ITERS 10
 #define DEFAULT_SCENE_DEPTH 0.5
 
-#define DEFAULT_MAX_POINT_SIGMA 0.03
+#define DEFAULT_MAX_POINT_SIGMA 0.01
 
 #define DEFAULT_MAX_KEYFRAMES 5
 #define DEFAULT_NEW_KEYFRAME_RATIO 0.10
 
-#define ROBUST_HUBER true
+#define ROBUST_HUBER false
 
 #define PI_OVER_180 0.01745329251
 
@@ -245,7 +245,8 @@ public:
 	void generalBundleAdjustment(Frame& cf, std::deque<KeyFrame>& kf);
 	*/
 
-	void optimizePose(int iterations);
+	void optimizePose(int iterations, VIOState initialGuess);
+	void optimizePoseG2O(int iterations, VIOState initialGuess);
 
 
 

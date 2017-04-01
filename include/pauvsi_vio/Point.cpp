@@ -101,6 +101,9 @@ void Point::SBA(int iterations)
 	Eigen::Matrix3d A;
 	Eigen::Vector3d b;
 
+	bool failed = false;
+	int failIter = 0;
+
 	//this bock assumes that there are no observations which point to an out of buffer frame
 	std::vector<Feature*> vertices;
 
@@ -143,6 +146,10 @@ void Point::SBA(int iterations)
 
 			new_chi2 += e.squaredNorm(); // add the pixel error to chi
 
+#if SUPER_DEBUG
+			ROS_DEBUG_STREAM("error at vertex " << e.squaredNorm());
+#endif
+
 			A.noalias() += J.transpose() * J; //add this observation to this iteration's problem
 			b.noalias() -= J.transpose() * e;
 		}
@@ -154,7 +161,8 @@ void Point::SBA(int iterations)
 		// check if error increased
 		if((i > 0 && new_chi2 > chi2) || (bool) std::isnan((double)dp[0]))
 		{
-
+			failed = true;
+			failIter = i;
 			ROS_DEBUG_STREAM("it " << i << "\t FAILURE \t new_chi2 = " << new_chi2);
 			this->pos = old_point; // roll-back
 			break;
@@ -179,10 +187,11 @@ void Point::SBA(int iterations)
 
 	double depth = (vertices.back()->frame->transform_frame_to_world * this->pos).z();
 
-	if(depth > DEFAULT_MIN_POINT_Z && depth < DEFAULT_MAX_POINT_Z && chi2 != 0.0)
+	if(!(failed && failIter < 2) && depth > DEFAULT_MIN_POINT_Z && depth < DEFAULT_MAX_POINT_Z && chi2 != 0.0)
 	{
 		ROS_DEBUG_STREAM("GOOD POINT DEPTH: "  << depth);
 		this->sigma = chi2 / vertices.size();
+		ROS_DEBUG_STREAM("new sigma: " << this->sigma);
 	}
 	else
 	{

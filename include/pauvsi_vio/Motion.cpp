@@ -55,15 +55,13 @@ void VIO::updateKeyFrameInfo() {
 }
 
 tf::Transform VIO::cameraTransformFromState(VIOState x, tf::Transform b2c) {
-	return tf::Transform(x.getTFQuaternion(), tf::Vector3(x.x(), x.y(), x.z()))
-	* b2c;
+	return tf::Transform(x.getTFQuaternion(), tf::Vector3(x.x(), x.y(), x.z())) * b2c;
 }
 
 VIOState VIO::transformState(VIOState x, tf::Transform trans) {
-	tf::Transform tf_base = tf::Transform(
-			tf::Quaternion(x.q1(), x.q2(), x.q3(), x.q0()),
-			tf::Vector3(x.x(), x.y(), x.z()));
-	tf::Transform transformed = tf_base * trans;
+	tf::Transform transformed = cameraTransformFromState(x, trans);
+
+	ROS_DEBUG_STREAM("cameraTransform from inside " << transformed.getOrigin().x() << ", " << transformed.getOrigin().y() << ", " << transformed.getOrigin().z());
 
 	tf::Quaternion newQ = transformed.getRotation();
 
@@ -80,13 +78,21 @@ VIOState VIO::transformState(VIOState x, tf::Transform trans) {
 }
 
 
+void VIO::optimizePose(int iterations, VIOState initialGuess)
+{
+
+}
+
 /*
  * motion only bundle adjustment
+ * This seems to fail.
  */
-void VIO::optimizePose(int iterations)
+void VIO::optimizePoseG2O(int iterations, VIOState initialGuess)
 {
 
 	ROS_INFO("SETTING UP MOTION ONLY BA");
+
+	ROS_DEBUG_STREAM("given guess: " << initialGuess.getr());
 
 	g2o::SparseOptimizer optimizer; // this is the g2o optimizer which ultimately solves the problem
 	optimizer.setVerbose(true); // set the verbosity of the optimizer
@@ -118,7 +124,7 @@ void VIO::optimizePose(int iterations)
 		ROS_WARN_STREAM(e.what());
 	}
 
-	VIOState x_currentfFrame = transformState(currentFrame().state, b2c);
+	VIOState x_currentfFrame = transformState(initialGuess, b2c);
 
 	//setup vertex 2 aka current Frame
 	const int CURRENTFRAME_VERTEX_ID = 0;
@@ -126,6 +132,8 @@ void VIO::optimizePose(int iterations)
 	g2o::VertexSE3Expmap * cf_vertex = new g2o::VertexSE3Expmap(); // create a new vertex for this frame;
 
 	cf_vertex->setId(CURRENTFRAME_VERTEX_ID); // the id of the first current frame is 1
+
+	ROS_DEBUG_STREAM("current pos guess " << x_currentfFrame.getr());
 
 	cf_vertex->setEstimate(g2o::SE3Quat(x_currentfFrame.getQuaternion(), x_currentfFrame.getr())); // set the estimate of this frame
 	// if this is structure only the vertex is fixed
@@ -163,8 +171,7 @@ void VIO::optimizePose(int iterations)
 		number_of_points++;
 
 		optimizer.addVertex(v_p); // add this point to the problem
-		ROS_DEBUG_STREAM("added this 3d point: " << v_p->estimate() << " with dimension " << v_p->Dimension);
-		ROS_DEBUG_STREAM("supposed to be " << ft.point->getWorldCoordinate());
+		ROS_DEBUG_STREAM("added this 3d point: " << v_p->estimate());
 
 		// now we must set up the edges between these three vertices
 		g2o::EdgeProjectXYZ2UV * e1 = new g2o::EdgeProjectXYZ2UV(); // here is the first edge
@@ -182,10 +189,21 @@ void VIO::optimizePose(int iterations)
 			e1->setRobustKernel(rk);
 		}
 
+#if SUPER_DEBUG
+		Eigen::Affine3d _tf;
+		tf::Transform temp = cameraTransformFromState(initialGuess, b2c);
+		currentFrame().tfTransform2EigenAffine(temp, _tf);
+
+		//ROS_DEBUG_STREAM("my chi: " << (ft.point->toPixel(_tf * ft.point->getWorldCoordinate()) - ft.getUndistortedMeasurement()).squaredNorm());
+		ROS_DEBUG_STREAM("my chi: " << (ft.point->toPixel(lastFrame().transform_frame_to_world * ft.point->getWorldCoordinate()) - ft.getUndistortedMeasurement()).squaredNorm());
+		ROS_DEBUG_STREAM("point's sigma " << ft.point->getSigma());
+#endif
+
 		optimizer.addEdge(e1); // finally add the edge
 
 		point_id++;
 	}
+
 
 	if(point_id < 3)
 	{
@@ -193,16 +211,19 @@ void VIO::optimizePose(int iterations)
 		return;
 	}
 
-
+	optimizer.setVerbose(true);
 	ROS_DEBUG("preparing to initilize g2o");
 	bool initStatus = optimizer.initializeOptimization(); // set up the problem for optimization
+	optimizer.computeActiveErrors(); // compute the current errors
 	ROS_WARN_STREAM_COND(!initStatus, "something went wrong when initializing the bundle adjustment problem");
 	ROS_DEBUG("initilized g2o");
 
-	optimizer.setVerbose(true);
 
-
-
+	ROS_DEBUG_STREAM("pos before " << cf_vertex->estimate().translation());
+	ROS_DEBUG_STREAM("BEGINNING MOTION ONLY OPTIMIZATION - INITIAL ERROR: " << optimizer.activeChi2());
+	optimizer.optimize(iterations);
+	ROS_DEBUG_STREAM("ERROR AFTER OPTIMIZATION: " << optimizer.activeChi2());
+	ROS_DEBUG_STREAM("pos after " << cf_vertex->estimate().translation());
 
 
 }

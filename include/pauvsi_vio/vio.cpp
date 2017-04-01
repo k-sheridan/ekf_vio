@@ -231,6 +231,8 @@ void VIO::run()
 	tf::Transform c2w = cameraTransformFromState(currentFrame().state, b2c); // get the camera to world transform
 	tf::Transform w2c = c2w.inverse(); // invert the transform
 
+	ROS_DEBUG_STREAM("cameraTransform " << c2w.getOrigin().x() << ", " << c2w.getOrigin().y() << ", " << c2w.getOrigin().z());
+
 	currentFrame().tfTransform2EigenAffine(w2c, currentFrame().transform_frame_to_world); // add the frame to world transform that was computed to the frame as an affine transform
 
 	currentFrame().avgSceneDepth = START_SCENE_DEPTH;
@@ -335,7 +337,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 		//NEXT
 		//We must predict motion
 		//this will optimize the pose of the current frame using 3d point observations
-		this->optimizePose(10);
+		this->optimizePoseG2O(10, pred);
 
 
 		//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate
