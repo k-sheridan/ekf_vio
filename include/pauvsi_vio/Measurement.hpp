@@ -22,6 +22,11 @@ public:
 		z = z_;
 		covariance = cov;
 	}
+
+	Measurement()
+	{
+
+	}
 };
 
 

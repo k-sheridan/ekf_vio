@@ -310,6 +310,11 @@ void static tfTransform2SE3(tf::Transform in , Sophus::SE3d& out){
 
 }
 
+tf::Transform static SE32tfTransform(Sophus::SE3d& in){
+	return tf::Transform(tf::Quaternion(in.unit_quaternion().x(), in.unit_quaternion().y(), in.unit_quaternion().z(), in.unit_quaternion().w()),
+			tf::Vector3(in.translation().x(), in.translation().y(), in.translation().z()));
+}
+
 
 
 };

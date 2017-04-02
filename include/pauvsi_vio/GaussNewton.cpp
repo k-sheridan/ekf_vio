@@ -11,9 +11,11 @@
  * motion only bundle adjustment using gauss newton
  * Adapted from SVO, Forster et al.
  */
-bool VIO::optimizePose(int iterations, VIOState initialGuess)
+bool VIO::optimizePose(int iterations, VIOState initialGuess, Measurement& z)
 {
 	ROS_INFO("SETTING UP MOTION ONLY BA");
+
+	ROS_DEBUG_STREAM("initial position guess: " << initialGuess.x() << ", " << initialGuess.y() << ", " << initialGuess.z());
 
 	Frame& frame = currentFrame();
 
@@ -113,6 +115,27 @@ bool VIO::optimizePose(int iterations, VIOState initialGuess)
 	}
 
 	ROS_DEBUG_STREAM("optimized trans " << currentGuess.translation());
+
+	tf::Transform w2b_est = Frame::SE32tfTransform(currentGuess).inverse() * b2c.inverse();
+
+	Eigen::Matrix<double, 7, 1> val; // x, y, z, q0, q1, q2, q3
+	Eigen::Matrix<double, 7, 7> covariance;
+
+	tf::Quaternion q = w2b_est.getRotation();
+	val(0) = w2b_est.getOrigin().x();
+	val(1) = w2b_est.getOrigin().y();
+	val(2) = w2b_est.getOrigin().z();
+	val(3) = q.w();
+	val(4) = q.x();
+	val(5) = q.y();
+	val(6) = q.z();
+
+	covariance = 1000 * chi2 *  Eigen::MatrixXd::Identity(7, 7);
+
+	z = Measurement(val, covariance);
+	z.t = initialGuess.getTime();
+
+	ROS_DEBUG_STREAM("optimized position final: " << val(0) << ", " << val(1) << ", " << val(2));
 
 	return true;
 }

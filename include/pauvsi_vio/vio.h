@@ -250,7 +250,7 @@ public:
 	void generalBundleAdjustment(Frame& cf, std::deque<KeyFrame>& kf);
 	*/
 
-	bool optimizePose(int iterations, VIOState initialGuess);
+	bool optimizePose(int iterations, VIOState initialGuess, Measurement& z);
 	void optimizePoseG2O(int iterations, VIOState initialGuess);
 
 
