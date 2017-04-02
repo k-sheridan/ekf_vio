@@ -7,103 +7,259 @@
 
 #include "vio.h"
 
-void exponential_map(const cv::Mat &v, cv::Mat dt, cv::Mat dR)
+/*
+ * motion only bundle adjustment using gauss newton
+ * Adapted from SVO, Forster et al.
+ */
+bool VIO::optimizePose(int iterations, VIOState initialGuess)
 {
-  double vx = v.at<double>(0,0);
-  double vy = v.at<double>(1,0);
-  double vz = v.at<double>(2,0);
-  double vtux = v.at<double>(3,0);
-  double vtuy = v.at<double>(4,0);
-  double vtuz = v.at<double>(5,0);
-  cv::Mat tu = (cv::Mat_<double>(3,1) << vtux, vtuy, vtuz); // theta u
-  cv::Rodrigues(tu, dR);
+	ROS_INFO("SETTING UP MOTION ONLY BA");
 
-  double theta = sqrt(tu.dot(tu));
-  double sinc = (fabs(theta) < 1.0e-8) ? 1.0 : sin(theta) / theta;
-  double mcosc = (fabs(theta) < 2.5e-4) ? 0.5 : (1.-cos(theta)) / theta / theta;
-  double msinc = (fabs(theta) < 2.5e-4) ? (1./6.) : (1.-sin(theta)/theta) / theta / theta;
+	Frame& frame = currentFrame();
 
-  dt.at<double>(0,0) = vx*(sinc + vtux*vtux*msinc)
-        + vy*(vtux*vtuy*msinc - vtuz*mcosc)
-        + vz*(vtux*vtuz*msinc + vtuy*mcosc);
+	double chi2(0.0);
+	std::vector<double> chi2_vec_init, chi2_vec_final;
 
-  dt.at<double>(1,0) = vx*(vtux*vtuy*msinc + vtuz*mcosc)
-        + vy*(sinc + vtuy*vtuy*msinc)
-        + vz*(vtuy*vtuz*msinc - vtux*mcosc);
+	std::vector<Feature*> edges;
 
-  dt.at<double>(2,0) = vx*(vtux*vtuz*msinc - vtuy*mcosc)
-        + vy*(vtuy*vtuz*msinc + vtux*mcosc)
-        + vz*(sinc + vtuz*vtuz*msinc);
+	Sophus::SE3d currentGuess; // stores the current best guess
+
+	Matrix6d A; //LHS
+	Vector6d b; //RHS
+
+	//first form the estimate of the camera transform
+	// this should contain the rotation and translation from the base of the system to the camera
+	tf::StampedTransform b2c;
+	try {
+		this->ekf.tf_listener.lookupTransform(this->CoM_frame, this->camera_frame,
+				ros::Time(0), b2c);
+	} catch (tf::TransformException& e) {
+		ROS_WARN_STREAM(e.what());
+	}
+
+	frame.tfTransform2SE3(this->cameraTransformFromState(initialGuess, b2c).inverse(), currentGuess);
+
+	ROS_DEBUG_STREAM("start trans " << currentGuess.translation());
+
+	//store all valid edges
+	for(auto& e : currentFrame().features)
+	{
+		if(e.point != NULL && e.point->getSigma() < MAX_POINT_SIGMA)
+		{
+			edges.push_back(&e);
+		}
+	}
+
+	int edgeCount = edges.size();
+
+	if(edgeCount < 3)
+	{
+		ROS_DEBUG_STREAM("too few edges to do motion only BA");
+		return false;
+	}
+
+#if SUPER_DEBUG
+	ROS_DEBUG_STREAM("found " << edgeCount << " valid points for MOBA");
+#endif
+
+	//reserve the space for all chi2 of edges
+	chi2_vec_init.reserve(edgeCount);
+	chi2_vec_final.reserve(edgeCount);
+
+	//run the motion only bundle adjustment
+	for(size_t iter = 0; iter < iterations; iter++)
+	{
+
+		b.setZero();
+		A.setZero();
+		double new_chi2(0.0);
+
+		// compute residual
+		for(auto it=edges.begin(); it!=edges.end(); ++it)
+		{
+			Matrix26d J;
+			Eigen::Vector3d xyz_f(currentGuess * (*it)->point->getWorldCoordinate());
+			Frame::jacobian_xyz2uv(xyz_f, J);
+			Eigen::Vector2d e = (*it)->getUndistortedMeasurement() - Point::toPixel(xyz_f);
+
+#if SUPER_DEBUG
+			ROS_DEBUG_STREAM("edge chi: " << e.squaredNorm());
+#endif
+
+			A.noalias() += J.transpose()*J;
+			b.noalias() -= J.transpose()*e;
+			new_chi2 += e.squaredNorm();
+		}
+
+		// solve linear system
+		const Vector6d dT(A.ldlt().solve(b));
+
+		// check if error increased
+		if((iter > 0 && new_chi2 > chi2) || (bool) std::isnan((double)dT[0]))
+		{
+			ROS_DEBUG_STREAM("it " << iter << "\t FAILURE \t new_chi2 = " << new_chi2);
+			break;
+		}
+
+		// update the model
+		currentGuess = Sophus::SE3d::exp(dT)*currentGuess;
+		chi2 = new_chi2;
+
+		ROS_DEBUG_STREAM("it " << iter << "\t Success \t new_chi2 = " << new_chi2 << "\t norm(dT) = " << dT.norm());
+
+		// stop when converged
+		if(dT.norm() <= EPS_MOBA)
+			break;
+	}
+
+	ROS_DEBUG_STREAM("optimized trans " << currentGuess.translation());
+
+	return true;
 }
 
-//! [Estimation function]
-void VIO::pose_gauss_newton(const std::vector< cv::Point3d > &wX,
-                       const std::vector< cv::Point2d > &x,
-                       cv::Mat &ctw, cv::Mat &cRw)
-//! [Estimation function]
+/*
+ * motion only bundle adjustment
+ * This seems to fail.
+ */
+void VIO::optimizePoseG2O(int iterations, VIOState initialGuess)
 {
-  //! [Gauss-Newton]
-  int npoints = (int)wX.size();
-  cv::Mat J(2*npoints, 6, CV_64F);
-  cv::Mat cX;
-  double lambda = 0.25;
-  cv::Mat err, sd(2*npoints, 1, CV_64F), s(2*npoints, 1, CV_64F);
-  cv::Mat xq(npoints*2, 1, CV_64F);
-  // From input vector x = (x, y) we create a column vector xn = (x, y)^T to ease computation of e_q
-  cv::Mat xn(npoints*2, 1, CV_64F);
-  //vpHomogeneousMatrix cTw_ = cTw;
-  double residual=0, residual_prev;
-  cv::Mat Jp;
 
-  // From input vector x = (x, y, 1)^T we create a new one xn = (x, y)^T to ease computation of e_q
-  for (int i = 0; i < x.size(); i ++) {
-    xn.at<double>(i*2,0)   = x[i].x; // x
-    xn.at<double>(i*2+1,0) = x[i].y; // y
-  }
+	ROS_INFO("SETTING UP MOTION ONLY BA");
 
-  int iteration = 0;
-  // Iterative Gauss-Newton minimization loop
-  do {
-	iteration++;
+	ROS_DEBUG_STREAM("given guess: " << initialGuess.getr());
 
-    for (int i = 0; i < npoints; i++) {
-      cX = cRw * cv::Mat(wX[i]) + ctw;                      // Update cX, cY, cZ
-      // Update x(q)
-      xq.at<double>(i*2,0)   = cX.at<double>(0,0) / cX.at<double>(2,0); // x(q) = cX/cZ
-      xq.at<double>(i*2+1,0) = cX.at<double>(1,0) / cX.at<double>(2,0); // y(q) = cY/cZ
+	g2o::SparseOptimizer optimizer; // this is the g2o optimizer which ultimately solves the problem
+	optimizer.setVerbose(true); // set the verbosity of the optimizer
 
-      // Update J using equation (11)
-      J.at<double>(i*2,0) = -1/cX.at<double>(2,0);          // -1/cZ
-      J.at<double>(i*2,1) = 0;
-      J.at<double>(i*2,2) = x[i].x / cX.at<double>(2,0);    // x/cZ
-      J.at<double>(i*2,3) = x[i].x * x[i].y;                // xy
-      J.at<double>(i*2,4) = -(1 + x[i].x * x[i].x);         // -(1+x^2)
-      J.at<double>(i*2,5) = x[i].y;                         // y
+	g2o::BlockSolver_6_3::LinearSolverType * linearSolver; //create a linear solver type pointer
+	linearSolver = new g2o::LinearSolverCholmod<g2o::BlockSolver_6_3::PoseMatrixType>(); // use a cholesky linear solver
 
-      J.at<double>(i*2+1,0) = 0;
-      J.at<double>(i*2+1,1) = -1/cX.at<double>(2,0);        // -1/cZ
-      J.at<double>(i*2+1,2) = x[i].y / cX.at<double>(2,0);  // y/cZ
-      J.at<double>(i*2+1,3) = 1 + x[i].y * x[i].y;          // 1+y^2
-      J.at<double>(i*2+1,4) = -x[i].x * x[i].y;             // -xy
-      J.at<double>(i*2+1,5) = -x[i].y;                      // -x
-    }
+	g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver); // finally create the solver
 
-    cv::Mat e_q = xq - xn;                                  // Equation (7)
+	g2o::OptimizationAlgorithmLevenberg* solver =
+			new g2o::OptimizationAlgorithmLevenberg(solver_ptr); // create a LM optimization type using the cholmod solver
 
-    cv::Mat Jp = J.inv(cv::DECOMP_SVD);                     // Compute pseudo inverse of the Jacobian
-    cv::Mat dq = -lambda * Jp * e_q;                        // Equation (10)
+	solver->setMaxTrialsAfterFailure(5);
+	optimizer.setAlgorithm(solver); // add the LM to the optimizer
 
-    cv::Mat dctw(3,1,CV_64F), dcRw(3,3,CV_64F);
-    exponential_map(dq, dctw, dcRw);
+	//configure the camera parameters
+	g2o::CameraParameters * cam_params = new g2o::CameraParameters(1.0, Eigen::Vector2d(0.0, 0.0), 0.0);
+	cam_params->setId(0);
+	if(!optimizer.addParameter(cam_params)){
+		ROS_FATAL("Could not add the camera parameters to g2o");
+	}
 
-    cRw = dcRw.t() * cRw;                                   // Update the pose
-    ctw = dcRw.t() * (ctw - dctw);
+	// this should contain the rotation and translation from the base of the system to the camera
+	tf::StampedTransform b2c;
+	try {
+		this->ekf.tf_listener.lookupTransform(this->CoM_frame, this->camera_frame,
+				ros::Time(0), b2c);
+	} catch (tf::TransformException& e) {
+		ROS_WARN_STREAM(e.what());
+	}
 
-    residual_prev = residual;                               // Memorize previous residual
-    residual = e_q.dot(e_q);                                // Compute the actual residual
+	VIOState x_currentfFrame = transformState(initialGuess, b2c);
 
-  } while (iteration <= MAX_GN_ITERS && fabs(residual - residual_prev) > 0);
-  //! [Gauss-Newton]
+	//setup vertex 2 aka current Frame
+	const int CURRENTFRAME_VERTEX_ID = 0;
+
+	g2o::VertexSE3Expmap * cf_vertex = new g2o::VertexSE3Expmap(); // create a new vertex for this frame;
+
+	cf_vertex->setId(CURRENTFRAME_VERTEX_ID); // the id of the first current frame is 1
+
+	ROS_DEBUG_STREAM("current pos guess " << x_currentfFrame.getr());
+
+	cf_vertex->setEstimate(g2o::SE3Quat(x_currentfFrame.getQuaternion(), x_currentfFrame.getr())); // set the estimate of this frame
+	// if this is structure only the vertex is fixed
+	// otherwise it is not fixed and can be optimized
+	cf_vertex->setFixed(false); // the current frame's position is not fixed
+
+	optimizer.addVertex(cf_vertex); // add the vertex to the problem
+
+	// now the camera vertices are part of the problem
+	const int POINTS_STARTING_ID = 1;
+
+	int point_id = POINTS_STARTING_ID; // start the next vertex ids from 2
+	int number_of_points = 0;
+
+	ROS_DEBUG("camera vertex has been setup");
+	// setup the rest of the graph optimization problem
+	//TODO setup points
+
+	for(auto& ft : currentFrame().features)
+	{
+		//skip this feature if point is NULL
+		if(ft.point == NULL || ft.point->getSigma() > MAX_POINT_SIGMA)
+		{
+			continue;
+		}
+
+
+		g2o::VertexSBAPointXYZ * v_p = new g2o::VertexSBAPointXYZ(); // create a vertex for this 3d point
+
+		v_p->setId(point_id); // set the vertex's id
+		v_p->setMarginalized(true);
+		v_p->setFixed(true);
+		v_p->setEstimate(ft.point->getWorldCoordinate()); // set the initial estimate
+
+		number_of_points++;
+
+		optimizer.addVertex(v_p); // add this point to the problem
+		ROS_DEBUG_STREAM("added this 3d point: " << v_p->estimate());
+
+		// now we must set up the edges between these three vertices
+		g2o::EdgeProjectXYZ2UV * e1 = new g2o::EdgeProjectXYZ2UV(); // here is the first edge
+
+		e1->setVertex(0, dynamic_cast<g2o::OptimizableGraph::Vertex*>(v_p)); // set the 3d point
+		e1->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(cf_vertex)); // set the camera
+		e1->setMeasurement(ft.getUndistortedMeasurement()); //[u, v]
+		e1->setParameterId(0, 0); // set this edge to the camera params
+
+		if(ROBUST_HUBER)
+		{
+			g2o::RobustKernelHuber* rk = new g2o::RobustKernelHuber;
+			//TODO set the huber delta for each edge
+			ROS_DEBUG_STREAM("huber width: " << rk->delta());
+			e1->setRobustKernel(rk);
+		}
+
+#if SUPER_DEBUG
+		Eigen::Affine3d _tf;
+		tf::Transform temp = cameraTransformFromState(initialGuess, b2c);
+		currentFrame().tfTransform2EigenAffine(temp, _tf);
+
+		//ROS_DEBUG_STREAM("my chi: " << (ft.point->toPixel(_tf * ft.point->getWorldCoordinate()) - ft.getUndistortedMeasurement()).squaredNorm());
+		ROS_DEBUG_STREAM("my chi: " << (ft.point->toPixel(lastFrame().transform_frame_to_world * ft.point->getWorldCoordinate()) - ft.getUndistortedMeasurement()).squaredNorm());
+		ROS_DEBUG_STREAM("point's sigma " << ft.point->getSigma());
+#endif
+
+		optimizer.addEdge(e1); // finally add the edge
+
+		point_id++;
+	}
+
+
+	if(point_id < 3)
+	{
+		ROS_DEBUG("too few good 3d points for motion only BA");
+		return;
+	}
+
+	optimizer.setVerbose(true);
+	ROS_DEBUG("preparing to initilize g2o");
+	bool initStatus = optimizer.initializeOptimization(); // set up the problem for optimization
+	optimizer.computeActiveErrors(); // compute the current errors
+	ROS_WARN_STREAM_COND(!initStatus, "something went wrong when initializing the bundle adjustment problem");
+	ROS_DEBUG("initilized g2o");
+
+
+	ROS_DEBUG_STREAM("pos before " << cf_vertex->estimate().translation());
+	ROS_DEBUG_STREAM("BEGINNING MOTION ONLY OPTIMIZATION - INITIAL ERROR: " << optimizer.activeChi2());
+	optimizer.optimize(iterations);
+	ROS_DEBUG_STREAM("ERROR AFTER OPTIMIZATION: " << optimizer.activeChi2());
+	ROS_DEBUG_STREAM("pos after " << cf_vertex->estimate().translation());
+
+
 }
 
 

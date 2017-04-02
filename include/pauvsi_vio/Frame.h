@@ -298,7 +298,7 @@ void static tfTransform2EigenAffine(tf::Transform& in , Eigen::Affine3d& out){
 	out.matrix()(3,3) = 1;
 }
 
-void static tfTransform2SE3(tf::Transform& in , Sophus::SE3d& out){
+void static tfTransform2SE3(tf::Transform in , Sophus::SE3d& out){
 	Sophus::SE3d::Point translation;
 	Eigen::Quaternion<Sophus::SE3d::Scalar> orientation;
 	translation(0) = in.getOrigin()[0];

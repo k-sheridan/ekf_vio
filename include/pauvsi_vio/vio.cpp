@@ -338,7 +338,7 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 		//NEXT
 		//We must predict motion
 		//this will optimize the pose of the current frame using 3d point observations
-		this->optimizePoseG2O(10, pred);
+		this->optimizePose(10, pred);
 
 
 		//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate

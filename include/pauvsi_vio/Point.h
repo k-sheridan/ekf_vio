@@ -15,13 +15,6 @@
 #include "Feature.h"
 #include "KeyFrame.h"
 
-#define DEFAULT_MIN_POINT_Z 0.02
-#define DEFAULT_MAX_POINT_Z 10
-
-#define DEFAULT_STARTING_SIGMA 1000
-
-#define EPS_SBA 0.0000000001
-
 class Feature;
 
 typedef Eigen::Matrix<double, 2, 3> Matrix23d;
@@ -107,7 +100,7 @@ public:
 		return Eigen::Vector3d(in(0) / in(2), in(1) / in(2), 1.0);
 	}
 
-	Eigen::Vector2d toPixel(Eigen::Vector3d in)
+	inline static Eigen::Vector2d toPixel(Eigen::Vector3d in)
 	{
 		return Eigen::Vector2d(in(0) / in(2), in(1) / in(2));
 	}

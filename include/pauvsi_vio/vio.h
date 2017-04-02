@@ -235,6 +235,7 @@ public:
 
 	tf::Transform cameraTransformFromState(VIOState x, tf::Transform b2c);
 	VIOState transformState(VIOState x, tf::Transform trans);
+	VIOState transformStateInverse(VIOState x, tf::Transform trans);
 
 	void pose_gauss_newton(const std::vector< cv::Point3d > &wX,
 	                       const std::vector< cv::Point2d > &x,
@@ -249,7 +250,7 @@ public:
 	void generalBundleAdjustment(Frame& cf, std::deque<KeyFrame>& kf);
 	*/
 
-	void optimizePose(int iterations, VIOState initialGuess);
+	bool optimizePose(int iterations, VIOState initialGuess);
 	void optimizePoseG2O(int iterations, VIOState initialGuess);
 
 

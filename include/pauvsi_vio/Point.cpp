@@ -163,7 +163,7 @@ void Point::SBA(int iterations)
 		{
 			failed = true;
 			failIter = i;
-			ROS_DEBUG_STREAM("it " << i << "\t FAILURE \t new_chi2 = " << new_chi2);
+			ROS_DEBUG_STREAM("it " << i << " FAILURE  new_chi2 = " << new_chi2);
 			this->pos = old_point; // roll-back
 			break;
 		}
@@ -174,9 +174,9 @@ void Point::SBA(int iterations)
 		this->pos = new_point;
 		chi2 = new_chi2;
 
-		ROS_DEBUG_STREAM("point between " << new_point);
+		//ROS_DEBUG_STREAM("point between " << new_point);
 
-		ROS_DEBUG_STREAM("it " << i << "\t Success \t new_chi2 = " << new_chi2 << "\t norm(b) = " << b.norm());
+		ROS_DEBUG_STREAM("it " << i << " Success  new_chi2 = " << new_chi2 << " norm(b) = " << b.norm());
 
 		// stop when converged
 		if(dp.norm() <= EPS_SBA)
