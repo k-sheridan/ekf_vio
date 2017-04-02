@@ -339,15 +339,16 @@ VIOState VIO::estimateMotion(VIOState x, Frame& lf, Frame& cf)
 		//We must predict motion
 		//this will optimize the pose of the current frame using 3d point observations
 		Measurement z;
-		this->optimizePose(10, pred, z);
-
-
-		//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate
-
-
-		newX = pred;
-
-
+		if(this->optimizePose(10, pred, z))
+		{
+			//TODO run the ekf update method on the predicted state using either gausss newton estimate or the fundamental + predict mag estimate
+			newX = ekf.update(pred, z);
+			ROS_DEBUG_STREAM("update pos: " << newX.x() << ", " << newX.y() << ", " << newX.z());
+		}
+		else
+		{
+			newX = pred;
+		}
 
 	}
 	else //REMOVE ALL IMU MESSAGES WHICH WERE NOT USED FROM THE BUFFER IF NOT INITIALIZED YET
