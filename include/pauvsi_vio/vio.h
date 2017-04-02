@@ -34,6 +34,10 @@
 
 #include <eigen3/Eigen/src/StlSupport/StdVector.h>
 
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
+#include "sophus/se3.hpp"
+
 #include <unordered_set>
 
 #include "g2o/config.h"

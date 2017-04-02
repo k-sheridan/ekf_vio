@@ -233,7 +233,8 @@ void VIO::run()
 
 	ROS_DEBUG_STREAM("cameraTransform " << c2w.getOrigin().x() << ", " << c2w.getOrigin().y() << ", " << c2w.getOrigin().z());
 
-	currentFrame().tfTransform2EigenAffine(w2c, currentFrame().transform_frame_to_world); // add the frame to world transform that was computed to the frame as an affine transform
+
+	currentFrame().tfTransform2SE3(w2c, currentFrame().transform_frame_to_world); // add the frame to world transform that was computed to the frame as an affine transform
 
 	currentFrame().avgSceneDepth = START_SCENE_DEPTH;
 	if(currentFrame().features.size()) {currentFrame().computeAverageSceneDepth(w2c);} // if the current frame has features

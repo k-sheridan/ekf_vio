@@ -140,7 +140,7 @@ void Point::SBA(int iterations)
 			Matrix23d J;
 			const Eigen::Vector3d p_in_f((*it)->frame->transform_frame_to_world * this->pos); // the 3d point projected into this keyframe's coordinate system
 
-			Point::jacobian_xyz2uv(p_in_f, (*it)->frame->transform_frame_to_world.rotation(), J); // this gets the jacobian of the projection function
+			Point::jacobian_xyz2uv(p_in_f, (*it)->frame->transform_frame_to_world.rotationMatrix(), J); // this gets the jacobian of the projection function
 
 			const Eigen::Vector2d e((*it)->getUndistortedMeasurement() - Point::toPixel(p_in_f)); // this is the pixel error of this point
 

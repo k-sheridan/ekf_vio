@@ -81,6 +81,7 @@ catkin_package(
 #  CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs
 #  DEPENDS system_lib
    DEPENDS eigen opencv
+   DEPENDS sophus
 )
 
 add_library(keyframe include/pauvsi_vio/KeyFrame.h)
