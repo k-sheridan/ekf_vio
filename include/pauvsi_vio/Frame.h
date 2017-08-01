@@ -16,11 +16,15 @@ private:
 
 	bool keyframe;
 
+	double avgFeatureDepth;
+	bool avgFeatureDepthSet;
+
+	tf::Transform poseEstimate; // this is a world to camera pose estimate
+	tf::Transform poseEstimate_inv;
+
 public:
 
 	std::deque<Feature> features;
-
-	tf::Transform poseEstimate; // this is a world to camera pose estimate
 
 	cv::Mat_<float> K;
 	cv::Mat img;
@@ -32,6 +36,12 @@ public:
 	virtual ~Frame();
 
 	bool isKeyframe(){return this->isKeyframe;}
+
+	tf::Transform getPose(){return poseEstimate;}
+	tf::Transform getPose_inv(){return poseEstimate_inv;}
+
+	void setPose(tf::Transform tf);
+	void setPose_inv(tf::Transform tf);
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_ */

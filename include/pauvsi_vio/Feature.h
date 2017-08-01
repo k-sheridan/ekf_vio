@@ -61,6 +61,8 @@ public:
 
 	bool isImmature(){return immature;}
 
+	double getAverageFeatureDepth();
+
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FEATURE_H_ */

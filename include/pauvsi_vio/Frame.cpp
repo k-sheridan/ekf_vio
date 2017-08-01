@@ -9,7 +9,7 @@
 
 Frame::Frame() {
 	this->keyframe = false; // initially we are not a keyframe
-
+	avgFeatureDepthSet = false;
 }
 
 Frame::Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t)
@@ -18,12 +18,45 @@ Frame::Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t)
 	this->img = _img;
 	this->K = _k;
 	this->t = _t;
+
+	avgFeatureDepth = false;
 }
 
 Frame::~Frame() {
 	// TODO Auto-generated destructor stub
 }
 
+double Frame::getAverageFeatureDepth()
+{
+	if(this->avgFeatureDepthSet)
+	{
+		return avgFeatureDepth;
+	}
+	else
+	{
+		// compute the average feature depth of this frame
+		int maturePointCount = 0;
+		for(auto e : this->features)
+		{
+			if(e.isImmature())
+			{
+				maturePointCount++;
+
+
+			}
+		}
+	}
+}
+
+void Frame::setPose(tf::Transform tf){
+	this->poseEstimate = tf;
+	this->poseEstimate_inv = this->poseEstimate.inverse();
+}
+
+void Frame::setPose_inv(tf::Transform tf){
+	this->poseEstimate_inv = tf;
+	this->poseEstimate = this->poseEstimate_inv.inverse();
+}
 
 /*
  * uses the current pose and current pixels to determine the 3d position of the objects
