@@ -201,6 +201,14 @@ void VIO::replenishFeatures(Frame& f) {
 			Feature new_ft;
 
 			new_ft.px = fast_kp.at(i).pt;
+			new_ft.setParentFrame(&f);
+			new_ft.setImmature(true); // this point is immature
+
+#if USE_POINT_CLOUD
+			//todo try to initialize using pointcloud projection
+#else
+			new_ft.computeObjectPositionWithAverageSceneDepth();
+#endif
 
 			//bool valid = new_ft.computeObjectPosition(this->state.currentPose, this->K); // corresponf to a 3d point
 

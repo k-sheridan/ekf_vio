@@ -62,6 +62,7 @@ public:
 	}
 
 	bool isImmature(){return immature;}
+	void setImmature(bool val){immature = val;}
 
 	double getAverageFeatureDepth();
 

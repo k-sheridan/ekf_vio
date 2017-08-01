@@ -48,6 +48,8 @@
 
 #define ODOM_TOPIC "aerotronic_monovo/odom"
 
+#define USE_POINT_CLOUD false
+
 // this topic will serve as a last resort for realignment
 #define POINTCLOUD_TOPIC "guidance/points2"
 #define POINTCLOUD_FRAME "guidance"
