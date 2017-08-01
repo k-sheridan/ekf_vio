@@ -53,6 +53,12 @@ public:
 
 	Frame* getParentFrame(){ROS_ASSERT(parentFrame != NULL); return parentFrame;}
 
+	void setParentFrame(Frame* f)
+	{
+		ROS_ASSERT(f != NULL);
+		parentFrame = f;
+	}
+
 	bool isImmature(){return immature;}
 
 };

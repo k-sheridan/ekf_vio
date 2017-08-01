@@ -33,9 +33,9 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t)
 	}
 }
 
-void VIO::updateFeatures(cv::Mat img) {
+void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 
-	std::vector<cv::Point2f> oldPoints = this->state.getPixels2fInOrder();
+	std::vector<cv::Point2f> oldPoints = this->getPixels2fInOrder(last_f);
 
 	ROS_ASSERT(oldPoints.size() > 0);
 
@@ -47,7 +47,7 @@ void VIO::updateFeatures(cv::Mat img) {
 
 	ROS_DEBUG("before klt");
 
-	cv::calcOpticalFlowPyrLK(this->state.currentImg, img, oldPoints, newPoints,
+	cv::calcOpticalFlowPyrLK(last_f.img, new_f.img, oldPoints, newPoints,
 			status, error, cv::Size(21, 21), 3,
 			cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
 					30, 0.01), 0, KLT_MIN_EIGEN);
@@ -60,20 +60,18 @@ void VIO::updateFeatures(cv::Mat img) {
 
 	for (int i = 0; i < status.size(); i++) {
 		if (status.at(i) == 1) {
-			Feature updated_feature = this->state.features.at(i);
+			Feature updated_feature = last_f.features.at(i);
 
-			updated_feature.px = newPoints.at(i);
+			updated_feature.px = newPoints.at(i); // set feature's new pixel location
+			updated_feature.observations.push_front(&last_f.features.at(i)); // add the old feature to the observation deque
+			updated_feature.setParentFrame(&new_f); // set this features parent frame
 
-			flowedFeatures.push_back(updated_feature);
+			new_f.features.push_back(updated_feature); // add the new feature
 
 		} else {
 			lostFeatures++;
 		}
 	}
-
-	this->state.features = flowedFeatures;
-
-	this->state.currentImg = img; // the new image is now the old image
 
 	ROS_DEBUG_STREAM("VO LOST " << lostFeatures << "FEATURES");
 
