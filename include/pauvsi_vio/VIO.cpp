@@ -204,26 +204,30 @@ void VIO::replenishFeatures(Frame& f) {
 			new_ft.setParentFrame(&f);
 			new_ft.setImmature(true); // this point is immature
 
+			bool valid = false;
+
 #if USE_POINT_CLOUD
 			//todo try to initialize using pointcloud projection
 #else
 			new_ft.computeObjectPositionWithAverageSceneDepth();
+			valid = true;
 #endif
+
 
 			//bool valid = new_ft.computeObjectPosition(this->state.currentPose, this->K); // corresponf to a 3d point
 
-			/*valid = true;
+			//valid = true;
 
 			if(valid) // feature is valid add it
 			{
 				ROS_DEBUG("adding new feature to vo");
-				//this->state.features.push_back(new_ft);
+				f.features.push_back(new_ft);
 			}
 			else //feature is aff the grid remove it
 			{
 				needed++; // we still need a new feature
 				continue;
-			}*/
+			}
 
 		}
 	}

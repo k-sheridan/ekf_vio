@@ -24,7 +24,7 @@ private:
 
 public:
 
-	std::deque<Feature> features;
+	std::vector<Feature> features;
 
 	cv::Mat_<float> K;
 	cv::Mat img;
