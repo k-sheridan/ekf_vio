@@ -36,6 +36,9 @@
 // the maximum sigma a feature can have after an optim
 #define MAXIMUM_FEATURE_DEPTH_ERROR 2.0
 
+// default point depth used for initialization in meters
+#define DEFAULT_POINT_DEPTH 1.0
+
 //OUTLIER DETECTION
 
 //if the ppe of our planar odometry exceeds this value we have lost odometry

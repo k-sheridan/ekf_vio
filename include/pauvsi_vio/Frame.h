@@ -42,6 +42,8 @@ public:
 
 	void setPose(tf::Transform tf);
 	void setPose_inv(tf::Transform tf);
+
+	double getAverageFeatureDepth();
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_ */

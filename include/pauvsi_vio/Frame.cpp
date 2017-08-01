@@ -36,14 +36,40 @@ double Frame::getAverageFeatureDepth()
 	{
 		// compute the average feature depth of this frame
 		int maturePointCount = 0;
+		double depth = 0;
 		for(auto e : this->features)
 		{
-			if(e.isImmature())
+			if(!e.isImmature())
 			{
 				maturePointCount++;
 
+				//TODO make more efficient
+				tf::Vector3 pointInCameraFrame = this->getPose_inv() * e.obj;
 
+				if(pointInCameraFrame.z() > 0)
+				{
+					depth += pointInCameraFrame.z();
+				}
+				else
+				{
+					maturePointCount--;
+					ROS_WARN("point is behind camera");
+				}
 			}
+		}
+
+		if(maturePointCount > 0)
+		{
+			avgFeatureDepth = depth / (double)maturePointCount;
+			avgFeatureDepthSet = true;
+			return avgFeatureDepth;
+		}
+		else
+		{
+			ROS_WARN("no valid mature points for average feature depth computation");
+			avgFeatureDepth = DEFAULT_POINT_DEPTH;
+			avgFeatureDepthSet = true;
+			return avgFeatureDepth;
 		}
 	}
 }
