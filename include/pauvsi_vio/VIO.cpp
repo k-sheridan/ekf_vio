@@ -198,14 +198,13 @@ void VIO::replenishFeatures(Frame& f) {
 				continue;
 			}
 
-			//TODO create the new feature and initialize its depth properly
-			//Feature new_ft;
+			Feature new_ft;
 
-			//new_ft.px = fast_kp.at(i).pt;
+			new_ft.px = fast_kp.at(i).pt;
 
 			//bool valid = new_ft.computeObjectPosition(this->state.currentPose, this->K); // corresponf to a 3d point
 
-			valid = true;
+			/*valid = true;
 
 			if(valid) // feature is valid add it
 			{
@@ -216,7 +215,7 @@ void VIO::replenishFeatures(Frame& f) {
 			{
 				needed++; // we still need a new feature
 				continue;
-			}
+			}*/
 
 		}
 	}

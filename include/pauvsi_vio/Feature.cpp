@@ -17,6 +17,15 @@ Feature::~Feature() {
 }
 
 
+void Feature::computeObjectPositionWithAverageSceneDepth()
+{
+	//TODO check if bug
+	tf::Vector3 normalized = tf::Vector3((this->px.x - this->getParentFrame()->K(2)) / this->getParentFrame()->K(0), (this->px.y - this->getParentFrame()->K(5)) / this->getParentFrame()->K(4), 1.0);
+
+	this->obj = this->getParentFrame()->getPose() * (this->getParentFrame()->getAverageFeatureDepth() * normalized); // computes the object pose at the average scene depth
+
+}
+
 bool Feature::computeObjectPositionWithPlanarApproximation(tf::Transform w2c, cv::Mat_<float> K)
 {
 

@@ -51,6 +51,8 @@ public:
 
 	bool computeObjectPositionWithPlanarApproximation(tf::Transform w2c, cv::Mat_<float> K);
 
+	void computeObjectPositionWithAverageSceneDepth();
+
 	Frame* getParentFrame(){ROS_ASSERT(parentFrame != NULL); return parentFrame;}
 
 	void setParentFrame(Frame* f)
