@@ -1,25 +1,25 @@
 <?xml version="1.0"?>
 <package>
   <name>pauvsi_vio</name>
-  <version>0.0.0</version>
-  <description>The pauvsi_vio package</description>
+  <version>0.0.1</version>
+  <description>Purdue AUVSI's Visual Inertial Odometry Algorithm</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
   <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
-  <maintainer email="sheridak@purdue.edu">kevinsheridan</maintainer>
+  <maintainer email="sheridak@purdue.edu">Kevin Sheridan</maintainer>
 
 
   <!-- One license tag required, multiple allowed, one license per tag -->
   <!-- Commonly used license strings: -->
   <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-  <license>TODO</license>
+  <license>GPLv3</license>
 
 
   <!-- Url tags are optional, but mutiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/pauvsi_vio</url> -->
+  <!-- <url type="website">http://wiki.ros.org/aerotronic_monovo</url> -->
 
 
   <!-- Author tags are optional, mutiple are allowed, one per tag -->
@@ -45,14 +45,13 @@
   <build_depend>roscpp</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>std_msgs</build_depend>
-  
+  <build_depend>tf</build_depend>
   <run_depend>cv_bridge</run_depend>
   <run_depend>image_transport</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>sensor_msgs</run_depend>
   <run_depend>std_msgs</run_depend>
-  <build_depend>cmake_modules</build_depend>
-  <run_depend>cmake_modules</run_depend> 
+  <run_depend>tf</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

@@ -1,14 +1,14 @@
 /*
  * Feature.h
  *
- *  Created on: Jan 29, 2017
- *      Author: pauvsi
+ *  Created on: Aug 1, 2017
+ *      Author: kevin
  */
 
 #ifndef PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FEATURE_H_
 #define PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FEATURE_H_
 
-#include "config.h"
+#include <ros/ros.h>
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/calib3d.hpp>
@@ -18,56 +18,43 @@
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/video.hpp"
 #include <vector>
-#include <deque>
 #include <string>
-#include <ros/ros.h>
-#include <eigen3/Eigen/Geometry>
 
-#include "Frame.h"
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/message_filter.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf/tf.h>
+#include <tf/transform_listener.h>
+#include <tf/tf.h>
+#include <tf/tfMessage.h>
 
-class Point;
+#include <vioParams.h>
 
-class Frame;
+class Frame; // need to tell the feature that there is something called frame
 
-class Feature{
+class Feature {
+private:
+	Frame* parentFrame;
+
+	bool immature;
 
 public:
 
-	Frame* frame; // this points to the frame from which this feature was extracted
+	std::deque<Feature*> observations; // may not use but this can keep track of past observations of this point for optimization of its position/depth
 
-	cv::KeyPoint feature; // response = quality
-
-	int id;
-
-	cv::Point2f undistort_pxl; // this is the undistorted normal pixel location of this feature
-	cv::Point2f original_pxl; // the original pixel location
-
-	//temporary variables
-	float radius; // the radius of te feature from the center of the image
-	float quality; // this quality is for the ranking process
-
-	Point* point;
-
-	cv::Mat description;
-
-	//flags
-	bool described; // is this feature described
-	bool undistorted; // is this feature undistorted
-	bool set; // says whether the feature was set
-
+	cv::Point2f px;
+	tf::Vector3 obj;
 
 	Feature();
+	Feature(Frame* parent, cv::Point2f px);
+	virtual ~Feature();
 
-	Feature(Frame* _frame, cv::Point2f px, Point* pt, int id = -1);
+	bool computeObjectPositionWithPlanarApproximation(tf::Transform w2c, cv::Mat_<float> K);
 
-	void undistort(cv::Mat K, cv::Mat D);
+	Frame* getParentFrame(){ROS_ASSERT(parentFrame != NULL); return parentFrame;}
 
-	Eigen::Vector3d getDirectionVector();
-
-	Eigen::Vector2d getUndistortedMeasurement();
-
+	bool isImmature(){return immature;}
 
 };
-
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FEATURE_H_ */
