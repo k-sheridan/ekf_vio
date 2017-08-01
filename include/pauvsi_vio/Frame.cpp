@@ -34,6 +34,11 @@ double Frame::getAverageFeatureDepth()
 	}
 	else
 	{
+		double a = this->getPose_inv().getBasis().getRow(2).getX();
+		double b = this->getPose_inv().getBasis().getRow(2).getY();
+		double c = this->getPose_inv().getBasis().getRow(2).getZ();
+		double d = this->getPose_inv().getOrigin().z();
+
 		// compute the average feature depth of this frame
 		int maturePointCount = 0;
 		double depth = 0;
@@ -43,12 +48,14 @@ double Frame::getAverageFeatureDepth()
 			{
 				maturePointCount++;
 
-				//TODO make more efficient
-				tf::Vector3 pointInCameraFrame = this->getPose_inv() * e.obj;
+				//make more efficient
+				//tf::Vector3 pointInCameraFrame = this->getPose_inv() * e.obj;
 
-				if(pointInCameraFrame.z() > 0)
+				double z_depth = a * e.obj.x() + b * e.obj.y() + c * e.obj.z() + d; // add the z parts together
+
+				if(z_depth > 0)
 				{
-					depth += pointInCameraFrame.z();
+					depth += z_depth;
 				}
 				else
 				{
