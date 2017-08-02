@@ -8,6 +8,8 @@
 #ifndef PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_
 #define PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_
 
+#include "sophus/se3.hpp"
+
 #include <Feature.h>
 #include <vioParams.h>
 
@@ -19,8 +21,8 @@ private:
 	double avgFeatureDepth;
 	bool avgFeatureDepthSet;
 
-	tf::Transform poseEstimate; // this is a world to camera pose estimate
-	tf::Transform poseEstimate_inv;
+	Sophus::SE3 poseEstimate; // this is a world to camera pose estimate
+	Sophus::SE3 poseEstimate_inv;
 
 public:
 
@@ -37,16 +39,17 @@ public:
 
 	bool isKeyframe(){return this->isKeyframe;}
 
-	tf::Transform getPose(){return poseEstimate;}
-	tf::Transform getPose_inv(){return poseEstimate_inv;}
+	Sophus::SE3 getPose(){return poseEstimate;}
+	Sophus::SE3 getPose_inv(){return poseEstimate_inv;}
 
-	void setPose(tf::Transform tf);
-	void setPose_inv(tf::Transform tf);
+	void setPose(Sophus::SE3 tf);
+	void setPose_inv(Sophus::SE3 tf);
 
 	double getAverageFeatureDepth();
 
 	/// Frame jacobian for projection of 3D point in (f)rame coordinate to
 	/// unit plane coordinates uv (focal length = 1).
+	// meant for pose optimization
 	inline static void jacobian_xyz2uv(
 			const Eigen::Vector3d& xyz_in_f,
 			Eigen::Matrix<double,2,6>& J)
@@ -70,6 +73,9 @@ public:
 		J(1,4) = -J(0,3);             // -x*y/z^2
 		J(1,5) = -x*z_inv;            // x/z
 	}
+
+	Sophus::SE3 tf2sophus(tf::Transform tf);
+	tf::Transform sophus2tf(Sophus::SE3 se3);
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_ */

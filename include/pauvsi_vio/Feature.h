@@ -29,8 +29,12 @@
 #include <tf/tfMessage.h>
 
 #include <vioParams.h>
+#include "Frame.h"
+#include "Point.h"
 
-class Frame; // need to tell the feature that there is something called frame
+class Point; // tell it that point is a class
+
+//class Frame; // need to tell the feature that there is something called frame
 
 class Feature {
 private:
@@ -38,12 +42,13 @@ private:
 
 	bool immature;
 
+	Point* point;
+
 public:
 
 	std::deque<Feature*> observations; // may not use but this can keep track of past observations of this point for optimization of its position/depth
 
 	cv::Point2f px;
-	tf::Vector3 obj;
 
 	Feature();
 	Feature(Frame* parent, cv::Point2f px);
@@ -55,18 +60,24 @@ public:
 
 	Frame* getParentFrame(){ROS_ASSERT(parentFrame != NULL); return parentFrame;}
 
+	Point* getPoint(){ ROS_ASSERT(point != NULL); return point;}
+
 	void setParentFrame(Frame* f)
 	{
 		ROS_ASSERT(f != NULL);
 		parentFrame = f;
 	}
 
+	void setPoint(Point* pt)
+	{
+		ROS_ASSERT(pt != NULL);
+		point = pt;
+	}
+
 	bool isImmature(){return immature;}
 	void setImmature(bool val){immature = val;}
 
 	double getAverageFeatureDepth();
-
-	double optimizeFeaturePosition();
 
 };
 

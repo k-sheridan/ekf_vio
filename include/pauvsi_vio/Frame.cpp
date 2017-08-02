@@ -34,10 +34,11 @@ double Frame::getAverageFeatureDepth()
 	}
 	else
 	{
-		double a = this->getPose_inv().getBasis().getRow(2).getX();
-		double b = this->getPose_inv().getBasis().getRow(2).getY();
-		double c = this->getPose_inv().getBasis().getRow(2).getZ();
-		double d = this->getPose_inv().getOrigin().z();
+		Eigen::Matrix3d mat3 = this->getPose_inv().rotationMatrix();
+		double a = mat3(2, 0);
+		double b = mat3(2, 1);
+		double c = mat3(2, 2);
+		double d = this->getPose_inv().translation().z();
 
 		// compute the average feature depth of this frame
 		int maturePointCount = 0;
@@ -51,7 +52,7 @@ double Frame::getAverageFeatureDepth()
 				//make more efficient
 				//tf::Vector3 pointInCameraFrame = this->getPose_inv() * e.obj;
 
-				double z_depth = a * e.obj.x() + b * e.obj.y() + c * e.obj.z() + d; // add the z parts together
+				double z_depth = a * e.getPoint()->x() + b * e.getPoint()->y() + c * e.getPoint()->z() + d; // add the z parts together
 
 				if(z_depth > 0)
 				{
@@ -81,15 +82,35 @@ double Frame::getAverageFeatureDepth()
 	}
 }
 
-void Frame::setPose(tf::Transform tf){
+void Frame::setPose(Sophus::SE3 tf){
 	this->poseEstimate = tf;
 	this->poseEstimate_inv = this->poseEstimate.inverse();
 }
 
-void Frame::setPose_inv(tf::Transform tf){
+void Frame::setPose_inv(Sophus::SE3 tf){
 	this->poseEstimate_inv = tf;
 	this->poseEstimate = this->poseEstimate_inv.inverse();
 }
+
+Sophus::SE3 Frame::tf2sophus(tf::Transform tf)
+{
+
+	Sophus::SE3::Point pt = Eigen::Vector3d(tf.getOrigin().x(), tf.getOrigin().y(), tf.getOrigin().z());
+
+	tf::Quaternion q = tf.getRotation();
+	return Sophus::SE3(Eigen::Quaterniond(q.w(), q.x(), q.y(), q.z()), pt);
+}
+
+tf::Transform Frame::sophus2tf(Sophus::SE3 se3)
+{
+
+	Eigen::Quaterniond q = se3.rotationMatrix();
+
+	return tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()), tf::Vector3(se3.translation().x(), se3.translation().y(), se3.translation().z()));
+}
+
+
+
 
 /*
  * uses the current pose and current pixels to determine the 3d position of the objects

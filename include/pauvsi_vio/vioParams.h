@@ -40,6 +40,15 @@
 
 // default point depth used for initialization in meters
 #define DEFAULT_POINT_DEPTH 1.0
+#define DEFAULT_POINT_STARTING_ERROR 10000
+
+// epsilon for convergence in structure bundle adjustment and motion
+#define EPS_SBA 0.0000000001
+#define EPS_MOBA 0.0000000001
+
+//min and maximum point depths in meters
+#define MAX_POINT_Z 200
+#define MIN_POINT_Z 0.02
 
 //OUTLIER DETECTION
 

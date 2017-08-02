@@ -9,6 +9,7 @@
 
 Feature::Feature() {
 	parentFrame = NULL;
+	point = NULL;
 	immature = true;
 }
 
@@ -37,18 +38,14 @@ bool Feature::computeObjectPositionWithPlanarApproximation(tf::Transform w2c, cv
 
 	if(dt <= 0)
 	{
-		ROS_DEBUG("removing NEW feature from planar odom because it is not on the xy plane");
+		ROS_FATAL("removing NEW feature from planar odom because it is not on the xy plane");
 		return false;
 	}
 	else
 	{
-		obj = w2c.getOrigin() + dir * dt;
+		tf::Vector3 obj = w2c.getOrigin() + dir * dt;
+
+
 		return true;
 	}
-}
-
-
-double Feature::optimizeFeaturePosition()
-{
-
 }
