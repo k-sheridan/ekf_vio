@@ -10,6 +10,9 @@
 Frame::Frame() {
 	this->keyframe = false; // initially we are not a keyframe
 	avgFeatureDepthSet = false;
+
+	//attempt to fix memory issue
+	this->features.reserve(NUM_FEATURES); // make the vector as big as it possibly could be
 }
 
 Frame::Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t)
@@ -20,6 +23,9 @@ Frame::Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t)
 	this->t = _t;
 
 	avgFeatureDepth = false;
+
+	//attempt to fix memory issue
+	this->features.reserve(NUM_FEATURES); // make the vector as big as it possibly could be
 }
 
 Frame::~Frame() {
