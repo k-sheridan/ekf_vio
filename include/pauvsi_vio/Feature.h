@@ -66,6 +66,8 @@ public:
 
 	double getAverageFeatureDepth();
 
+	double optimizeFeaturePosition();
+
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FEATURE_H_ */

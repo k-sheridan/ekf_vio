@@ -231,19 +231,6 @@ void VIO::replenishFeatures(Frame& f) {
 
 		}
 	}
-
-	this->state.currentImg = img;
-
-#if SUPER_DEBUG
-
-	cv::Mat copy = img.clone();
-
-	copy = this->draw(copy);
-
-	cv::imshow("vo", copy);
-	cv::waitKey(30);
-
-#endif
 }
 
 

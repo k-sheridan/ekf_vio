@@ -9,6 +9,8 @@
 #define PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIOPARAMS_H_
 
 
+#define SUPER_DEBUG false
+
 //VISUAL ODOM
 //fast corner detector for planar odometry
 #define FAST_THRESHOLD 100

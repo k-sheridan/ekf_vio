@@ -46,3 +46,9 @@ bool Feature::computeObjectPositionWithPlanarApproximation(tf::Transform w2c, cv
 		return true;
 	}
 }
+
+
+double Feature::optimizeFeaturePosition()
+{
+
+}
