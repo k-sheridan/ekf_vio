@@ -35,8 +35,8 @@
 // the number of times a feature must be observed before allowed to be optimized
 #define MINIMUM_OBSERVATION_COUNT_FOR_OPTIMIZATION 20
 
-// the maximum sigma a feature can have after an optim
-#define MAXIMUM_FEATURE_DEPTH_ERROR 2.0
+// the maximum error a feature can have after an optim
+#define MAXIMUM_FEATURE_DEPTH_ERROR 0.02
 
 // default point depth used for initialization in meters
 #define DEFAULT_POINT_DEPTH 1.0

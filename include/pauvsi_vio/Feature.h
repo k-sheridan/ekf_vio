@@ -70,8 +70,12 @@ public:
 
 	void setPoint(Point* pt)
 	{
-		ROS_ASSERT(pt != NULL);
 		point = pt;
+	}
+
+	Eigen::Vector2d getMetricPixel()
+	{
+		return Eigen::Vector2d((px.x - getParentFrame()->K(2)) / getParentFrame()->K(0), (px.y - getParentFrame()->K(5)) / getParentFrame()->K(4));
 	}
 
 	bool isImmature(){return immature;}

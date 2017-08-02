@@ -10,8 +10,10 @@
 
 #include "sophus/se3.hpp"
 
-#include <Feature.h>
+#include "Feature.h"
 #include <vioParams.h>
+
+class Feature;
 
 class Frame {
 private:
@@ -21,8 +23,8 @@ private:
 	double avgFeatureDepth;
 	bool avgFeatureDepthSet;
 
-	Sophus::SE3 poseEstimate; // this is a world to camera pose estimate
-	Sophus::SE3 poseEstimate_inv;
+	Sophus::SE3d poseEstimate; // this is a world to camera pose estimate
+	Sophus::SE3d poseEstimate_inv;
 
 public:
 
@@ -37,13 +39,13 @@ public:
 
 	virtual ~Frame();
 
-	bool isKeyframe(){return this->isKeyframe;}
+	bool isKeyframe(){return this->keyframe;}
 
-	Sophus::SE3 getPose(){return poseEstimate;}
-	Sophus::SE3 getPose_inv(){return poseEstimate_inv;}
+	Sophus::SE3d getPose(){return poseEstimate;}
+	Sophus::SE3d getPose_inv(){return poseEstimate_inv;}
 
-	void setPose(Sophus::SE3 tf);
-	void setPose_inv(Sophus::SE3 tf);
+	void setPose(Sophus::SE3d tf);
+	void setPose_inv(Sophus::SE3d tf);
 
 	double getAverageFeatureDepth();
 
@@ -74,8 +76,8 @@ public:
 		J(1,5) = -x*z_inv;            // x/z
 	}
 
-	Sophus::SE3 tf2sophus(tf::Transform tf);
-	tf::Transform sophus2tf(Sophus::SE3 se3);
+	Sophus::SE3d tf2sophus(tf::Transform tf);
+	tf::Transform sophus2tf(Sophus::SE3d se3);
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_ */

@@ -32,6 +32,7 @@ include_directories(
 	/usr/include/eigen3
 	${catkin_INCLUDE_DIRS}
 	${Eigen_INCLUDE_DIRS}
+	${sophus_INCLUDE_DIRS}
 )
 
 catkin_package(
@@ -48,16 +49,16 @@ add_library(vioParams include/pauvsi_vio/vioParams.h)
 set_target_properties(vioParams PROPERTIES LINKER_LANGUAGE CXX)
 
 add_library(vioPoint include/pauvsi_vio/Point.cpp)
-target_link_libraries(vioPoint ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} vioParams)
+target_link_libraries(vioPoint ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams)
 
 add_library(vioFeature include/pauvsi_vio/Feature.cpp)
-target_link_libraries(vioFeature ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} vioParams vioPoint)
+target_link_libraries(vioFeature ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams vioPoint)
 
 add_library(vioFrame include/pauvsi_vio/Frame.cpp)
-target_link_libraries(vioFrame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} vioParams vioFeature)
+target_link_libraries(vioFrame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature)
 
 add_library(full_vio include/pauvsi_vio/VIO.cpp)
-target_link_libraries(full_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} vioParams vioFeature vioFrame)
+target_link_libraries(full_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioFrame)
 
 add_executable(pauvsi_vio_node src/pauvsi_vio_node.cpp)
-target_link_libraries(pauvsi_vio_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} full_vio)
+target_link_libraries(pauvsi_vio_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)

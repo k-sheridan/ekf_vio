@@ -13,7 +13,7 @@ Point::Point()
 	deleted = false;
 	this->sigma = DEFAULT_POINT_STARTING_ERROR;
 	this->theMap = NULL;
-	this->thisPoint = NULL;
+	//this->thisPoint = 0;
 
 }
 
@@ -22,7 +22,7 @@ Point::Point(Feature* ft){
 	deleted = false;
 	this->sigma = DEFAULT_POINT_STARTING_ERROR;
 	this->theMap = NULL;
-	this->thisPoint = NULL;
+	//this->thisPoint = 0;
 }
 
 Point::Point(Feature* ft, std::list<Point>::iterator _thisPoint, std::list<Point>* _map)
@@ -30,7 +30,7 @@ Point::Point(Feature* ft, std::list<Point>::iterator _thisPoint, std::list<Point
 	_observations.push_front(ft); // add this observation to the deque
 	deleted = false;
 
-	ROS_ASSERT(_thisPoint != NULL && _map != NULL);
+	ROS_ASSERT(_map != NULL);
 
 	this->sigma = DEFAULT_POINT_STARTING_ERROR;
 	this->theMap = _map;
@@ -63,8 +63,8 @@ void Point::safelyDeletePoint()
 
 	for(auto& e : this->observations())
 	{
-		ROS_DEBUG_STREAM("check feature" << e->id);
-		e->point = NULL; // null the point reference
+		ROS_DEBUG_STREAM("check feature pos for deleted memory" << e->px);
+		e->setPoint(NULL); // null the point reference
 
 		/*
 		if(e->frame->finalFrame) // this is the last frame in the buffer do not search past this point due to potential dangling pointer
@@ -85,23 +85,7 @@ void Point::safelyDeletePoint()
 	ROS_DEBUG("point deleted");
 }
 
-/*
- * please give the transform from camera coord to world coord
- */
-void Point::initializePoint(tf::Transform transform, Feature* ft, double start_depth)
-{
-	Eigen::Vector3d eig_dir = (start_depth * ft->getDirectionVector());
-	tf::Vector3 dir_vec = tf::Vector3(eig_dir(0), eig_dir(1), eig_dir(2));
-	tf::Vector3 world_point = transform * dir_vec;
 
-	this->pos(0) = world_point.getX();
-	this->pos(1) = world_point.getY();
-	this->pos(2) = world_point.getZ();
-
-	//this->sigma = start_sigma;
-
-	//this->_initialized = true;
-}
 
 
 /*
@@ -160,7 +144,7 @@ void Point::SBA(int iterations)
 
 			Point::jacobian_xyz2uv(p_in_f, (*it)->getParentFrame()->getPose_inv().rotationMatrix(), J); // this gets the jacobian of the projection function
 
-			const Eigen::Vector2d e(Eigen::Vector3d((*it)->px.x, (*it)->px.y, 1.0) - Point::toPixel(p_in_f)); // this is the pixel error of this point
+			const Eigen::Vector2d e((*it)->getMetricPixel() - Point::toMetricPixel(p_in_f)); // this is the metric pixel error of this point
 
 			new_chi2 += e.squaredNorm(); // add the pixel error to chi
 

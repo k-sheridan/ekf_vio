@@ -82,26 +82,26 @@ double Frame::getAverageFeatureDepth()
 	}
 }
 
-void Frame::setPose(Sophus::SE3 tf){
+void Frame::setPose(Sophus::SE3d tf){
 	this->poseEstimate = tf;
 	this->poseEstimate_inv = this->poseEstimate.inverse();
 }
 
-void Frame::setPose_inv(Sophus::SE3 tf){
+void Frame::setPose_inv(Sophus::SE3d tf){
 	this->poseEstimate_inv = tf;
 	this->poseEstimate = this->poseEstimate_inv.inverse();
 }
 
-Sophus::SE3 Frame::tf2sophus(tf::Transform tf)
+Sophus::SE3d Frame::tf2sophus(tf::Transform tf)
 {
 
-	Sophus::SE3::Point pt = Eigen::Vector3d(tf.getOrigin().x(), tf.getOrigin().y(), tf.getOrigin().z());
+	Sophus::SE3d::Point pt = Eigen::Vector3d(tf.getOrigin().x(), tf.getOrigin().y(), tf.getOrigin().z());
 
 	tf::Quaternion q = tf.getRotation();
 	return Sophus::SE3(Eigen::Quaterniond(q.w(), q.x(), q.y(), q.z()), pt);
 }
 
-tf::Transform Frame::sophus2tf(Sophus::SE3 se3)
+tf::Transform Frame::sophus2tf(Sophus::SE3d se3)
 {
 
 	Eigen::Quaterniond q = se3.rotationMatrix();

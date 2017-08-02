@@ -24,6 +24,8 @@
 
 #include "sophus/se3.hpp"
 
+#include "Frame.h"
+
 class Feature;
 
 typedef Eigen::Matrix<double, 2, 3> Matrix23d;
@@ -73,7 +75,7 @@ public:
 		return this->pos;
 	}
 
-	tf::Vector3 getWorldCoordinate()
+	tf::Vector3 getWorldCoordinateTF()
 	{
 		ROS_ASSERT(!deleted);
 		return tf::Vector3(this->pos.x(), this->pos.y(), this->pos.z());
@@ -81,7 +83,9 @@ public:
 
 	std::list<Point>* getMap(){ROS_ASSERT(theMap != NULL); return theMap;}
 
-	std::list<Point>::iterator getPointIterator(){thisPoint != NULL); return thisPoint;}
+	std::list<Point>::iterator getPointIterator(){
+		//ROS_ASSERT(thisPoint != 0);
+		return thisPoint;}
 
 	double getSigma()
 	{
@@ -94,8 +98,6 @@ public:
 	}
 
 	void safelyDeletePoint();
-
-	void initializePoint(tf::Transform transform, Feature* ft, double start_depth);
 
 	/// Jacobian of point projection on unit plane (focal length = 1) in frame (f).
 	// from SVO, Forster et al
@@ -121,7 +123,7 @@ public:
 		return Eigen::Vector3d(in(0) / in(2), in(1) / in(2), 1.0);
 	}
 
-	inline static Eigen::Vector2d toPixel(Eigen::Vector3d in)
+	inline static Eigen::Vector2d toMetricPixel(Eigen::Vector3d in)
 	{
 		return Eigen::Vector2d(in(0) / in(2), in(1) / in(2));
 	}
