@@ -47,6 +47,11 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 	} else // we have atleast 1 frame in the buffer
 	{
 
+		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
+
+		// attempt to flow features into the next frame
+		this->updateFeatures((this->frame_buffer.at(1)), this->frame_buffer.front());
+
 	}
 }
 
@@ -183,7 +188,6 @@ void VIO::replenishFeatures(Frame& f) {
 			// pushes this feature onto the observation buffer's front
 			this->map.push_back(Point(&(f.features.back()))); // the point needs to be linked to the feature's memory location in the frame's feature buffer
 
-			ROS_DEBUG_STREAM("point address: " << &(this->map.back()));
 			f.features.back().setPoint(&(this->map.back())); // set the features point to the points pos in the map -- they are now linked with their pointers
 
 			f.features.back().getPoint()->setupMapAndPointLocation(
