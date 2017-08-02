@@ -183,6 +183,7 @@ void VIO::replenishFeatures(Frame& f) {
 			// pushes this feature onto the observation buffer's front
 			this->map.push_back(Point(&(f.features.back()))); // the point needs to be linked to the feature's memory location in the frame's feature buffer
 
+			ROS_DEBUG_STREAM("point address: " << &(this->map.back()));
 			f.features.back().setPoint(&(this->map.back())); // set the features point to the points pos in the map -- they are now linked with their pointers
 
 			f.features.back().getPoint()->setupMapAndPointLocation(
@@ -191,7 +192,7 @@ void VIO::replenishFeatures(Frame& f) {
 #if USE_POINT_CLOUD
 			//todo try to initialize using pointcloud projection
 #else
-			new_ft.computeObjectPositionWithAverageSceneDepth();
+			f.features.back().computeObjectPositionWithAverageSceneDepth();
 #endif
 
 		}
