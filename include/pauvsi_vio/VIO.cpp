@@ -8,7 +8,8 @@
 #include "VIO.h"
 
 VIO::VIO() {
-	// TODO Auto-generated constructor stub
+
+	ros::NodeHandle nh; // we all know what this is
 
 }
 

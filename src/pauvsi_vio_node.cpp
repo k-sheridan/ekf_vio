@@ -12,14 +12,11 @@
 
 //#define ROSCONSOLE_MIN_SEVERITY ROSCONSOLE_SEVERITY_INFO
 
-VIO vio; // create an instance of the visual inertial odometry algorithm
-
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "pauvsi_vio"); // initializes ros
+	ros::init(argc, argv, "pauvsi_vio_node"); // initializes ros
 
-	//start the callbacks when messages are ready
-	ros::spin();
+	VIO vio; // create an instance of the visual inertial odometry algorithm
 
 	return 0;
 }
