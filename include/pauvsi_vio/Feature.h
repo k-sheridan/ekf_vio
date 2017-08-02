@@ -34,7 +34,7 @@
 
 class Point; // tell it that point is a class
 
-//class Frame; // need to tell the feature that there is something called frame
+class Frame; // need to tell the feature that there is something called frame
 
 class Feature {
 private:
@@ -71,10 +71,7 @@ public:
 		point = pt;
 	}
 
-	Eigen::Vector2d getMetricPixel()
-	{
-		return Eigen::Vector2d((px.x - getParentFrame()->K(2)) / getParentFrame()->K(0), (px.y - getParentFrame()->K(5)) / getParentFrame()->K(4));
-	}
+	Eigen::Vector2d getMetricPixel();
 
 	double getAverageFeatureDepth();
 

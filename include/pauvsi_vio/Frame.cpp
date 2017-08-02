@@ -45,14 +45,14 @@ double Frame::getAverageFeatureDepth()
 		double depth = 0;
 		for(auto e : this->features)
 		{
-			if(!e.isImmature())
+			if(!e.getPoint()->isImmature())
 			{
 				maturePointCount++;
 
 				//make more efficient
 				//tf::Vector3 pointInCameraFrame = this->getPose_inv() * e.obj;
 
-				double z_depth = a * e.getPoint()->x() + b * e.getPoint()->y() + c * e.getPoint()->z() + d; // add the z parts together
+				double z_depth = a * e.getPoint()->getWorldCoordinate().x() + b * e.getPoint()->getWorldCoordinate().y() + c * e.getPoint()->getWorldCoordinate().z() + d; // add the z parts together
 
 				if(z_depth > 0)
 				{
@@ -98,13 +98,13 @@ Sophus::SE3d Frame::tf2sophus(tf::Transform tf)
 	Sophus::SE3d::Point pt = Eigen::Vector3d(tf.getOrigin().x(), tf.getOrigin().y(), tf.getOrigin().z());
 
 	tf::Quaternion q = tf.getRotation();
-	return Sophus::SE3(Eigen::Quaterniond(q.w(), q.x(), q.y(), q.z()), pt);
+	return Sophus::SE3d(Eigen::Quaterniond(q.w(), q.x(), q.y(), q.z()), pt);
 }
 
 tf::Transform Frame::sophus2tf(Sophus::SE3d se3)
 {
 
-	Eigen::Quaterniond q = se3.rotationMatrix();
+	Eigen::Quaterniond q = se3.unit_quaternion();
 
 	return tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()), tf::Vector3(se3.translation().x(), se3.translation().y(), se3.translation().z()));
 }
