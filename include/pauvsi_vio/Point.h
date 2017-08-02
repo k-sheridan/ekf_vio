@@ -60,6 +60,12 @@ public:
 
 	void addObservation(Feature* ft);
 
+	void setupMapAndPointLocation(std::list<Point>::iterator _thisPoint, std::list<Point>* _map){
+		this->theMap = _map;
+		ROS_ASSERT(_map != NULL);
+		this->thisPoint = _thisPoint;
+	}
+
 	std::deque<Feature*>& observations(){
 		ROS_ASSERT(!deleted);
 		return this->_observations;
@@ -85,10 +91,12 @@ public:
 	/*
 	 *
 	 * externally setting the position of a point automatically makes is immature
+	 * sets the sigma of the point to the default
 	 */
 	void setPosition(Eigen::Vector3d pos)
 	{
 		this->immature = true;
+		this->sigma = DEFAULT_POINT_STARTING_ERROR;
 		this->pos = pos;
 	}
 

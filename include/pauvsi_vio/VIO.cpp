@@ -23,9 +23,11 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t)
 	if(this->frame_buffer.size() == 0) // if this is the first frame that we are receiving
 	{
 		ROS_DEBUG("adding the first frame");
-		f.poseEstimate = tf::Transform(tf::Quaternion(0, 0, 0, 1.0), tf::Vector3(0.0, 0.0, 0.0)); // set the initial position to 0 (this is world to camera)
+		f.setPose(Sophus::SE3d(Eigen::Quaterniond(1.0, 0, 0, 0), Eigen::Vector3d(0.0, 0.0, 0.0))); // set the initial position to 0 (this is world to camera)
 
-		this->replenishFeatures()
+		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
+
+		this->replenishFeatures((this->frame_buffer.front()));
 	}
 	else // we have atleast 1 frame in the buffer
 	{
@@ -63,13 +65,18 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 			Feature updated_feature = last_f.features.at(i);
 
 			updated_feature.px = newPoints.at(i); // set feature's new pixel location
-			updated_feature.observations.push_front(&last_f.features.at(i)); // add the old feature to the observation deque
+
 			updated_feature.setParentFrame(&new_f); // set this features parent frame
 
 			new_f.features.push_back(updated_feature); // add the new feature
 
+			//add this feature to the point's observation buffer with the frame's feature buffer memory location
+			new_f.features.back().observations.push_front(&(new_f.features.back()));
+
 		} else {
 			lostFeatures++;
+			// this feature is lost so we should/must safely null all references to it and remove it from the map
+			last_f.features.at(i).getPoint()->safelyDeletePoint();
 		}
 	}
 
@@ -80,57 +87,10 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 bool VIO::computePose(double& perPixelError) {
 
 	ROS_DEBUG("computing motion");
-	ROS_ASSERT(this->state.features.size() >= 4);
-
-	std::vector<cv::Point2d> img_pts;
-	std::vector<cv::Point3d> obj_pts;
-
-	img_pts = this->state.getPixelsInOrder();
-	obj_pts = this->state.getObjectsInOrder();
-
-	cv::Mat rvec, tvec;
-
-	//set the initial inv w2c guess
-	this->tf2rvecAndtvec(this->state.currentPose.inverse(), tvec, rvec);
-
-	cv::solvePnP(obj_pts, img_pts, this->K, cv::noArray(), rvec, tvec, true, cv::SOLVEPNP_ITERATIVE);
-
-
-	//compute the error for this solution
-	std::vector<cv::Point2d> proj;
-	cv::projectPoints(obj_pts, rvec, tvec, this->K, cv::noArray(), proj);
-	double err = 0;
-	for(int i = 0; i < proj.size(); i++)
-	{
-		double dx = proj[i].x-img_pts[i].x;
-		double dy = proj[i].y-img_pts[i].y;
-		err += sqrt(dx*dx + dy*dy);
-	}
-
-	this->state.ppe = err / (double)proj.size();
-	perPixelError = this->state.ppe;
-
-	ROS_DEBUG_STREAM("VO PPE: " << this->state.ppe);
-
-	//get the updated transform back
-	this->state.currentPose = this->rvecAndtvec2tf(tvec, rvec).inverse(); // invert back to w2c
-
-	ROS_DEBUG_STREAM("VO w2c: " << this->state.currentPose.getOrigin().x()  << ", " << this->state.currentPose.getOrigin().y() << ", " << this->state.currentPose.getOrigin().z());
 
 	ROS_DEBUG("done computing motion");
 
 	return true;
-}
-
-void VIO::updatePose(tf::Transform w2c, ros::Time t) {
-	this->state.currentPose = w2c; // set the new pose
-
-	ROS_INFO("GRID HAS ALIGNED: UPDATING THE VO POSE AND OBJECT POSITIONS TO CORRECT FOR DRIFT" );
-
-	this->state.updateObjectPositions(this->K); // update the object positions to eliminate the drift
-
-	//set the time at this update
-	this->state.time_at_last_realignment = t;
 }
 
 /*
@@ -202,32 +162,25 @@ void VIO::replenishFeatures(Frame& f) {
 
 			new_ft.px = fast_kp.at(i).pt;
 			new_ft.setParentFrame(&f);
-			new_ft.setImmature(true); // this point is immature
 
-			bool valid = false;
+			f.features.push_back(new_ft);
+
+			// important - we need to push a point onto the map
+			// pushes this feature onto the observation buffer's front
+			this->map.push_back(Point(&(f.features.back()))); // the point needs to be linked to the feature's memory location in the frame's feature buffer
+
+			f.features.back().setPoint(&(this->map.back())); // set the features point to the points pos in the map -- they are now linked with their pointers
+
+			f.features.back().getPoint()->setupMapAndPointLocation((--this->map.end()), &(this->map)); // tell the point where it is in memory via an iterator and where the map is so it can delet itself later
+
+
+
 
 #if USE_POINT_CLOUD
 			//todo try to initialize using pointcloud projection
 #else
 			new_ft.computeObjectPositionWithAverageSceneDepth();
-			valid = true;
 #endif
-
-
-			//bool valid = new_ft.computeObjectPosition(this->state.currentPose, this->K); // corresponf to a 3d point
-
-			//valid = true;
-
-			if(valid) // feature is valid add it
-			{
-				ROS_DEBUG("adding new feature to vo");
-				f.features.push_back(new_ft);
-			}
-			else //feature is aff the grid remove it
-			{
-				needed++; // we still need a new feature
-				continue;
-			}
 
 		}
 	}
@@ -272,7 +225,7 @@ tf::Transform VIO::rvecAndtvec2tf(cv::Mat tvec, cv::Mat rvec){
 	return trans;
 }
 
-std::vector<cv::Point2d> VIO::getPixelsInOrder(Frame& f){
+/*std::vector<cv::Point2d> VIO::getPixelsInOrder(Frame& f){
 	std::vector<cv::Point2d> pixels;
 
 	for(auto e : f.features)
@@ -281,7 +234,7 @@ std::vector<cv::Point2d> VIO::getPixelsInOrder(Frame& f){
 	}
 
 	return pixels;
-}
+}*/
 
 std::vector<cv::Point2f> VIO::getPixels2fInOrder(Frame& f){
 	std::vector<cv::Point2f> pixels;
@@ -294,7 +247,7 @@ std::vector<cv::Point2f> VIO::getPixels2fInOrder(Frame& f){
 	return pixels;
 }
 
-std::vector<cv::Point3d> VIO::getObjectsInOrder(Frame& f){
+/*std::vector<cv::Point3d> VIO::getObjectsInOrder(Frame& f){
 	std::vector<cv::Point3d> obj;
 
 	for(auto e : f.features)
@@ -303,4 +256,4 @@ std::vector<cv::Point3d> VIO::getObjectsInOrder(Frame& f){
 	}
 
 	return obj;
-}
+}*/

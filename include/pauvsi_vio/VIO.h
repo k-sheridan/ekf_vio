@@ -46,19 +46,17 @@ public:
 	VIO();
 	virtual ~VIO();
 
-	std::vector<cv::Point2d> getPixelsInOrder(Frame& f);
+	//std::vector<cv::Point2d> getPixelsInOrder(Frame& f);
 
 	std::vector<cv::Point2f> getPixels2fInOrder(Frame& f);
 
-	std::vector<cv::Point3d> getObjectsInOrder(Frame& f);
+	//std::vector<cv::Point3d> getObjectsInOrder(Frame& f);
 
 	void addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t);
 
 	void updateFeatures(Frame& last_f, Frame& new_f);
 
 	bool computePose(double& perPixelError);
-
-	void updatePose(tf::Transform w2c, ros::Time t);
 
 	void replenishFeatures(Frame& f);
 
