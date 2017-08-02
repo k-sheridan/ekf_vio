@@ -40,8 +40,6 @@ class Feature {
 private:
 	Frame* parentFrame;
 
-	bool immature;
-
 	Point* point;
 
 public:
@@ -77,9 +75,6 @@ public:
 	{
 		return Eigen::Vector2d((px.x - getParentFrame()->K(2)) / getParentFrame()->K(0), (px.y - getParentFrame()->K(5)) / getParentFrame()->K(4));
 	}
-
-	bool isImmature(){return immature;}
-	void setImmature(bool val){immature = val;}
 
 	double getAverageFeatureDepth();
 

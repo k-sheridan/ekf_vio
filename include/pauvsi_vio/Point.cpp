@@ -13,6 +13,7 @@ Point::Point()
 	deleted = false;
 	this->sigma = DEFAULT_POINT_STARTING_ERROR;
 	this->theMap = NULL;
+	this->immature = true;
 	//this->thisPoint = 0;
 
 }
@@ -22,6 +23,7 @@ Point::Point(Feature* ft){
 	deleted = false;
 	this->sigma = DEFAULT_POINT_STARTING_ERROR;
 	this->theMap = NULL;
+	this->immature = true;
 	//this->thisPoint = 0;
 }
 
@@ -31,6 +33,8 @@ Point::Point(Feature* ft, std::list<Point>::iterator _thisPoint, std::list<Point
 	deleted = false;
 
 	ROS_ASSERT(_map != NULL);
+
+	this->immature = true;
 
 	this->sigma = DEFAULT_POINT_STARTING_ERROR;
 	this->theMap = _map;

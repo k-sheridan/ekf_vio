@@ -10,7 +10,6 @@
 Feature::Feature() {
 	parentFrame = NULL;
 	point = NULL;
-	immature = true;
 }
 
 Feature::~Feature() {
@@ -21,9 +20,9 @@ Feature::~Feature() {
 void Feature::computeObjectPositionWithAverageSceneDepth()
 {
 	//TODO check if bug
-	tf::Vector3 normalized = tf::Vector3((this->px.x - this->getParentFrame()->K(2)) / this->getParentFrame()->K(0), (this->px.y - this->getParentFrame()->K(5)) / this->getParentFrame()->K(4), 1.0);
+	Eigen::Vector3d normalized = Eigen::Vector3d((this->px.x - this->getParentFrame()->K(2)) / this->getParentFrame()->K(0), (this->px.y - this->getParentFrame()->K(5)) / this->getParentFrame()->K(4), 1.0);
 
-	this->obj = this->getParentFrame()->getPose() * (this->getParentFrame()->getAverageFeatureDepth() * normalized); // computes the object pose at the average scene depth
+	this->getPoint()->setPosition((this->getParentFrame()->getPose() * (this->getParentFrame()->getAverageFeatureDepth() * normalized))); // computes the object pose at the average scene depth
 
 }
 

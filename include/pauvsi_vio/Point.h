@@ -40,6 +40,7 @@ private:
 	double sigma; // the certainty of this point's depth
 	Eigen::Vector3d pos; // this is the world coordinate of the point
 
+	bool immature;
 
 
 	std::deque<Feature*> _observations; // this is  a list of observations of this 3d point from different frames
@@ -81,11 +82,24 @@ public:
 		return tf::Vector3(this->pos.x(), this->pos.y(), this->pos.z());
 	}
 
+	/*
+	 *
+	 * externally setting the position of a point automatically makes is immature
+	 */
+	void setPosition(Eigen::Vector3d pos)
+	{
+		this->immature = true;
+		this->pos = pos;
+	}
+
 	std::list<Point>* getMap(){ROS_ASSERT(theMap != NULL); return theMap;}
 
 	std::list<Point>::iterator getPointIterator(){
 		//ROS_ASSERT(thisPoint != 0);
 		return thisPoint;}
+
+	bool isImmature(){return immature;}
+	void setImmature(bool val){immature = val;}
 
 	double getSigma()
 	{
