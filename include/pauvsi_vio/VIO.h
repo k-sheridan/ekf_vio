@@ -28,6 +28,9 @@
 #include <tf/tf.h>
 #include <tf/tfMessage.h>
 
+#include <image_transport/image_transport.h>
+#include <cv_bridge/cv_bridge.h>
+
 #include <vioParams.h>
 #include <Feature.h>
 #include <Frame.h>
@@ -45,6 +48,8 @@ public:
 
 	VIO();
 	virtual ~VIO();
+
+	void camera_callback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::CameraInfoConstPtr& cam);
 
 	//std::vector<cv::Point2d> getPixelsInOrder(Frame& f);
 

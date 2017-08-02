@@ -10,6 +10,7 @@
 Feature::Feature() {
 	parentFrame = NULL;
 	point = NULL;
+	obsolete = false;
 }
 
 Feature::~Feature() {
@@ -17,6 +18,7 @@ Feature::~Feature() {
 }
 
 Eigen::Vector2d Feature::getMetricPixel() {
+	ROS_ASSERT(!obsolete);
 	return Eigen::Vector2d(
 			(px.x - getParentFrame()->K(2)) / getParentFrame()->K(0),
 			(px.y - getParentFrame()->K(5)) / getParentFrame()->K(4));

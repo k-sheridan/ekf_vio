@@ -69,6 +69,7 @@ void Point::safelyDeletePoint()
 	{
 		ROS_DEBUG_STREAM("check feature pos for deleted memory" << e->px);
 		e->setPoint(NULL); // null the point reference
+		e->obsolete = true;
 
 		/*
 		if(e->frame->finalFrame) // this is the last frame in the buffer do not search past this point due to potential dangling pointer

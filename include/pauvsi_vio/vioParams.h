@@ -13,9 +13,9 @@
 
 //VISUAL ODOM
 //fast corner detector for planar odometry
-#define FAST_THRESHOLD 100
+#define FAST_THRESHOLD 20
 // the amount to blur the image before feature extraction
-#define FAST_BLUR_SIGMA 0.5
+#define FAST_BLUR_SIGMA 0.0
 
 // the minimum feature eigen val where it is determined as lost
 #define KLT_MIN_EIGEN 1e-4

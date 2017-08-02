@@ -46,6 +46,8 @@ public:
 
 	std::deque<Feature*> observations; // may not use but this can keep track of past observations of this point for optimization of its position/depth
 
+	bool obsolete;
+
 	cv::Point2f px;
 
 	Feature();
