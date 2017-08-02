@@ -67,7 +67,7 @@ void Point::safelyDeletePoint()
 
 	for(auto& e : this->observations())
 	{
-		ROS_DEBUG_STREAM("check feature pos for deleted memory" << e->px);
+		ROS_DEBUG_STREAM("check feature (" << e << ") pos for deleted memory" << e->px);
 		e->setPoint(NULL); // null the point reference
 		e->obsolete = true;
 

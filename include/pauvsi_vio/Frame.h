@@ -28,7 +28,7 @@ private:
 
 public:
 
-	std::vector<Feature> features;
+	std::vector<Feature> features; // list vs vector
 
 	cv::Mat_<float> K;
 	cv::Mat img;
