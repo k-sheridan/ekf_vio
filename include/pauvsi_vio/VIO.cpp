@@ -53,6 +53,8 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		this->updateFeatures((this->frame_buffer.at(1)), this->frame_buffer.front());
 
 	}
+
+	ROS_DEBUG_STREAM("map size: " << this->map.size());
 }
 
 void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
@@ -91,8 +93,7 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 			new_f.features.push_back(updated_feature); // add the new feature
 
 			//add this feature to the point's observation buffer with the frame's feature buffer memory location
-			new_f.features.back().observations.push_front(
-					&(new_f.features.back()));
+			new_f.features.back().getPoint()->addObservation(&(new_f.features.back()));
 
 		} else {
 			lostFeatures++;
