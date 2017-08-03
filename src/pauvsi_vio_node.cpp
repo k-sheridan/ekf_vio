@@ -10,8 +10,6 @@
 #include <ros/ros.h>
 #include <pauvsi_vio/VIO.h>
 
-//#define ROSCONSOLE_MIN_SEVERITY ROSCONSOLE_SEVERITY_INFO
-
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "pauvsi_vio_node"); // initializes ros

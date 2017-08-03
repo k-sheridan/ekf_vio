@@ -46,6 +46,8 @@ public:
 
 	tf::TransformListener tf_listener;
 
+	ros::Publisher insight_pub;
+
 	VIO();
 	virtual ~VIO();
 
@@ -69,14 +71,7 @@ public:
 
 	tf::Transform rvecAndtvec2tf(cv::Mat tvec, cv::Mat rvec);
 
-	cv::Mat draw(cv::Mat in)
-	{
-		for(auto e : frame_buffer.front().features)
-		{
-			cv::drawMarker(in, e.px, cv::Scalar(255, 0, 0));
-		}
-		return in;
-	}
+	void publishInsight(Frame& f);
 
 	void correctPointers(bool allFrames = false);
 };

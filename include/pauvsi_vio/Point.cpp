@@ -62,7 +62,7 @@ void Point::addObservation(Feature* ft)
 void Point::safelyDeletePoint()
 {
 	ROS_DEBUG_STREAM("deleting point with " << this->observations().size() << " obs");
-	ROS_ASSERT(this->observations().size() <= 100);
+	//ROS_ASSERT(this->observations().size() <= 100);
 
 
 	for(auto& e : this->observations())

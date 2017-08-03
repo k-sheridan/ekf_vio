@@ -8,12 +8,16 @@
 #ifndef PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIOPARAMS_H_
 #define PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIOPARAMS_H_
 
+//#define ROSCONSOLE_MIN_SEVERITY ROSCONSOLE_SEVERITY_DEBUG
+
+#define PUBLISH_INSIGHT true
+#define INSIGHT_TOPIC "pauvsi_vio/insight"
 
 #define SUPER_DEBUG false
 
 //VISUAL ODOM
 //fast corner detector for planar odometry
-#define FAST_THRESHOLD 50
+#define FAST_THRESHOLD 30
 // the amount to blur the image before feature extraction
 #define FAST_BLUR_SIGMA 0.0
 
@@ -57,7 +61,7 @@
 
 //END VISUAL ODOM
 
-#define ODOM_TOPIC "aerotronic_monovo/odom"
+#define ODOM_TOPIC "pauvsi_vio/odom"
 
 #define USE_POINT_CLOUD false
 

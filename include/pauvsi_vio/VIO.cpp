@@ -15,6 +15,10 @@ VIO::VIO() {
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
 			CAMERA_TOPIC, 2, &VIO::camera_callback, this);
 
+#if PUBLISH_INSIGHT
+	this->insight_pub = nh.advertise<sensor_msgs::Image>(INSIGHT_TOPIC, 1);
+#endif
+
 	ros::spin();
 }
 
@@ -28,14 +32,14 @@ void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
 
 	this->addFrame(temp.clone(),
 			(cv::Mat_<float>(3, 3) << cam->K.at(0), cam->K.at(1), cam->K.at(2), cam->K.at(3), cam->K.at(4), cam->K.at(5), cam->K.at(6), cam->K.at(7), cam->K.at(8)),
-					img->header.stamp);
+			img->header.stamp);
 }
 
 void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 	Frame f = Frame(img, k, t);
 
 	if (this->frame_buffer.size() == 0) // if this is the first frame that we are receiving
-			{
+	{
 		ROS_DEBUG("adding the first frame");
 		f.setPose(
 				Sophus::SE3d(Eigen::Quaterniond(1.0, 0, 0, 0),
@@ -150,7 +154,7 @@ void VIO::replenishFeatures(Frame& f) {
 
 		//image which is used to check if a close feature already exists
 		cv::Mat checkImg = cv::Mat::zeros(img.size(), CV_8U);
-		for (auto e : f.features) {
+		for (auto& e : f.features) {
 			cv::drawMarker(checkImg, e.px, cv::Scalar(255), cv::MARKER_SQUARE,
 					MIN_NEW_FEATURE_DIST * 2, MIN_NEW_FEATURE_DIST);
 		}
@@ -212,8 +216,8 @@ void VIO::tf2rvecAndtvec(tf::Transform tf, cv::Mat& tvec, cv::Mat& rvec) {
 	cv::Mat_<double> R =
 			(cv::Mat_<double>(3, 3) << tf.getBasis().getRow(0).x(), tf.getBasis().getRow(
 					0).y(), tf.getBasis().getRow(0).z(), tf.getBasis().getRow(1).x(), tf.getBasis().getRow(
-					1).y(), tf.getBasis().getRow(1).z(), tf.getBasis().getRow(2).x(), tf.getBasis().getRow(
-					2).y(), tf.getBasis().getRow(2).z());
+							1).y(), tf.getBasis().getRow(1).z(), tf.getBasis().getRow(2).x(), tf.getBasis().getRow(
+									2).y(), tf.getBasis().getRow(2).z());
 
 	//ROS_DEBUG("setting up tvec and rvec");
 
@@ -297,4 +301,25 @@ void VIO::correctPointers(bool allFrames)
 			it->getPoint()->getObservations().front() = &(*it);
 		}
 	}
+}
+
+void VIO::publishInsight(Frame& f)
+{
+	cv::Mat img;
+
+	cv::cvtColor(f.img, img, CV_GRAY2BGR);
+
+	for(auto& e : frame_buffer.front().features)
+	{
+		cv::drawMarker(img, e.px, cv::Scalar(255, 0, 0));
+	}
+
+	cv_bridge::CvImage cv_img;
+
+	cv_img.image = img;
+	cv_img.header.frame_id = CAMERA_FRAME;
+	cv_img.encoding = sensor_msgs::image_encodings::BGR8;
+
+	this->insight_pub.publish(cv_img.toImageMsg());
+	ROS_DEBUG("end publish");
 }
