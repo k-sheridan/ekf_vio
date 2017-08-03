@@ -50,6 +50,9 @@
 #define EPS_SBA 0.0000000001
 #define EPS_MOBA 0.0000000001
 
+//max iterations for gausss newton
+#define MOBA_MAX_ITERATIONS 10
+
 //min and maximum point depths in meters
 #define MAX_POINT_Z 200
 #define MIN_POINT_Z 0.02

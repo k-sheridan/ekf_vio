@@ -35,7 +35,8 @@
 #include <Feature.h>
 #include <Frame.h>
 
-#include "sophus/se3.hpp"
+#include <sophus/se3.hpp>
+#include <sophus/types.hpp>
 
 class VIO {
 public:
@@ -47,6 +48,8 @@ public:
 	tf::TransformListener tf_listener;
 
 	ros::Publisher insight_pub;
+
+	typedef Eigen::Matrix<double,2,6> Matrix26d;
 
 	VIO();
 	virtual ~VIO();
@@ -63,7 +66,9 @@ public:
 
 	void updateFeatures(Frame& last_f, Frame& new_f);
 
-	bool computePose(double& perPixelError);
+	bool MOBA(Frame& f, double& perPixelError, bool useImmature);
+
+	bool optimizePose(Frame& f, double& ppe);
 
 	void replenishFeatures(Frame& f);
 

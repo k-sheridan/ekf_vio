@@ -56,6 +56,10 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		// attempt to flow features into the next frame
 		this->updateFeatures(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
 
+		// attempt to compute our new camera pose from flowed features and their respective depth/position
+		double ppe = 0;
+		bool moba_passed = this->optimizePose(this->frame_buffer.front(), ppe);
+
 		this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
 
 	}
@@ -124,11 +128,102 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 
 }
 
-bool VIO::computePose(double& perPixelError) {
+bool VIO::optimizePose(Frame& f, double& ppe)
+{
 
-	ROS_DEBUG("computing motion");
+}
 
-	ROS_DEBUG("done computing motion");
+bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
+{
+	double chi2(0.0);
+	std::vector<double> chi2_vec_init, chi2_vec_final;
+
+	std::vector<Feature*> edges;
+
+	Sophus::SE3d currentGuess = f.getPose(); // stores the current best guess
+
+	Sophus::Matrix6d A; //LHS
+	Sophus::Vector6d b; //RHS
+
+	ROS_DEBUG_STREAM("start trans " << currentGuess.translation());
+
+	//store all valid edges
+	for(auto& e : f.features)
+	{
+		if(!e.obsolete)
+		{
+			if(useImmature || !e.getPoint()->isImmature())
+			{
+				edges.push_back(&e);
+			}
+		}
+	}
+
+	int edgeCount = edges.size();
+
+	if(edgeCount < 3)
+	{
+		ROS_DEBUG_STREAM("too few edges to do motion only BA");
+		return false;
+	}
+
+#if SUPER_DEBUG
+	ROS_DEBUG_STREAM("found " << edgeCount << " valid points for MOBA");
+#endif
+
+	//reserve the space for all chi2 of edges
+	chi2_vec_init.reserve(edgeCount);
+	chi2_vec_final.reserve(edgeCount);
+
+	//run the motion only bundle adjustment
+	for(size_t iter = 0; iter < MOBA_MAX_ITERATIONS; iter++)
+	{
+
+		b.setZero();
+		A.setZero();
+		double new_chi2(0.0);
+
+		// compute residual
+		for(auto it=edges.begin(); it!=edges.end(); ++it)
+		{
+			Matrix26d J;
+			Eigen::Vector3d xyz_f(currentGuess * (*it)->getPoint()->getWorldCoordinate());
+			Frame::jacobian_xyz2uv(xyz_f, J);
+			Eigen::Vector2d e = (*it)->getMetricPixel() - Point::toMetricPixel(xyz_f);
+
+#if SUPER_DEBUG
+			ROS_DEBUG_STREAM("edge chi: " << e.squaredNorm());
+#endif
+
+			A.noalias() += J.transpose()*J;
+			b.noalias() -= J.transpose()*e;
+			new_chi2 += e.squaredNorm();
+		}
+
+		// solve linear system
+		const Sophus::Vector6d dT(A.ldlt().solve(b));
+
+		// check if error increased
+		if((iter > 0 && new_chi2 > chi2) || (bool) std::isnan((double)dT[0]))
+		{
+			ROS_DEBUG_STREAM("it " << iter << "\t FAILURE \t new_chi2 = " << new_chi2);
+			break;
+		}
+
+		// update the model
+		currentGuess = Sophus::SE3d::exp(dT)*currentGuess;
+		chi2 = new_chi2;
+
+		ROS_DEBUG_STREAM("it " << iter << "\t Success \t new_chi2 = " << new_chi2 << "\t norm(dT) = " << dT.norm());
+
+		// stop when converged
+		if(dT.norm() <= EPS_MOBA)
+			break;
+	}
+
+	ROS_DEBUG_STREAM("optimized trans " << currentGuess.translation());
+
+	f.setPose(currentGuess); // set the new optimized pose
 
 	return true;
 }
