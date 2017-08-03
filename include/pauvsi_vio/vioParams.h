@@ -25,7 +25,7 @@
 #define KLT_MIN_EIGEN 1e-4
 
 // the minimum pixel distance a feature must have between a previous feature
-#define MIN_NEW_FEATURE_DIST 20
+#define MIN_NEW_FEATURE_DIST 10
 
 // the desired number of features more = robust...er (and slower)
 #define NUM_FEATURES 40

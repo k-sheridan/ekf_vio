@@ -98,6 +98,7 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 	std::list<Feature>::iterator last_f_feat_iter = last_f.features.begin();
 
 	for (int i = 0; i < status.size(); i++) {
+		//TODO remove features at too high of a radius
 		if (status.at(i) == 1 && !last_f_feat_iter->obsolete) { // new - check if the feature is obsolete and remove it if it is
 			Feature updated_feature = (*last_f_feat_iter);
 
@@ -164,8 +165,7 @@ void VIO::replenishFeatures(Frame& f) {
 		//image which is used to check if a close feature already exists
 		cv::Mat checkImg = cv::Mat::zeros(img.size(), CV_8U);
 		for (auto& e : f.features) {
-			cv::drawMarker(checkImg, e.px, cv::Scalar(255), cv::MARKER_SQUARE,
-					MIN_NEW_FEATURE_DIST * 2, MIN_NEW_FEATURE_DIST);
+			cv::circle(checkImg, e.px, MIN_NEW_FEATURE_DIST, cv::Scalar(255), -1);
 		}
 
 		for (int i = 0; i < needed && i < fast_kp.size(); i++) {
@@ -193,7 +193,14 @@ void VIO::replenishFeatures(Frame& f) {
 				continue;
 			}
 
-			ROS_DEBUG("adding feature");
+
+			//TODO remove features at too high of a radius
+
+			// add this new ft to the check img
+			cv::circle(checkImg, fast_kp.at(i).pt, MIN_NEW_FEATURE_DIST, cv::Scalar(255), -1);
+
+
+			ROS_DEBUG_STREAM("adding feature " << fast_kp.at(i).pt);
 
 			Feature new_ft;
 
