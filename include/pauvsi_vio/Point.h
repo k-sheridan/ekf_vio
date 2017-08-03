@@ -88,6 +88,8 @@ public:
 		return tf::Vector3(this->pos.x(), this->pos.y(), this->pos.z());
 	}
 
+	std::deque<Feature*>& getObservations(){return _observations;}
+
 	/*
 	 *
 	 * externally setting the position of a point automatically makes is immature

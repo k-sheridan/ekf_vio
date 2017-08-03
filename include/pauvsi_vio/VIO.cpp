@@ -50,7 +50,7 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
 		// attempt to flow features into the next frame
-		this->updateFeatures((this->frame_buffer.at(1)), this->frame_buffer.front());
+		this->updateFeatures(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
 
 	}
 
@@ -276,3 +276,21 @@ std::vector<cv::Point2f> VIO::getPixels2fInOrder(Frame& f) {
 
  return obj;
  }*/
+
+void VIO::correctPointers(bool allFrames)
+{
+	ROS_ASSERT(this->frame_buffer.size() > 0);
+
+	if(allFrames)
+	{
+		ROS_WARN("cannot correct all frame's pointers");
+	}
+	else
+	{
+		for(std::vector<Feature>::iterator it = this->frame_buffer.front().features.begin(); it != this->frame_buffer.front().features.end(); it++)
+		{
+			//ROS_ASSERT(&(*it) == it->getPoint()->getObservations().front());
+			it->getPoint()->getObservations().front() = &(*it);
+		}
+	}
+}
