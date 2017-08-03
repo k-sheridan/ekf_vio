@@ -201,9 +201,7 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 		return false;
 	}
 
-#if SUPER_DEBUG
 	ROS_DEBUG_STREAM("found " << edgeCount << " valid points for MOBA");
-#endif
 
 	//reserve the space for all chi2 of edges
 	chi2_vec_init.reserve(edgeCount);
@@ -225,9 +223,8 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 			Frame::jacobian_xyz2uv(xyz_f, J);
 			Eigen::Vector2d e = (*it)->getMetricPixel() - Point::toMetricPixel(xyz_f);
 
-#if SUPER_DEBUG
+
 			ROS_DEBUG_STREAM("edge chi: " << e.squaredNorm());
-#endif
 
 			A.noalias() += J.transpose()*J;
 			b.noalias() -= J.transpose()*e;
