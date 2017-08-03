@@ -56,7 +56,16 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		// attempt to flow features into the next frame
 		this->updateFeatures(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
 
+		this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
+
 	}
+
+#if PUBLISH_INSIGHT
+	if(this->frame_buffer.size() > 0)
+	{
+		this->publishInsight(this->frame_buffer.front());
+	}
+#endif
 
 	ROS_DEBUG_STREAM("map size: " << this->map.size());
 }
@@ -311,7 +320,17 @@ void VIO::publishInsight(Frame& f)
 
 	for(auto& e : frame_buffer.front().features)
 	{
-		cv::drawMarker(img, e.px, cv::Scalar(255, 0, 0));
+		if(!e.obsolete)
+		{
+			if(e.getPoint()->isImmature())
+			{
+				cv::drawMarker(img, e.px, cv::Scalar(0, 255, 255), cv::MARKER_SQUARE, 5);
+			}
+			else
+			{
+				cv::drawMarker(img, e.px, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 5);
+			}
+		}
 	}
 
 	cv_bridge::CvImage cv_img;

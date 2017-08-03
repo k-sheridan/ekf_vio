@@ -17,7 +17,7 @@
 
 //VISUAL ODOM
 //fast corner detector for planar odometry
-#define FAST_THRESHOLD 30
+#define FAST_THRESHOLD 50
 // the amount to blur the image before feature extraction
 #define FAST_BLUR_SIGMA 0.0
 
@@ -25,10 +25,10 @@
 #define KLT_MIN_EIGEN 1e-4
 
 // the minimum pixel distance a feature must have between a previous feature
-#define MIN_NEW_FEATURE_DIST 4
+#define MIN_NEW_FEATURE_DIST 20
 
 // the desired number of features more = robust...er (and slower)
-#define NUM_FEATURES 100
+#define NUM_FEATURES 40
 
 //minimum detected features before vo has failed
 #define MINIMUM_TRACKABLE_FEATURES 4
