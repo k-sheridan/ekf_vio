@@ -130,7 +130,41 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 
 bool VIO::optimizePose(Frame& f, double& ppe)
 {
+	bool pass = false;
 
+	int matureCount = 0;
+	int validCount = 0;
+	for(auto& e : f.features)
+	{
+		if(!e.obsolete)
+		{
+			validCount++;
+			if(!e.getPoint()->isImmature())
+			{
+				matureCount++;
+			}
+		}
+	}
+
+	ROS_DEBUG_STREAM("found " << matureCount << " mature pixels");
+
+	if(matureCount >= MINIMUM_TRACKABLE_FEATURES)
+	{
+		ROS_DEBUG("running moba with mature features only");
+		pass = this->MOBA(f, ppe, false);
+	}
+	else if(validCount >= MINIMUM_TRACKABLE_FEATURES)
+	{
+		ROS_WARN_STREAM("pauvsi_vio: too few MATURE features. forced to run motion only bundle adjustment with all " << validCount << " features");
+		pass = this->MOBA(f, ppe, true);
+	}
+	else
+	{
+		ROS_ERROR("pauvsi_vio: ran out of valid features lost track of pose. try lowering the FAST feature threshold.");
+		pass = false;
+	}
+
+	return pass;
 }
 
 bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
