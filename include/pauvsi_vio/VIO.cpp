@@ -82,9 +82,11 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 
 	int lostFeatures = 0;
 
+	std::list<Feature>::iterator last_f_feat_iter = last_f.features.begin();
+
 	for (int i = 0; i < status.size(); i++) {
-		if (status.at(i) == 1 && !last_f.features.at(i).obsolete) { // new - check if the feature is obsolete and remove it if it is
-			Feature updated_feature = last_f.features.at(i);
+		if (status.at(i) == 1 && !last_f_feat_iter->obsolete) { // new - check if the feature is obsolete and remove it if it is
+			Feature updated_feature = (*last_f_feat_iter);
 
 			updated_feature.px = newPoints.at(i); // set feature's new pixel location
 
@@ -98,8 +100,10 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 		} else {
 			lostFeatures++;
 			// this feature is lost so we should/must safely null all references to it and remove it from the map
-			last_f.features.at(i).getPoint()->safelyDeletePoint();
+			last_f_feat_iter->getPoint()->safelyDeletePoint();
 		}
+
+		last_f_feat_iter++;
 	}
 
 	ROS_DEBUG_STREAM("VO LOST " << lostFeatures << "FEATURES");
@@ -287,7 +291,7 @@ void VIO::correctPointers(bool allFrames)
 	}
 	else
 	{
-		for(std::vector<Feature>::iterator it = this->frame_buffer.front().features.begin(); it != this->frame_buffer.front().features.end(); it++)
+		for(std::list<Feature>::iterator it = this->frame_buffer.front().features.begin(); it != this->frame_buffer.front().features.end(); it++)
 		{
 			//ROS_ASSERT(&(*it) == it->getPoint()->getObservations().front());
 			it->getPoint()->getObservations().front() = &(*it);
