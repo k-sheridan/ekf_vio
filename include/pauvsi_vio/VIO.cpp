@@ -19,6 +19,29 @@ VIO::VIO() {
 	this->insight_pub = nh.advertise<sensor_msgs::Image>(INSIGHT_TOPIC, 1);
 #endif
 
+	this->odom_pub = nh.advertise<nav_msgs::Odometry>(ODOM_TOPIC, 1);
+
+	//get relevant transforms
+
+	tf::StampedTransform b2c_st;
+	ROS_INFO_STREAM("WAITING FOR TANSFORM FROM " << BASE_FRAME << " TO " << CAMERA_FRAME);
+	if(this->tf_listener.waitForTransform(BASE_FRAME, CAMERA_FRAME, ros::Time(0), ros::Duration(10))){
+		try {
+			this->tf_listener.lookupTransform(BASE_FRAME, CAMERA_FRAME,
+					ros::Time(0), b2c_st);
+		} catch (tf::TransformException& e) {
+			ROS_WARN_STREAM(e.what());
+		}
+
+		this->b2c = tf::Transform(b2c_st);
+	}
+	else
+	{
+		ROS_FATAL("COULD NOT GET TRANSFORM");
+		ros::shutdown();
+		return;
+	}
+
 	ros::spin();
 }
 
@@ -474,4 +497,15 @@ void VIO::publishInsight(Frame& f)
 
 	this->insight_pub.publish(cv_img.toImageMsg());
 	ROS_DEBUG("end publish");
+}
+
+void VIO::publishOdometry(Frame& last_f, Frame& new_f)
+{
+	nav_msgs::Odometry msg;
+
+	Sophus::SE3d dT = last_f.getPose_inv() * new_f.getPose();
+
+	tf::Transform dT_camera = Frame::sophus2tf(dT);
+
+
 }

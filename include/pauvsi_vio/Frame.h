@@ -76,8 +76,8 @@ public:
 		J(1,5) = -x*z_inv;            // x/z
 	}
 
-	Sophus::SE3d tf2sophus(tf::Transform tf);
-	tf::Transform sophus2tf(Sophus::SE3d se3);
+	inline static Sophus::SE3d tf2sophus(tf::Transform tf);
+	inline static tf::Transform sophus2tf(Sophus::SE3d se3);
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_ */

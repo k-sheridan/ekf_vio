@@ -31,6 +31,8 @@
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 
+#include <nav_msgs/Odometry.h>
+
 #include <vioParams.h>
 #include <Feature.h>
 #include <Frame.h>
@@ -47,7 +49,9 @@ public:
 
 	tf::TransformListener tf_listener;
 
-	ros::Publisher insight_pub;
+	tf::Transform b2c, c2imu, c2stereo;
+
+	ros::Publisher insight_pub, odom_pub, points_pub;
 
 	typedef Eigen::Matrix<double,2,6> Matrix26d;
 
@@ -77,6 +81,8 @@ public:
 	tf::Transform rvecAndtvec2tf(cv::Mat tvec, cv::Mat rvec);
 
 	void publishInsight(Frame& f);
+
+	void publishOdometry(Frame& last_f, Frame& new_f);
 
 	void correctPointers(bool allFrames = false);
 };
