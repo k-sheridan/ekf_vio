@@ -21,7 +21,7 @@ Frame::Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t)
 	this->K = _k;
 	this->t = _t;
 
-	avgFeatureDepth = false;
+	avgFeatureDepthSet = false;
 
 
 }
@@ -49,23 +49,25 @@ double Frame::getAverageFeatureDepth()
 		double depth = 0;
 		for(auto e : this->features)
 		{
-			if(!e.getPoint()->isImmature())
-			{
-				maturePointCount++;
-
-				//make more efficient
-				//tf::Vector3 pointInCameraFrame = this->getPose_inv() * e.obj;
-
-				double z_depth = a * e.getPoint()->getWorldCoordinate().x() + b * e.getPoint()->getWorldCoordinate().y() + c * e.getPoint()->getWorldCoordinate().z() + d; // add the z parts together
-
-				if(z_depth > 0)
+			if(!e.obsolete){
+				if(!e.getPoint()->isImmature())
 				{
-					depth += z_depth;
-				}
-				else
-				{
-					maturePointCount--;
-					ROS_WARN("point is behind camera");
+					maturePointCount++;
+
+					//make more efficient
+					//tf::Vector3 pointInCameraFrame = this->getPose_inv() * e.obj;
+
+					double z_depth = a * e.getPoint()->getWorldCoordinate().x() + b * e.getPoint()->getWorldCoordinate().y() + c * e.getPoint()->getWorldCoordinate().z() + d; // add the z parts together
+
+					if(z_depth > 0)
+					{
+						depth += z_depth;
+					}
+					else
+					{
+						maturePointCount--;
+						ROS_WARN("point is behind camera");
+					}
 				}
 			}
 		}

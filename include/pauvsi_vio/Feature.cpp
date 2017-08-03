@@ -32,10 +32,14 @@ void Feature::computeObjectPositionWithAverageSceneDepth() {
 			(this->px.y - this->getParentFrame()->K(5))
 					/ this->getParentFrame()->K(4), 1.0);
 
+	ROS_DEBUG_STREAM("temp: " << normalized);
+
 	this->getPoint()->setPosition(
 			(this->getParentFrame()->getPose()
 					* (this->getParentFrame()->getAverageFeatureDepth()
 							* normalized))); // computes the object pose at the average scene depth
+
+	ROS_DEBUG_STREAM("point pos init: " << this->getPoint()->getWorldCoordinate());
 
 }
 
