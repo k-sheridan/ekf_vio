@@ -80,6 +80,9 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		// attempt to flow features into the next frame
 		this->updateFeatures(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
 
+		//predict and set the current pose guess
+		this->frame_buffer.front().setPose(std::next(this->frame_buffer.begin(), 1)->getPose()); // temp assume zero velocity
+
 		// attempt to compute our new camera pose from flowed features and their respective depth/position
 		double ppe = 0;
 		bool moba_passed = this->optimizePose(this->frame_buffer.front(), ppe);
@@ -274,6 +277,8 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 		currentGuess = Sophus::SE3d::exp(dT)*currentGuess;
 		chi2 = new_chi2;
 
+		ROS_DEBUG_STREAM("optimized trans: " << currentGuess.translation());
+
 		ROS_DEBUG_STREAM("it " << iter << "\t Success \t new_chi2 = " << new_chi2 << "\t norm(dT) = " << dT.norm());
 
 		// stop when converged
@@ -281,9 +286,10 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 			break;
 	}
 
-	ROS_DEBUG_STREAM("optimized trans " << currentGuess.translation());
+	ROS_DEBUG_STREAM("optimized trans: " << currentGuess.translation());
 
 	f.setPose(currentGuess); // set the new optimized pose
+
 
 	return true;
 }
