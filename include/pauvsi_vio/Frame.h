@@ -76,8 +76,22 @@ public:
 		J(1,5) = -x*z_inv;            // x/z
 	}
 
-	inline static Sophus::SE3d tf2sophus(tf::Transform tf);
-	inline static tf::Transform sophus2tf(Sophus::SE3d se3);
+	inline static Sophus::SE3d tf2sophus(tf::Transform tf)
+	{
+
+		Sophus::SE3d::Point pt = Eigen::Vector3d(tf.getOrigin().x(), tf.getOrigin().y(), tf.getOrigin().z());
+
+		tf::Quaternion q = tf.getRotation();
+		return Sophus::SE3d(Eigen::Quaterniond(q.w(), q.x(), q.y(), q.z()), pt);
+	}
+
+	inline static tf::Transform sophus2tf(Sophus::SE3d se3)
+	{
+
+		Eigen::Quaterniond q = se3.unit_quaternion();
+
+		return tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()), tf::Vector3(se3.translation().x(), se3.translation().y(), se3.translation().z()));
+	}
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_ */

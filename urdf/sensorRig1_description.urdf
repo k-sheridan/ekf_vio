@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<robot name="sensorRig1">
+
+<link name="base_link">
+</link>
+
+<!-- This is the frame of the left camera of the dji gudance camera -->
+<link name="guidance">
+</link>
+
+<joint name="base_to_guidance" type="fixed">
+		<parent link="base_link" />
+		<child link="guidance" />
+		<origin xyz="-0.04826 0.0 -0.05715" rpy="3.14159265359 0 0"/>
+</joint>	
+
+</robot>
