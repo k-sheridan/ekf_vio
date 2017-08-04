@@ -8,11 +8,12 @@
 
 
 #include <ros/ros.h>
-#include <pauvsi_vio/VIO.h>
+
+#include "../include/invio/VIO.h"
 
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "pauvsi_vio_node"); // initializes ros
+	ros::init(argc, argv, "invio_node"); // initializes ros
 
 	VIO vio; // create an instance of the visual inertial odometry algorithm
 

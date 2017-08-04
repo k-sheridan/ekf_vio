@@ -18,13 +18,10 @@
 #include <tf/tf.h>
 #include <tf/tfMessage.h>
 
-#include "vioParams.h"
-
-#include "Feature.h"
-
-#include "sophus/se3.hpp"
-
-#include "Frame.h"
+#include "../invio/Feature.h"
+#include "../invio/Frame.h"
+#include <sophus/se3.hpp>
+#include "../invio/vioParams.h"
 
 class Feature;
 

@@ -28,9 +28,9 @@
 #include <tf/tf.h>
 #include <tf/tfMessage.h>
 
-#include <vioParams.h>
-#include "Frame.h"
-#include "Point.h"
+#include "../invio/Frame.h"
+#include "../invio/Point.h"
+#include "../invio/vioParams.h"
 
 class Point; // tell it that point is a class
 

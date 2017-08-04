@@ -33,12 +33,12 @@
 
 #include <nav_msgs/Odometry.h>
 
-#include <vioParams.h>
-#include <Feature.h>
-#include <Frame.h>
-
 #include <sophus/se3.hpp>
+
+#include "../invio/Feature.h"
+#include "../invio/Frame.h"
 #include <sophus/types.hpp>
+#include "../invio/vioParams.h"
 
 class VIO {
 public:

@@ -11,7 +11,7 @@
 //#define ROSCONSOLE_MIN_SEVERITY ROSCONSOLE_SEVERITY_DEBUG
 
 #define PUBLISH_INSIGHT true
-#define INSIGHT_TOPIC "pauvsi_vio/insight"
+#define INSIGHT_TOPIC "invio/insight"
 
 #define SUPER_DEBUG false
 
@@ -70,7 +70,7 @@
 
 //END VISUAL ODOM
 
-#define ODOM_TOPIC "pauvsi_vio/odom"
+#define ODOM_TOPIC "invio/odom"
 
 #define USE_POINT_CLOUD false
 

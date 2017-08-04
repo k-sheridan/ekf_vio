@@ -5,7 +5,7 @@
  *      Author: kevin
  */
 
-#include "Frame.h"
+#include "../invio/Frame.h"
 
 Frame::Frame() {
 	this->keyframe = false; // initially we are not a keyframe

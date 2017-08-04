@@ -8,10 +8,9 @@
 #ifndef PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_
 #define PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_
 
-#include "sophus/se3.hpp"
-
-#include "Feature.h"
-#include <vioParams.h>
+#include "../invio/Feature.h"
+#include <sophus/se3.hpp>
+#include "../invio/vioParams.h"
 
 class Feature;
 

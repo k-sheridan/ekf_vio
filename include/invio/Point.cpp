@@ -6,7 +6,7 @@
  */
 
 
-#include "Point.h"
+#include "../invio/Point.h"
 
 Point::Point()
 {

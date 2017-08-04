@@ -5,7 +5,7 @@
  *      Author: kevin
  */
 
-#include "Feature.h"
+#include "../invio/Feature.h"
 
 Feature::Feature() {
 	parentFrame = NULL;
