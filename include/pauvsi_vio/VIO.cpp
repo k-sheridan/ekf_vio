@@ -86,6 +86,11 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 
 		this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
 
+		if(moba_passed)
+		{
+			this->publishOdometry(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
+		}
+
 	}
 
 #if PUBLISH_INSIGHT
