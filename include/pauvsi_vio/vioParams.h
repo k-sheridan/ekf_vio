@@ -30,6 +30,12 @@
 // the desired number of features more = robust...er (and slower)
 #define NUM_FEATURES 40
 
+// the amount of points needed to start pauvsi vio odometry
+#define START_FEATURE_COUNT 10
+
+// the minimum amount of mature features which is deemed dangerous
+#define DANGEROUS_MATURE_FEATURE_COUNT_LEVEL 10
+
 //minimum detected features before vo has failed
 #define MINIMUM_TRACKABLE_FEATURES 4
 
