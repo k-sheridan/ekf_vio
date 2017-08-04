@@ -28,7 +28,7 @@ find_package(sophus REQUIRED)
 include_directories(
 	${OpenCV_INCLUDE_DIRS}
 	include
-	include/pauvsi_vio
+	include/invio
 	/usr/include/eigen3
 	${catkin_INCLUDE_DIRS}
 	${Eigen_INCLUDE_DIRS}
@@ -37,7 +37,7 @@ include_directories(
 
 catkin_package(
    INCLUDE_DIRS include
-#  LIBRARIES pauvsi_vio
+#  LIBRARIES invio
 # CATKIN_DEPENDS cv_bridge image_transport roscpp sensor_msgs std_msgs tf
 #  DEPENDS system_lib
    DEPENDS opencv
