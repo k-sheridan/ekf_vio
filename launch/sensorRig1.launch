@@ -6,7 +6,7 @@
       
     </node>
     
-    <node name="pauvsi_vio" pkg="pauvsi_vio" type="pauvsi_vio_node" output="screen">
+    <node name="invio" pkg="invio" type="invio_node" output="screen">
     </node>
 
 </launch>

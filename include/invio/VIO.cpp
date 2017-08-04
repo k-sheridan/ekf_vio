@@ -9,6 +9,11 @@
 
 VIO::VIO() {
 
+	//set uninitialized
+	this->initialized = false;
+	//set tracking lost to false initialially
+	this->tracking_lost = false;
+
 	ros::NodeHandle nh; // we all know what this is
 
 	image_transport::ImageTransport it(nh);
@@ -187,7 +192,7 @@ bool VIO::optimizePose(Frame& f, double& ppe)
 	}
 	else if(validCount >= MINIMUM_TRACKABLE_FEATURES)
 	{
-		ROS_WARN_STREAM("pauvsi_vio: too few MATURE features. forced to run motion only bundle adjustment with all " << validCount << " features");
+		ROS_WARN_STREAM("pauvsi_vio: DANGEROUS! too few MATURE features. forced to run motion only bundle adjustment with all " << validCount << " features");
 		pass = this->MOBA(f, ppe, true);
 	}
 	else
