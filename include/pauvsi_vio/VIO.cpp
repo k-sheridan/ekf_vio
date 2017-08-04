@@ -34,6 +34,7 @@ VIO::VIO() {
 		}
 
 		this->b2c = tf::Transform(b2c_st);
+		this->c2b = this->b2c.inverse();
 	}
 	else
 	{
@@ -503,9 +504,36 @@ void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 {
 	nav_msgs::Odometry msg;
 
-	Sophus::SE3d dT = last_f.getPose_inv() * new_f.getPose();
+	tf::Transform currentPose = (c2b * Frame::sophus2tf(new_f.getPose()));
 
-	tf::Transform dT_camera = Frame::sophus2tf(dT);
+	tf::Transform delta = (c2b * Frame::sophus2tf(last_f.getPose())).inverse() * currentPose;
 
+	double dt = (new_f.t - last_f.t).toSec();
+
+	double r, p, y;
+	delta.getBasis().getRPY(r, p, y);
+
+	msg.child_frame_id = BASE_FRAME;
+	msg.header.frame_id = WORLD_FRAME;
+	msg.twist.twist.angular.x = r / dt;
+	msg.twist.twist.angular.y = p / dt;
+	msg.twist.twist.angular.z = y / dt;
+
+	msg.twist.twist.linear.x = delta.getOrigin().x() / dt;
+	msg.twist.twist.linear.y = delta.getOrigin().y() / dt;
+	msg.twist.twist.linear.z = delta.getOrigin().z() / dt;
+
+	msg.pose.pose.orientation.w = new_f.getPose().unit_quaternion().w();
+	msg.pose.pose.orientation.x = new_f.getPose().unit_quaternion().x();
+	msg.pose.pose.orientation.y = new_f.getPose().unit_quaternion().y();
+	msg.pose.pose.orientation.z = new_f.getPose().unit_quaternion().z();
+
+	msg.pose.pose.position.x = new_f.getPose().translation().x();
+	msg.pose.pose.position.y = new_f.getPose().translation().y();
+	msg.pose.pose.position.z = new_f.getPose().translation().z();
+
+	//TODO add convariance computation
+
+	this->odom_pub.publish(msg); // publish
 
 }
