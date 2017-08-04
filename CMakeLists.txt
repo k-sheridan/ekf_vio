@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(pauvsi_vio)
+project(invio)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
  add_compile_options(-std=c++11)
@@ -45,20 +45,20 @@ catkin_package(
 )
 
 
-add_library(vioParams include/pauvsi_vio/vioParams.h)
+add_library(vioParams include/invio/vioParams.h)
 set_target_properties(vioParams PROPERTIES LINKER_LANGUAGE CXX)
 
-add_library(vioPoint include/pauvsi_vio/Point.cpp)
+add_library(vioPoint include/invio/Point.cpp)
 target_link_libraries(vioPoint ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams)
 
-add_library(vioFeature include/pauvsi_vio/Feature.cpp)
+add_library(vioFeature include/invio/Feature.cpp)
 target_link_libraries(vioFeature ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams vioPoint)
 
-add_library(vioFrame include/pauvsi_vio/Frame.cpp)
+add_library(vioFrame include/invio/Frame.cpp)
 target_link_libraries(vioFrame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature)
 
-add_library(full_vio include/pauvsi_vio/VIO.cpp)
+add_library(full_vio include/invio/VIO.cpp)
 target_link_libraries(full_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioFrame)
 
-add_executable(pauvsi_vio_node src/pauvsi_vio_node.cpp)
-target_link_libraries(pauvsi_vio_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
+add_executable(invio_node src/invio_node.cpp)
+target_link_libraries(invio_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
