@@ -88,15 +88,38 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		//predict and set the current pose guess
 		this->frame_buffer.front().setPose(std::next(this->frame_buffer.begin(), 1)->getPose()); // temp assume zero velocity
 
-		// attempt to compute our new camera pose from flowed features and their respective depth/position
-		double ppe = 0;
-		bool moba_passed = this->optimizePose(this->frame_buffer.front(), ppe);
-
-		this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
-
-		if(moba_passed)
+		// make the final determination whether or not we are initialized
+		if(!this->initialized)
 		{
-			this->publishOdometry(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
+			if(this->frame_buffer.front().getValidCount() >= START_FEATURE_COUNT)
+			{
+				//TODO set all current valid features to mature
+
+				this->initialized = true; // ready to run motion estimation
+			}
+			else
+			{
+				ROS_WARN_STREAM("it is taking too long to reach " << START_FEATURE_COUNT << " features. lower tweak the feature detection parameters");
+			}
+		}
+
+		if(this->initialized) // run moba and sba if initialized
+		{
+			// attempt to compute our new camera pose from flowed features and their respective depth/position
+			double ppe = 0;
+			bool moba_passed = this->optimizePose(this->frame_buffer.front(), ppe);
+
+			this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
+
+			if(moba_passed)
+			{
+				this->publishOdometry(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
+			}
+			else
+			{
+				// moba did not pass so tracking is lost
+				this->tracking_lost = true;
+			}
 		}
 
 	}
@@ -109,6 +132,8 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 #endif
 
 	ROS_DEBUG_STREAM("map size: " << this->map.size());
+
+	ROS_ERROR_COND(this->tracking_lost, "lost tracking!");
 }
 
 void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
@@ -169,30 +194,16 @@ bool VIO::optimizePose(Frame& f, double& ppe)
 {
 	bool pass = false;
 
-	int matureCount = 0;
-	int validCount = 0;
-	for(auto& e : f.features)
-	{
-		if(!e.obsolete)
-		{
-			validCount++;
-			if(!e.getPoint()->isImmature())
-			{
-				matureCount++;
-			}
-		}
-	}
+	ROS_DEBUG_STREAM("found " << f.getMatureCount() << " mature pixels");
 
-	ROS_DEBUG_STREAM("found " << matureCount << " mature pixels");
-
-	if(matureCount >= MINIMUM_TRACKABLE_FEATURES)
+	if(f.getMatureCount() >= MINIMUM_TRACKABLE_FEATURES)
 	{
 		ROS_DEBUG("running moba with mature features only");
 		pass = this->MOBA(f, ppe, false);
 	}
-	else if(validCount >= MINIMUM_TRACKABLE_FEATURES)
+	else if(f.getValidCount() >= MINIMUM_TRACKABLE_FEATURES)
 	{
-		ROS_WARN_STREAM("pauvsi_vio: DANGEROUS! too few MATURE features. forced to run motion only bundle adjustment with all " << validCount << " features");
+		ROS_WARN_STREAM("pauvsi_vio: DANGEROUS! too few MATURE features. forced to run motion only bundle adjustment with all " << f.getValidCount() << " features");
 		pass = this->MOBA(f, ppe, true);
 	}
 	else

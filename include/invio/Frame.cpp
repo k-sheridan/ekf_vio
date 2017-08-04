@@ -10,7 +10,7 @@
 Frame::Frame() {
 	this->keyframe = false; // initially we are not a keyframe
 	avgFeatureDepthSet = false;
-
+	featureCountsSet = false;
 
 }
 
@@ -22,12 +22,32 @@ Frame::Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t)
 	this->t = _t;
 
 	avgFeatureDepthSet = false;
+	featureCountsSet = false;
 
 
 }
 
 Frame::~Frame() {
 	// TODO Auto-generated destructor stub
+}
+
+void Frame::computeFeatureStatusCounts()
+{
+	matureCount = 0;
+	validCount = 0;
+	for(auto& e : features)
+	{
+		if(!e.obsolete)
+		{
+			validCount++;
+			if(!e.getPoint()->isImmature())
+			{
+				matureCount++;
+			}
+		}
+	}
+
+	featureCountsSet = true;
 }
 
 double Frame::getAverageFeatureDepth()

@@ -19,6 +19,9 @@ private:
 
 	bool keyframe;
 
+	int matureCount, validCount;
+	bool featureCountsSet;
+
 	double avgFeatureDepth;
 	bool avgFeatureDepthSet;
 
@@ -90,6 +93,25 @@ public:
 		Eigen::Quaterniond q = se3.unit_quaternion();
 
 		return tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()), tf::Vector3(se3.translation().x(), se3.translation().y(), se3.translation().z()));
+	}
+
+	void computeFeatureStatusCounts();
+
+
+	int getMatureCount(){
+		if(!featureCountsSet)
+		{
+			this->computeFeatureStatusCounts();
+		}
+		return matureCount;
+	}
+
+	int getValidCount(){
+		if(!featureCountsSet)
+		{
+			this->computeFeatureStatusCounts();
+		}
+		return validCount;
 	}
 };
 
