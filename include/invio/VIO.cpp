@@ -93,8 +93,8 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		{
 			if(this->frame_buffer.front().getValidCount() >= START_FEATURE_COUNT)
 			{
-				//TODO set all current valid features to mature
-
+				// set all current valid features to mature
+				this->frame_buffer.front().setAllPointsMature();
 				this->initialized = true; // ready to run motion estimation
 			}
 			else
@@ -165,7 +165,7 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 
 	for (int i = 0; i < status.size(); i++) {
 		//TODO remove features at too high of a radius
-		if (status.at(i) == 1 && !last_f_feat_iter->obsolete) { // new - check if the feature is obsolete and remove it if it is
+		if (status.at(i) == 1 && !last_f_feat_iter->obsolete && new_f.isPixelInBox(newPoints.at(i))) { // new - check if the feature is obsolete and remove it if it is
 			Feature updated_feature = (*last_f_feat_iter);
 
 			updated_feature.px = newPoints.at(i); // set feature's new pixel location
@@ -198,7 +198,7 @@ bool VIO::optimizePose(Frame& f, double& ppe)
 
 	if(f.getMatureCount() >= MINIMUM_TRACKABLE_FEATURES)
 	{
-		ROS_DEBUG("running moba with mature features only");
+		ROS_DEBUG_STREAM("running moba with " << f.getMatureCount() << " mature features only. out of: " << f.getValidCount());
 		pass = this->MOBA(f, ppe, false);
 	}
 	else if(f.getValidCount() >= MINIMUM_TRACKABLE_FEATURES)
@@ -371,7 +371,13 @@ void VIO::replenishFeatures(Frame& f) {
 			}
 
 
-			//TODO remove features at too high of a radius
+			// remove features at too high of a radius
+			if(!f.isPixelInBox(fast_kp.at(i).pt))
+			{
+				ROS_DEBUG("feature is out of keep box");
+				needed++; // we need one more now
+				continue;
+			}
 
 			// add this new ft to the check img
 			cv::circle(checkImg, fast_kp.at(i).pt, MIN_NEW_FEATURE_DIST, cv::Scalar(255), -1);

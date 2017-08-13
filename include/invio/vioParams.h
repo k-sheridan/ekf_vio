@@ -17,9 +17,13 @@
 
 //VISUAL ODOM
 //fast corner detector for planar odometry
-#define FAST_THRESHOLD 50
+#define FAST_THRESHOLD 40
 // the amount to blur the image before feature extraction
 #define FAST_BLUR_SIGMA 0.0
+
+// the radius to remove features at in pixels
+#define KILL_BOX_WIDTH 100
+#define KILL_BOX_HEIGHT 100
 
 // the minimum feature eigen val where it is determined as lost
 #define KLT_MIN_EIGEN 1e-4
@@ -31,10 +35,10 @@
 #define NUM_FEATURES 40
 
 // the amount of points needed to start pauvsi vio odometry
-#define START_FEATURE_COUNT 10
+#define START_FEATURE_COUNT 8
 
 // the minimum amount of mature features which is deemed dangerous
-#define DANGEROUS_MATURE_FEATURE_COUNT_LEVEL 10
+#define DANGEROUS_MATURE_FEATURE_COUNT_LEVEL 8
 
 //minimum detected features before vo has failed
 #define MINIMUM_TRACKABLE_FEATURES 4

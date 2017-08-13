@@ -47,7 +47,16 @@ void Frame::computeFeatureStatusCounts()
 		}
 	}
 
+	ROS_DEBUG_STREAM("mature count: " << matureCount << " valid count: " << validCount);
+
 	featureCountsSet = true;
+}
+
+void Frame::setAllPointsMature(){
+	for(auto& e : this->features)
+	{
+		e.getPoint()->setImmature(false);
+	}
 }
 
 double Frame::getAverageFeatureDepth()
