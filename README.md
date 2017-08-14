@@ -27,8 +27,10 @@ this should compile the entire package
 - [x] initialize with guessed uniform depth estimate of all features and estimate camera motion
 - [ ] optimize depths of new points when they are added
 - [ ] integrate imu readings
+- [ ] add third party initialization through rosservice
 - [ ] add realtime reinitialization feature
 - [ ] add more initialization methods
+-
 
 ## Closed Source Version
 

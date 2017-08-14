@@ -42,6 +42,7 @@ public:
 	virtual ~Frame();
 
 	bool isKeyframe(){return this->keyframe;}
+	void setKeyFrame(bool val){this->keyframe = val;}
 
 	Sophus::SE3d getPose(){return poseEstimate;}
 	Sophus::SE3d getPose_inv(){return poseEstimate_inv;}

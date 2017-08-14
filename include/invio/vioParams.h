@@ -32,7 +32,7 @@
 #define MIN_NEW_FEATURE_DIST 10
 
 // the desired number of features more = robust...er (and slower)
-#define NUM_FEATURES 40
+#define NUM_FEATURES 50
 
 // the amount of points needed to start pauvsi vio odometry
 #define START_FEATURE_COUNT 8
@@ -47,7 +47,10 @@
 #define FRAME_BUFFER_SIZE 200
 
 // the number of times a feature must be observed before allowed to be optimized
-#define MINIMUM_OBSERVATION_COUNT_FOR_OPTIMIZATION 20
+#define KEYFRAME_COUNT_FOR_OPTIMIZATION 2
+
+// the minimum ratio of translation to avg scene depth
+#define T2ASD 0.05
 
 // the maximum error a feature can have after an optim
 #define MAXIMUM_FEATURE_DEPTH_ERROR 0.02
@@ -62,9 +65,10 @@
 
 //max iterations for gausss newton
 #define MOBA_MAX_ITERATIONS 10
+#define SBA_MAX_ITERATIONS 10
 
 //min and maximum point depths in meters
-#define MAX_POINT_Z 200
+#define MAX_POINT_Z 100
 #define MIN_POINT_Z 0.02
 
 //OUTLIER DETECTION

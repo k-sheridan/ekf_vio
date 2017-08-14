@@ -77,6 +77,10 @@ public:
 
 	bool optimizePose(Frame& f, double& ppe);
 
+	void optimizePoints(Frame& f);
+
+	void keyFrameUpdate();
+
 	void replenishFeatures(Frame& f);
 
 	void tf2rvecAndtvec(tf::Transform tf, cv::Mat& tvec, cv::Mat& rvec);

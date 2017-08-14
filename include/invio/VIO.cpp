@@ -190,11 +190,64 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 
 }
 
+void VIO::optimizePoints(Frame& f){
+	ROS_INFO("OPTIMIZING POINTS");
+	for(auto& e : f.features)
+	{
+		if(!e.obsolete && e.getPoint()->isImmature())
+		{
+			e.getPoint()->SBA(SBA_MAX_ITERATIONS);
+
+			if(e.getPoint()->getSigma() <= MAXIMUM_FEATURE_DEPTH_ERROR)
+			{
+				ROS_DEBUG("succesful converge");
+			}
+			else
+			{
+				e.obsolete = true; // set the feature to obsolete
+				ROS_DEBUG("point failed to converge");
+			}
+		}
+	}
+	ROS_DEBUG("DONE OPTIMIZING");
+}
+
+void VIO::keyFrameUpdate(){
+	Frame* kf; // get the key frame pointer
+
+	// find the key frame
+	for(auto& e : this->frame_buffer)
+	{
+		if(e.isKeyframe())
+		{
+			kf = &e;
+			break;
+		}
+	}
+
+	//if the camera has translated enough make the current frame a keyframe and begin the point optimization
+	double dr = (kf->getPose_inv() * this->frame_buffer.front().getPose()).translation().norm();
+
+	double avgDepth = (kf->getAverageFeatureDepth() + this->frame_buffer.front().getAverageFeatureDepth()) / 2.0;
+
+	double ratio = dr / avgDepth;
+
+	if(ratio > T2ASD)
+	{
+		ROS_INFO_STREAM("ADDING KEYFRAME WITH TRANSLATION TO SCENE DEPTH RATIO OF: " << ratio);
+		this->frame_buffer.front().setKeyFrame(true); // make this frame a keyframe
+		this->optimizePoints(this->frame_buffer.front()); // attempt to optimize immature points if they have enough keyframes
+	}
+
+}
+
 bool VIO::optimizePose(Frame& f, double& ppe)
 {
 	bool pass = false;
 
 	ROS_DEBUG_STREAM("found " << f.getMatureCount() << " mature pixels");
+
+	//ROS_WARN_COND(f.getMatureCount() < DANGEROUS_MATURE_FEATURE_COUNT_LEVEL, "mature feature count at dangerous level! " << f.getMatureCount());
 
 	if(f.getMatureCount() >= MINIMUM_TRACKABLE_FEATURES)
 	{

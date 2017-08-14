@@ -119,6 +119,11 @@ void Point::SBA(int iterations)
 		{
 			vertices.push_back(e);
 			ROS_DEBUG_STREAM("added a keyframe to the SBA problem");
+			if(vertices.size() < KEYFRAME_COUNT_FOR_OPTIMIZATION)
+			{
+				ROS_DEBUG_STREAM("got enough keyframes to attempt optimization");
+				break;
+			}
 		}
 		/*if(e->frame->finalFrame) // this is the last frame in the buffer do not search past this point due to potential dangling pointer
 		{
@@ -127,7 +132,7 @@ void Point::SBA(int iterations)
 		}*/
 	}
 
-	if(vertices.size() < 2){
+	if(vertices.size() < KEYFRAME_COUNT_FOR_OPTIMIZATION){
 		ROS_DEBUG_STREAM("NOT ENOUGH KEYFRAMES FOR SBA PROBLEM TO SOLVE");
 		return;
 	}
