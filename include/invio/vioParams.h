@@ -79,6 +79,7 @@
 //END VISUAL ODOM
 
 #define ODOM_TOPIC "invio/odom"
+#define POINTS_TOPIC "invio/points"
 
 #define USE_POINT_CLOUD false
 

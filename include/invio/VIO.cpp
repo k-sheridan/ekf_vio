@@ -26,6 +26,8 @@ VIO::VIO() {
 
 	this->odom_pub = nh.advertise<nav_msgs::Odometry>(ODOM_TOPIC, 1);
 
+	this->points_pub = nh.advertise<sensor_msgs::PointCloud>(POINTS_TOPIC, 1);
+
 	//get relevant transforms
 
 	tf::StampedTransform b2c_st;
@@ -574,6 +576,26 @@ void VIO::publishInsight(Frame& f)
 
 	cv::cvtColor(f.img, img, CV_GRAY2BGR);
 
+	double minDepth = MAX_POINT_Z;
+	double maxDepth = MIN_POINT_Z;
+
+	//run depth comp just in case
+	this->frame_buffer.front().getAverageFeatureDepth();
+
+	for(auto e : this->frame_buffer.front().features)
+	{
+		if(e.getPoint()->temp_depth < minDepth)
+		{
+			minDepth = e.getPoint()->temp_depth;
+		}
+		if(e.getPoint()->temp_depth > maxDepth)
+		{
+			maxDepth = e.getPoint()->temp_depth;
+		}
+
+	}
+
+
 	for(auto& e : frame_buffer.front().features)
 	{
 		if(!e.obsolete)
@@ -584,7 +606,8 @@ void VIO::publishInsight(Frame& f)
 			}
 			else
 			{
-				cv::drawMarker(img, e.px, cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 5);
+				int intensity = ((e.getPoint()->temp_depth - minDepth) / (maxDepth - minDepth)) * 255;
+				cv::drawMarker(img, e.px, cv::Scalar(0, intensity, 0), cv::MARKER_SQUARE, 5);
 			}
 		}
 	}
@@ -634,5 +657,12 @@ void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 	//TODO add convariance computation
 
 	this->odom_pub.publish(msg); // publish
+
+}
+
+void VIO::publishPoints(Frame& f)
+{
+	sensor_msgs::PointCloud msg;
+
 
 }

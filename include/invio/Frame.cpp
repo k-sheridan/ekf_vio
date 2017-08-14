@@ -88,6 +88,8 @@ double Frame::getAverageFeatureDepth()
 
 					double z_depth = a * e.getPoint()->getWorldCoordinate().x() + b * e.getPoint()->getWorldCoordinate().y() + c * e.getPoint()->getWorldCoordinate().z() + d; // add the z parts together
 
+					e.getPoint()->temp_depth = z_depth;
+
 					if(z_depth > 0)
 					{
 						depth += z_depth;

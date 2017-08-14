@@ -91,6 +91,8 @@ public:
 
 	void publishOdometry(Frame& last_f, Frame& new_f);
 
+	void publishPoints(Frame& f);
+
 	void correctPointers(bool allFrames = false);
 };
 

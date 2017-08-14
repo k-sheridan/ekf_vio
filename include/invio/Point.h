@@ -49,6 +49,11 @@ private:
 public:
 
 
+	bool guessed;
+
+	double temp_depth;
+
+
 	Point();
 
 	Point(Feature* ft);
