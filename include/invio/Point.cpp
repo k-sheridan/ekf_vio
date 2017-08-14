@@ -203,6 +203,9 @@ bool Point::SBA(int iterations)
 	{
 		ROS_DEBUG_STREAM("GOOD POINT DEPTH: "  << depth);
 		this->sigma = chi2 / vertices.size();
+		// set this point to mature
+		this->setImmature(false);
+
 		ROS_DEBUG_STREAM("new sigma: " << this->sigma);
 	}
 	else
