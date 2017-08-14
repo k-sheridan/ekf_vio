@@ -47,7 +47,7 @@
 #define FRAME_BUFFER_SIZE 200
 
 // the number of times a feature must be observed before allowed to be optimized
-#define KEYFRAME_COUNT_FOR_OPTIMIZATION 2
+#define KEYFRAME_COUNT_FOR_OPTIMIZATION 4
 
 // the minimum ratio of translation to avg scene depth
 #define T2ASD 0.05

@@ -99,7 +99,7 @@ void Point::safelyDeletePoint()
  *
  * This function uses the gauss newton optimization method to find the optimal 3d point for a set of keyframes
  */
-void Point::SBA(int iterations)
+bool Point::SBA(int iterations)
 {
 	Eigen::Vector3d old_point = this->pos;
 	Eigen::Vector3d original = this->pos;
@@ -119,7 +119,7 @@ void Point::SBA(int iterations)
 		{
 			vertices.push_back(e);
 			ROS_DEBUG_STREAM("added a keyframe to the SBA problem");
-			if(vertices.size() < KEYFRAME_COUNT_FOR_OPTIMIZATION)
+			if(vertices.size() >= KEYFRAME_COUNT_FOR_OPTIMIZATION)
 			{
 				ROS_DEBUG_STREAM("got enough keyframes to attempt optimization");
 				break;
@@ -134,7 +134,7 @@ void Point::SBA(int iterations)
 
 	if(vertices.size() < KEYFRAME_COUNT_FOR_OPTIMIZATION){
 		ROS_DEBUG_STREAM("NOT ENOUGH KEYFRAMES FOR SBA PROBLEM TO SOLVE");
-		return;
+		return false;
 	}
 
 	ROS_DEBUG_STREAM("point before: " << this->pos);
@@ -213,6 +213,8 @@ void Point::SBA(int iterations)
 
 
 	ROS_DEBUG_STREAM("point after: " << this->pos);
+
+	return true;
 
 }
 

@@ -76,6 +76,9 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
+		//set the first frame as a keyframe
+		this->frame_buffer.front().setKeyFrame(true);
+
 		this->replenishFeatures((this->frame_buffer.front()));
 	} else // we have atleast 1 frame in the buffer
 	{
@@ -120,6 +123,10 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 				// moba did not pass so tracking is lost
 				this->tracking_lost = true;
 			}
+
+			//update the keyframes
+			// this checks if this frame is a keyframe and then attempts to optimize immature points
+			this->keyFrameUpdate();
 		}
 
 	}
@@ -196,16 +203,22 @@ void VIO::optimizePoints(Frame& f){
 	{
 		if(!e.obsolete && e.getPoint()->isImmature())
 		{
-			e.getPoint()->SBA(SBA_MAX_ITERATIONS);
-
-			if(e.getPoint()->getSigma() <= MAXIMUM_FEATURE_DEPTH_ERROR)
+			if(e.getPoint()->SBA(SBA_MAX_ITERATIONS))
 			{
-				ROS_DEBUG("succesful converge");
+
+				if(e.getPoint()->getSigma() <= MAXIMUM_FEATURE_DEPTH_ERROR)
+				{
+					ROS_DEBUG("succesful converge");
+				}
+				else
+				{
+					e.obsolete = true; // set the feature to obsolete
+					ROS_DEBUG("point failed to converge");
+				}
 			}
 			else
 			{
-				e.obsolete = true; // set the feature to obsolete
-				ROS_DEBUG("point failed to converge");
+				ROS_DEBUG_STREAM("could not optimize point too few keyframes");
 			}
 		}
 	}

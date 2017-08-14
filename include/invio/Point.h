@@ -149,7 +149,7 @@ public:
 		return Eigen::Vector2d(in(0) / in(2), in(1) / in(2));
 	}
 
-	void SBA(int iterations);
+	bool SBA(int iterations);
 };
 
 
