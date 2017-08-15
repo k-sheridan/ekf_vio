@@ -56,6 +56,7 @@ void Frame::setAllPointsMature(){
 	for(auto& e : this->features)
 	{
 		e.getPoint()->setImmature(false);
+		e.getPoint()->guessed = true; // set to guessed
 	}
 }
 

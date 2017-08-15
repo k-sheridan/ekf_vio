@@ -17,13 +17,13 @@
 
 //VISUAL ODOM
 //fast corner detector for planar odometry
-#define FAST_THRESHOLD 40
+#define FAST_THRESHOLD 20
 // the amount to blur the image before feature extraction
 #define FAST_BLUR_SIGMA 0.0
 
 // the radius to remove features at in pixels
-#define KILL_BOX_WIDTH 100
-#define KILL_BOX_HEIGHT 100
+#define KILL_BOX_WIDTH 110
+#define KILL_BOX_HEIGHT 110
 
 // the minimum feature eigen val where it is determined as lost
 #define KLT_MIN_EIGEN 1e-4
@@ -32,7 +32,7 @@
 #define MIN_NEW_FEATURE_DIST 10
 
 // the desired number of features more = robust...er (and slower)
-#define NUM_FEATURES 50
+#define NUM_FEATURES 100
 
 // the amount of points needed to start pauvsi vio odometry
 #define START_FEATURE_COUNT 8
@@ -47,16 +47,16 @@
 #define FRAME_BUFFER_SIZE 200
 
 // the number of times a feature must be observed before allowed to be optimized
-#define KEYFRAME_COUNT_FOR_OPTIMIZATION 4
+#define KEYFRAME_COUNT_FOR_OPTIMIZATION 3
 
 // the minimum ratio of translation to avg scene depth
-#define T2ASD 0.05
+#define T2ASD 0.1
 
 // the maximum error a feature can have after an optim
-#define MAXIMUM_FEATURE_DEPTH_ERROR 0.02
+#define MAXIMUM_FEATURE_DEPTH_ERROR 0.01
 
 // default point depth used for initialization in meters
-#define DEFAULT_POINT_DEPTH 1.0
+#define DEFAULT_POINT_DEPTH 0.5
 #define DEFAULT_POINT_STARTING_ERROR 10000
 
 // epsilon for convergence in structure bundle adjustment and motion
@@ -68,7 +68,7 @@
 #define SBA_MAX_ITERATIONS 10
 
 //min and maximum point depths in meters
-#define MAX_POINT_Z 100
+#define MAX_POINT_Z 10
 #define MIN_POINT_Z 0.02
 
 //OUTLIER DETECTION

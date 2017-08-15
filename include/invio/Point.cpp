@@ -209,6 +209,10 @@ bool Point::SBA(int iterations)
 		// set this point to mature
 		this->setImmature(false);
 
+		//important set guessed false
+		this->guessed = false;
+
+
 		ROS_DEBUG_STREAM("new sigma: " << this->sigma);
 	}
 	else

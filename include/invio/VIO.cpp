@@ -203,7 +203,7 @@ void VIO::optimizePoints(Frame& f){
 	ROS_INFO("OPTIMIZING POINTS");
 	for(auto& e : f.features)
 	{
-		if(!e.obsolete && e.getPoint()->isImmature())
+		if(!e.obsolete && (e.getPoint()->isImmature() || e.getPoint()->guessed)) // if the point is immature or guessed we should optimize it
 		{
 			if(e.getPoint()->SBA(SBA_MAX_ITERATIONS))
 			{
@@ -304,6 +304,8 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 		{
 			if(useImmature || !e.getPoint()->isImmature())
 			{
+				ROS_DEBUG_STREAM("using position for moba: " << e.getPoint()->getWorldCoordinate());
+
 				edges.push_back(&e);
 			}
 		}
@@ -576,24 +578,11 @@ void VIO::publishInsight(Frame& f)
 
 	cv::cvtColor(f.img, img, CV_GRAY2BGR);
 
-	double minDepth = MAX_POINT_Z;
-	double maxDepth = MIN_POINT_Z;
+	double minDepth = MIN_POINT_Z;
+	double maxDepth = 1;
 
 	//run depth comp just in case
 	this->frame_buffer.front().getAverageFeatureDepth();
-
-	for(auto e : this->frame_buffer.front().features)
-	{
-		if(e.getPoint()->temp_depth < minDepth)
-		{
-			minDepth = e.getPoint()->temp_depth;
-		}
-		if(e.getPoint()->temp_depth > maxDepth)
-		{
-			maxDepth = e.getPoint()->temp_depth;
-		}
-
-	}
 
 
 	for(auto& e : frame_buffer.front().features)
@@ -606,8 +595,17 @@ void VIO::publishInsight(Frame& f)
 			}
 			else
 			{
-				int intensity = ((e.getPoint()->temp_depth - minDepth) / (maxDepth - minDepth)) * 255;
-				cv::drawMarker(img, e.px, cv::Scalar(0, intensity, 0), cv::MARKER_SQUARE, 5);
+				char intensity = (((e.getPoint()->temp_depth - minDepth) / (maxDepth - minDepth)) * 255);
+
+				ROS_DEBUG_STREAM("plotting depth: " << e.getPoint()->temp_depth);
+
+				cv::Mat in = cv::Mat(1, 1, CV_8UC1);
+				in.at<uchar>(0, 0) = intensity;
+
+				cv::Mat out;
+				cv::applyColorMap(in, out, cv::COLORMAP_RAINBOW);
+
+				cv::drawMarker(img, e.px, out.at<cv::Vec3b>(0, 0), cv::MARKER_SQUARE, 5);
 			}
 		}
 	}
