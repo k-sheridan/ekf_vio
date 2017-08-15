@@ -17,7 +17,7 @@
 
 //VISUAL ODOM
 //fast corner detector for planar odometry
-#define FAST_THRESHOLD 20
+#define FAST_THRESHOLD 30
 // the amount to blur the image before feature extraction
 #define FAST_BLUR_SIGMA 0.0
 
@@ -47,7 +47,7 @@
 #define FRAME_BUFFER_SIZE 200
 
 // the number of times a feature must be observed before allowed to be optimized
-#define KEYFRAME_COUNT_FOR_OPTIMIZATION 3
+#define KEYFRAME_COUNT_FOR_OPTIMIZATION 5
 
 // the minimum ratio of translation to avg scene depth
 #define T2ASD 0.1

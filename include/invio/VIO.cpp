@@ -290,7 +290,7 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 
 	std::vector<Feature*> edges;
 
-	Sophus::SE3d currentGuess = f.getPose(); // stores the current best guess
+	Sophus::SE3d currentGuess = f.getPose_inv(); // stores the current best guess
 
 	Sophus::Matrix6d A; //LHS
 	Sophus::Vector6d b; //RHS
@@ -374,7 +374,7 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 
 	ROS_DEBUG_STREAM("optimized trans: " << currentGuess.translation());
 
-	f.setPose(currentGuess); // set the new optimized pose
+	f.setPose_inv(currentGuess); // set the new optimized pose
 
 
 	return true;
@@ -582,7 +582,8 @@ void VIO::publishInsight(Frame& f)
 	double maxDepth = 1;
 
 	//run depth comp just in case
-	this->frame_buffer.front().getAverageFeatureDepth();
+	maxDepth = 2.0 * this->frame_buffer.front().getAverageFeatureDepth();
+
 
 
 	for(auto& e : frame_buffer.front().features)
@@ -591,11 +592,11 @@ void VIO::publishInsight(Frame& f)
 		{
 			if(e.getPoint()->isImmature())
 			{
-				cv::drawMarker(img, e.px, cv::Scalar(0, 255, 255), cv::MARKER_SQUARE, 5);
+				cv::drawMarker(img, e.px, cv::Scalar(0, 255, 255), cv::MARKER_STAR, 5);
 			}
 			else
 			{
-				char intensity = (((e.getPoint()->temp_depth - minDepth) / (maxDepth - minDepth)) * 255);
+				uchar intensity = (((e.getPoint()->temp_depth - minDepth) / (maxDepth - minDepth)) * 255);
 
 				ROS_DEBUG_STREAM("plotting depth: " << e.getPoint()->temp_depth);
 
@@ -603,9 +604,9 @@ void VIO::publishInsight(Frame& f)
 				in.at<uchar>(0, 0) = intensity;
 
 				cv::Mat out;
-				cv::applyColorMap(in, out, cv::COLORMAP_RAINBOW);
+				cv::applyColorMap(in, out, cv::COLORMAP_JET);
 
-				cv::drawMarker(img, e.px, out.at<cv::Vec3b>(0, 0), cv::MARKER_SQUARE, 5);
+				cv::drawMarker(img, e.px, out.at<cv::Vec3b>(0, 0), cv::MARKER_SQUARE, 8);
 			}
 		}
 	}
