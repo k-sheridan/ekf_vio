@@ -10,7 +10,9 @@ This algorithm is intended to be used with a downward facing, **high framerate (
 An IMU is not required, but an IMU is highly reccomended. The IMU is used to predict how the camera traveled between frames. In the future I would like to use the IMU to estimate the metric scale of our initial motion so invio can be initialized from any situation if a velocity estimate is initially given to it.
 
 ## Performance
-to be evaluated.
+from initial tests the algorithm works well when estimating feature depths and motion. Fast rotations currently cause a tracking loss from both lack of depth estimates and "slipping" of feature tracking. The feature slipping should be fixed by integrating linear and angular velocity measurements/estimates into the KLT feature tracker. 
+
+to be evaluated further.
 
 ## Quick ROS installation guide
 
@@ -26,6 +28,8 @@ this should compile the entire package
 
 - [x] initialize with guessed uniform depth estimate of all features and estimate camera motion
 - [x] optimize depths of new points when they are added
+- [ ] publish odometry message with 
+- [ ] remove old frames from the buffer safely preventing the algorithm from using an extremely high amount of memory
 - [ ] integrate imu readings
 - [ ] add third party initialization through rosservice
 - [ ] add realtime reinitialization feature
