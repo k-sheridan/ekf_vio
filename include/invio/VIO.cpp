@@ -61,8 +61,11 @@ void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
 		const sensor_msgs::CameraInfoConstPtr& cam) {
 	cv::Mat temp = cv_bridge::toCvShare(img, img->encoding)->image.clone();
 
-	this->addFrame(temp.clone(),
-			(cv::Mat_<float>(3, 3) << cam->K.at(0), cam->K.at(1), cam->K.at(2), cam->K.at(3), cam->K.at(4), cam->K.at(5), cam->K.at(6), cam->K.at(7), cam->K.at(8)),
+	cv::Mat scaled_img;
+	cv::resize(temp, scaled_img, cv::Size(temp.cols / INVERSE_IMAGE_SCALE, temp.rows / INVERSE_IMAGE_SCALE));
+
+	this->addFrame(scaled_img.clone(),
+			(1.0 / INVERSE_IMAGE_SCALE) * (cv::Mat_<float>(3, 3) << cam->K.at(0), cam->K.at(1), cam->K.at(2), cam->K.at(3), cam->K.at(4), cam->K.at(5), cam->K.at(6), cam->K.at(7), cam->K.at(8)),
 			img->header.stamp);
 }
 
@@ -87,11 +90,8 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
-		// attempt to flow features into the next frame
+		// attempt to flow features into the next frame if there are features
 		this->updateFeatures(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
-
-		//predict and set the current pose guess
-		this->frame_buffer.front().setPose(std::next(this->frame_buffer.begin(), 1)->getPose()); // temp assume zero velocity
 
 		// make the final determination whether or not we are initialized
 		if(!this->initialized)
@@ -108,13 +108,14 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 			}
 		}
 
+		//predict and set the current pose guess
+		this->frame_buffer.front().setPose(std::next(this->frame_buffer.begin(), 1)->getPose()); // temp assume zero velocity
+
 		if(this->initialized) // run moba and sba if initialized
 		{
 			// attempt to compute our new camera pose from flowed features and their respective depth/position
 			double ppe = 0;
 			bool moba_passed = this->optimizePose(this->frame_buffer.front(), ppe);
-
-			this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
 
 			if(moba_passed)
 			{
@@ -130,6 +131,8 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 			// this checks if this frame is a keyframe and then attempts to optimize immature points
 			this->keyFrameUpdate();
 		}
+
+		this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
 
 	}
 
@@ -149,7 +152,8 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 
 	std::vector<cv::Point2f> oldPoints = this->getPixels2fInOrder(last_f);
 
-	ROS_ASSERT(oldPoints.size() > 0);
+	if(oldPoints.size() == 0)
+		return;
 
 	//ROS_DEBUG_STREAM_ONCE("got " << oldPoints.size() << " old point2fs from the oldframe which has " << oldFrame.features.size() << " features");
 	std::vector<cv::Point2f> newPoints;
@@ -604,7 +608,7 @@ void VIO::publishInsight(Frame& f)
 				in.at<uchar>(0, 0) = intensity;
 
 				cv::Mat out;
-				cv::applyColorMap(in, out, cv::COLORMAP_WINTER);
+				cv::applyColorMap(in, out, cv::COLORMAP_SPRING);
 
 				cv::drawMarker(img, e.px, out.at<cv::Vec3b>(0, 0), cv::MARKER_SQUARE, 8);
 			}
