@@ -28,7 +28,7 @@
 #define KILL_BOX_HEIGHT 110
 
 // the minimum feature eigen val where it is determined as lost
-#define KLT_MIN_EIGEN 1e-3
+#define KLT_MIN_EIGEN 1e-4
 
 // the minimum pixel distance a feature must have between a previous feature
 #define MIN_NEW_FEATURE_DIST 30
@@ -49,10 +49,10 @@
 #define FRAME_BUFFER_SIZE 200
 
 // the number of times a feature must be observed before allowed to be optimized
-#define KEYFRAME_COUNT_FOR_OPTIMIZATION 7
+#define KEYFRAME_COUNT_FOR_OPTIMIZATION 5
 
 // the minimum ratio of translation to avg scene depth
-#define T2ASD 0.03
+#define T2ASD 0.05
 
 // the maximum error a feature can have after an optim
 #define MAXIMUM_FEATURE_DEPTH_ERROR 0.01

@@ -608,7 +608,7 @@ void VIO::publishInsight(Frame& f)
 				in.at<uchar>(0, 0) = intensity;
 
 				cv::Mat out;
-				cv::applyColorMap(in, out, cv::COLORMAP_HOT);
+				cv::applyColorMap(in, out, cv::COLORMAP_RAINBOW);
 
 				cv::drawMarker(img, e.px, out.at<cv::Vec3b>(0, 0), cv::MARKER_SQUARE, 8);
 			}
