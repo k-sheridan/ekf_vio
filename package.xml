@@ -2,7 +2,7 @@
 <package>
   <name>invio</name>
   <version>0.0.1</version>
-  <description>Indirect Visual Inertial Odometry Algorithm</description>
+  <description>Monocular Indirect Visual Inertial Odometry Algorithm</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but mutiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/aerotronic_monovo</url> -->
+  <url type="website">http://wiki.ros.org/invio</url>
 
 
   <!-- Author tags are optional, mutiple are allowed, one per tag -->
@@ -45,6 +45,7 @@
   <build_depend>roscpp</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>std_msgs</build_depend>
+  <build_depend>sophus</build_depend>
   <build_depend>tf</build_depend>
   <run_depend>cv_bridge</run_depend>
   <run_depend>image_transport</run_depend>
@@ -52,6 +53,7 @@
   <run_depend>sensor_msgs</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>tf</run_depend>
+  <run_depend>sophus</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
