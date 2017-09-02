@@ -13,6 +13,8 @@ VIO::VIO() {
 	this->initialized = false;
 	//set tracking lost to false initialially
 	this->tracking_lost = false;
+	// initially we do not know our velocities
+	this->velocity_set = false;
 
 	ros::NodeHandle nh; // we all know what this is
 
@@ -90,6 +92,11 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
+		// try to predict the frame forward
+		if(USE_ODOM_PRIOR){
+			this->predictPose(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
+		}
+
 		// attempt to flow features into the next frame if there are features
 		this->updateFeatures(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
 
@@ -146,6 +153,26 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 	ROS_DEBUG_STREAM("map size: " << this->map.size());
 
 	ROS_ERROR_COND(this->tracking_lost, "lost tracking!");
+}
+
+/*
+ * delta t is derived from the frame times
+ */
+void VIO::predictPose(Frame& new_frame, Frame& old_frame)
+{
+	if(this->velocity_set)
+	{
+		double dt = (new_frame.t - old_frame.t).toSec();
+
+		Sophus::SE3d delta;
+
+		tf::Quaternion q;
+		q.setRPY(this->omega.x()*dt, this->omega.y()*dt, this->omega.z()*dt);
+
+		delta = Sophus::SE3d(Eigen::Quaterniond(q.w(), q.x(), q.y(), q.z()), this->velocity* dt);
+
+		new_frame.setPose(old_frame.getPose() * delta);
+	}
 }
 
 void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
@@ -647,6 +674,11 @@ void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 	msg.twist.twist.linear.x = delta.getOrigin().x() / dt;
 	msg.twist.twist.linear.y = delta.getOrigin().y() / dt;
 	msg.twist.twist.linear.z = delta.getOrigin().z() / dt;
+
+	//set the velocities globally
+	this->velocity_set = true;
+	this->velocity = Eigen::Vector3d(msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z);
+	this->omega = Eigen::Vector3d(msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z);
 
 	msg.pose.pose.orientation.w = new_f.getPose().unit_quaternion().w();
 	msg.pose.pose.orientation.x = new_f.getPose().unit_quaternion().x();

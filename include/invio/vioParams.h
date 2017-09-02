@@ -23,6 +23,9 @@
 
 #define INVERSE_IMAGE_SCALE 4
 
+// use previous odometry for prior
+#define USE_ODOM_PRIOR true
+
 // the radius to remove features at in pixels
 #define KILL_BOX_WIDTH 110
 #define KILL_BOX_HEIGHT 110

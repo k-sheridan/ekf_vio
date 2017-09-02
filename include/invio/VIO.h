@@ -56,6 +56,9 @@ public:
 
 	ros::Publisher insight_pub, odom_pub, points_pub;
 
+	bool velocity_set;
+	Eigen::Vector3d omega, velocity; // meant to store the last angular and linear velocity
+
 	typedef Eigen::Matrix<double,2,6> Matrix26d;
 
 	VIO();
@@ -70,6 +73,8 @@ public:
 	//std::vector<cv::Point3d> getObjectsInOrder(Frame& f);
 
 	void addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t);
+
+	void predictPose(Frame& new_frame, Frame& old_frame);
 
 	void updateFeatures(Frame& last_f, Frame& new_f);
 
