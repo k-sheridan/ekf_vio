@@ -26,6 +26,9 @@
 // use previous odometry for prior
 #define USE_ODOM_PRIOR true
 
+//analyze the function times
+#define ANALYZE_RUNTIME true
+
 // the radius to remove features at in pixels
 #define KILL_BOX_WIDTH 110
 #define KILL_BOX_HEIGHT 110
@@ -65,8 +68,8 @@
 #define DEFAULT_POINT_STARTING_ERROR 10000
 
 // epsilon for convergence in structure bundle adjustment and motion
-#define EPS_SBA 0.0000000001
-#define EPS_MOBA 0.0000000001
+#define EPS_SBA 0.0001
+#define EPS_MOBA 0.0001
 
 //max iterations for gausss newton
 #define MOBA_MAX_ITERATIONS 10

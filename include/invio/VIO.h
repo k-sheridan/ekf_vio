@@ -46,6 +46,8 @@ public:
 	bool initialized; // has the program been initialized
 	bool tracking_lost; // do we still have tracking
 
+	ros::Time timer_start;
+
 	std::list<Frame> frame_buffer; // stores all frames and pose estimates at this frames
 
 	std::list<Point> map; // this is a list of all active 3d points
@@ -99,6 +101,9 @@ public:
 	void publishPoints(Frame& f);
 
 	void correctPointers(bool allFrames = false);
+
+	void startTimer(){this->timer_start = ros::Time::now();}
+	void stopTimer(std::string prefix){ROS_INFO_STREAM(prefix <<": "<<(ros::Time::now() - this->timer_start).toSec() * 1000 << "ms");}
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIO_H_ */

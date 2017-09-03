@@ -61,6 +61,8 @@ VIO::~VIO() {
 
 void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
 		const sensor_msgs::CameraInfoConstPtr& cam) {
+	ros::Time start = ros::Time::now();
+
 	cv::Mat temp = cv_bridge::toCvShare(img, img->encoding)->image.clone();
 
 	cv::Mat scaled_img;
@@ -69,9 +71,12 @@ void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
 	this->addFrame(scaled_img.clone(),
 			(1.0 / INVERSE_IMAGE_SCALE) * (cv::Mat_<float>(3, 3) << cam->K.at(0), cam->K.at(1), cam->K.at(2), cam->K.at(3), cam->K.at(4), cam->K.at(5), cam->K.at(6), cam->K.at(7), cam->K.at(8)),
 			img->header.stamp);
+
+	ROS_INFO_STREAM("frame dt in ms: " << (ros::Time::now() - start).toSec() * 1000.0);
 }
 
 void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
+
 	Frame f = Frame(img, k, t);
 
 	if (this->frame_buffer.size() == 0) // if this is the first frame that we are receiving
@@ -92,9 +97,13 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
-		// try to predict the frame forward
+		//try to predict the frame forward
 		if(USE_ODOM_PRIOR){
-			this->predictPose(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
+			this->predictPose(this->frame_buffer.front(), *std::next(this->frame_buffer.begin(), 1));
+		}
+		else
+		{
+			this->frame_buffer.front().setPose(std::next(this->frame_buffer.begin(), 1)->getPose()); // temp assume zero velocity
 		}
 
 		// attempt to flow features into the next frame if there are features
@@ -115,8 +124,6 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 			}
 		}
 
-		//predict and set the current pose guess
-		this->frame_buffer.front().setPose(std::next(this->frame_buffer.begin(), 1)->getPose()); // temp assume zero velocity
 
 		if(this->initialized) // run moba and sba if initialized
 		{
@@ -137,10 +144,10 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 			//update the keyframes
 			// this checks if this frame is a keyframe and then attempts to optimize immature points
 			this->keyFrameUpdate();
+
 		}
 
 		this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
-
 	}
 
 #if PUBLISH_INSIGHT
@@ -169,13 +176,18 @@ void VIO::predictPose(Frame& new_frame, Frame& old_frame)
 		tf::Quaternion q;
 		q.setRPY(this->omega.x()*dt, this->omega.y()*dt, this->omega.z()*dt);
 
-		delta = Sophus::SE3d(Eigen::Quaterniond(q.w(), q.x(), q.y(), q.z()), this->velocity* dt);
+		Sophus::SE3d::Point spt = (this->velocity* dt);
+
+		delta = Sophus::SE3d(Eigen::Quaterniond(q.w(), q.x(), q.y(), q.z()), spt);
 
 		new_frame.setPose(old_frame.getPose() * delta);
 	}
 }
 
 void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
+#if ANALYZE_RUNTIME
+		this->startTimer();
+#endif
 
 	std::vector<cv::Point2f> oldPoints = this->getPixels2fInOrder(last_f);
 
@@ -228,9 +240,16 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 
 	ROS_DEBUG_STREAM("VO LOST " << lostFeatures << "FEATURES");
 
+#if ANALYZE_RUNTIME
+		this->stopTimer("tracking");
+#endif
+
 }
 
 void VIO::optimizePoints(Frame& f){
+#if ANALYZE_RUNTIME
+		this->startTimer();
+#endif
 	ROS_INFO("OPTIMIZING POINTS");
 	for(auto& e : f.features)
 	{
@@ -256,9 +275,15 @@ void VIO::optimizePoints(Frame& f){
 		}
 	}
 	ROS_DEBUG("DONE OPTIMIZING");
+#if ANALYZE_RUNTIME
+		this->stopTimer("3d point optimization");
+#endif
 }
 
 void VIO::keyFrameUpdate(){
+#if ANALYZE_RUNTIME
+		this->startTimer();
+#endif
 	Frame* kf; // get the key frame pointer
 
 	// find the key frame
@@ -285,10 +310,17 @@ void VIO::keyFrameUpdate(){
 		this->optimizePoints(this->frame_buffer.front()); // attempt to optimize immature points if they have enough keyframes
 	}
 
+#if ANALYZE_RUNTIME
+		this->stopTimer("keyframeUpdate");
+#endif
+
 }
 
 bool VIO::optimizePose(Frame& f, double& ppe)
 {
+#if ANALYZE_RUNTIME
+		this->startTimer();
+#endif
 	bool pass = false;
 
 	ROS_DEBUG_STREAM("found " << f.getMatureCount() << " mature pixels");
@@ -310,7 +342,9 @@ bool VIO::optimizePose(Frame& f, double& ppe)
 		ROS_ERROR("pauvsi_vio: ran out of valid features lost track of pose. try lowering the FAST feature threshold.");
 		pass = false;
 	}
-
+#if ANALYZE_RUNTIME
+		this->stopTimer("pose optimization");
+#endif
 	return pass;
 }
 
@@ -415,6 +449,9 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
  * get more features after updating the pose
  */
 void VIO::replenishFeatures(Frame& f) {
+#if ANALYZE_RUNTIME
+		this->startTimer();
+#endif
 	//add more features if needed
 	cv::Mat img;
 	if (FAST_BLUR_SIGMA != 0.0) {
@@ -422,6 +459,8 @@ void VIO::replenishFeatures(Frame& f) {
 	} else {
 		img = f.img;
 	}
+
+	ROS_INFO_STREAM("current 2d feature count: " << f.features.size());
 
 	if (f.features.size() < NUM_FEATURES) {
 		std::vector<cv::KeyPoint> fast_kp;
@@ -510,6 +549,9 @@ void VIO::replenishFeatures(Frame& f) {
 
 		}
 	}
+#if ANALYZE_RUNTIME
+		this->stopTimer("feature extraction");
+#endif
 }
 
 void VIO::tf2rvecAndtvec(tf::Transform tf, cv::Mat& tvec, cv::Mat& rvec) {
@@ -661,6 +703,12 @@ void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 	tf::Transform delta = (c2b * Frame::sophus2tf(last_f.getPose())).inverse() * currentPose;
 
 	double dt = (new_f.t - last_f.t).toSec();
+
+	if(dt == 0)
+	{
+		ROS_WARN_STREAM("dt bewteen frames is zero skipping odom derivation!");
+		return;
+	}
 
 	double r, p, y;
 	delta.getBasis().getRPY(r, p, y);
