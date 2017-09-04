@@ -12,7 +12,14 @@ An IMU is not required, but an IMU is highly reccomended. The IMU is used to pre
 ## Performance
 from initial tests the algorithm works well when estimating feature depths and motion. Fast rotations currently cause a tracking loss from both lack of depth estimates and "slipping" of feature tracking. The feature slipping should be fixed by integrating linear and angular velocity measurements/estimates into the KLT feature tracker. 
 
-to be evaluated further.
+The speed of the program per frame on a laptop (2015 Macbook Pro in my case) is very variant because I wrote the program to run using only one thread. When feature positions are ready to be optimized there is a significant slow down of about 3X depending on how many feature positions are being optimized at that time.
+
+### runtimes per frame:
+typical: 5-10ms 
+peak: 30ms
+
+I would like to keep Invio running on only one thread, so I plan to address the periodic slow downs by more evenly distributing the feature position optimizations through out the frames. I will investigate the extent to which my use of STL Lists is impacting the performance during a search/insert/delete operation.
+
 
 ## Quick ROS installation guide
 
@@ -28,9 +35,10 @@ this should compile the entire package
 
 - [x] initialize with guessed uniform depth estimate of all features and estimate camera motion
 - [x] optimize depths of new points when they are added
-- [ ] publish odometry message with 
+- [x] publish odometry message
 - [ ] remove old frames from the buffer safely preventing the algorithm from using an extremely high amount of memory
 - [ ] integrate imu readings
+- [ ] determine fast and accurate params and increase speed
 - [ ] add third party initialization through rosservice
 - [ ] add realtime reinitialization feature
 - [ ] add more initialization methods
