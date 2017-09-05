@@ -131,6 +131,21 @@ void Frame::setPose_inv(Sophus::SE3d tf){
 }
 
 
+bool Frame::isPixelInBox(cv::Point2f px)
+{
+	int centerX = this->img.cols / 2.0;
+	int centerY = this->img.rows / 2.0;
+	if(abs((int)px.x - centerX) > KILL_BOX_WIDTH || abs((int)px.y - centerY) > KILL_BOX_HEIGHT)
+	{
+		ROS_DEBUG_STREAM("pixel is outside of kill box");
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
 
 
 /*

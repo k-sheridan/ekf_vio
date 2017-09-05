@@ -22,9 +22,9 @@ VIO::VIO() {
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
 			CAMERA_TOPIC, 2, &VIO::camera_callback, this);
 
-#if PUBLISH_INSIGHT
+if(PUBLISH_INSIGHT){
 	this->insight_pub = nh.advertise<sensor_msgs::Image>(INSIGHT_TOPIC, 1);
-#endif
+}
 
 	this->odom_pub = nh.advertise<nav_msgs::Odometry>(ODOM_TOPIC, 1);
 
@@ -783,5 +783,6 @@ void VIO::parseROSParams()
 	ros::param::param<std::string>("~camera_topic", CAMERA_TOPIC, D_CAMERA_TOPIC);
 	ros::param::param<std::string>("~base_frame", BASE_FRAME, D_BASE_FRAME);
 	ros::param::param<std::string>("~world_frame", WORLD_FRAME, D_WORLD_FRAME);
+	ros::param::param<std::string>("~camera_frame", CAMERA_FRAME, D_CAMERA_FRAME);
 
 }
