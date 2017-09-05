@@ -784,5 +784,8 @@ void VIO::parseROSParams()
 	ros::param::param<std::string>("~base_frame", BASE_FRAME, D_BASE_FRAME);
 	ros::param::param<std::string>("~world_frame", WORLD_FRAME, D_WORLD_FRAME);
 	ros::param::param<std::string>("~camera_frame", CAMERA_FRAME, D_CAMERA_FRAME);
+	ros::param::param<std::string>("~imu_topic", IMU_TOPIC, D_IMU_TOPIC);
+	ros::param::param<std::string>("~imu_frame", IMU_FRAME, D_IMU_FRAME);
+	ros::param::param<bool>("~use_imu", USE_IMU, D_USE_IMU);
 
 }

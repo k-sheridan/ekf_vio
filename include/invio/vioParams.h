@@ -102,6 +102,10 @@
 
 #define D_WORLD_FRAME "world"
 
+#define D_USE_IMU true
+#define D_IMU_TOPIC "imu/measurement"
+#define D_IMU_FRAME "imu"
+
 //ROS PARAMS
 bool PUBLISH_INSIGHT;
 std::string INSIGHT_TOPIC;
@@ -182,6 +186,10 @@ std::string CAMERA_TOPIC;
 std::string BASE_FRAME;
 
 std::string WORLD_FRAME;
+
+bool USE_IMU;
+std::string IMU_TOPIC;
+std::string IMU_FRAME;
 //END ROS PARAMS
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIOPARAMS_H_ */
