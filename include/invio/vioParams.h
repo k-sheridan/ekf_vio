@@ -10,10 +10,10 @@
 
 //#define ROSCONSOLE_MIN_SEVERITY ROSCONSOLE_SEVERITY_DEBUG
 
+#define SUPER_DEBUG false
+
 #define PUBLISH_INSIGHT true
 #define INSIGHT_TOPIC "invio/insight"
-
-#define SUPER_DEBUG false
 
 //VISUAL ODOM
 //fast corner detector for planar odometry
@@ -88,8 +88,6 @@
 
 #define ODOM_TOPIC "invio/odom"
 #define POINTS_TOPIC "invio/points"
-
-#define USE_POINT_CLOUD false
 
 // this topic will serve as a last resort for realignment
 #define POINTCLOUD_TOPIC "guidance/points2"

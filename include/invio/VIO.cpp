@@ -150,12 +150,13 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
 	}
 
-#if PUBLISH_INSIGHT
+if( PUBLISH_INSIGHT)
+{
 	if(this->frame_buffer.size() > 0)
 	{
 		this->publishInsight(this->frame_buffer.front());
 	}
-#endif
+}
 
 	ROS_DEBUG_STREAM("map size: " << this->map.size());
 
@@ -185,9 +186,9 @@ void VIO::predictPose(Frame& new_frame, Frame& old_frame)
 }
 
 void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->startTimer();
-#endif
+}
 
 	std::vector<cv::Point2f> oldPoints = this->getPixels2fInOrder(last_f);
 
@@ -240,16 +241,16 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 
 	ROS_DEBUG_STREAM("VO LOST " << lostFeatures << "FEATURES");
 
-#if ANALYZE_RUNTIME
+if (ANALYZE_RUNTIME){
 		this->stopTimer("tracking");
-#endif
+}
 
 }
 
 void VIO::optimizePoints(Frame& f){
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->startTimer();
-#endif
+}
 	ROS_INFO("OPTIMIZING POINTS");
 	for(auto& e : f.features)
 	{
@@ -275,15 +276,15 @@ void VIO::optimizePoints(Frame& f){
 		}
 	}
 	ROS_DEBUG("DONE OPTIMIZING");
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->stopTimer("3d point optimization");
-#endif
+}
 }
 
 void VIO::keyFrameUpdate(){
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->startTimer();
-#endif
+}
 	Frame* kf; // get the key frame pointer
 
 	// find the key frame
@@ -310,17 +311,17 @@ void VIO::keyFrameUpdate(){
 		this->optimizePoints(this->frame_buffer.front()); // attempt to optimize immature points if they have enough keyframes
 	}
 
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->stopTimer("keyframeUpdate");
-#endif
+}
 
 }
 
 bool VIO::optimizePose(Frame& f, double& ppe)
 {
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->startTimer();
-#endif
+}
 	bool pass = false;
 
 	ROS_DEBUG_STREAM("found " << f.getMatureCount() << " mature pixels");
@@ -342,9 +343,9 @@ bool VIO::optimizePose(Frame& f, double& ppe)
 		ROS_ERROR("pauvsi_vio: ran out of valid features lost track of pose. try lowering the FAST feature threshold.");
 		pass = false;
 	}
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->stopTimer("pose optimization");
-#endif
+}
 	return pass;
 }
 
@@ -449,9 +450,9 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
  * get more features after updating the pose
  */
 void VIO::replenishFeatures(Frame& f) {
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->startTimer();
-#endif
+}
 	//add more features if needed
 	cv::Mat img;
 	if (FAST_BLUR_SIGMA != 0.0) {
@@ -541,17 +542,15 @@ void VIO::replenishFeatures(Frame& f) {
 			f.features.back().getPoint()->setupMapAndPointLocation(
 					(--this->map.end()), &(this->map)); // tell the point where it is in memory via an iterator and where the map is so it can delet itself later
 
-#if USE_POINT_CLOUD
-			//todo try to initialize using pointcloud projection
-#else
+
 			f.features.back().computeObjectPositionWithAverageSceneDepth();
-#endif
+
 
 		}
 	}
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->stopTimer("feature extraction");
-#endif
+}
 }
 
 void VIO::tf2rvecAndtvec(tf::Transform tf, cv::Mat& tvec, cv::Mat& rvec) {

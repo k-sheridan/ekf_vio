@@ -43,6 +43,88 @@
 class VIO {
 public:
 
+	//ROS PARAMS
+	bool PUBLISH_INSIGHT;
+	std::string INSIGHT_TOPIC;
+
+	//VISUAL ODOM
+	//fast corner detector for planar odometry
+	int FAST_THRESHOLD;
+	// the amount to blur the image before feature extraction
+	double FAST_BLUR_SIGMA;
+
+	double INVERSE_IMAGE_SCALE;
+
+	// use previous odometry for prior
+	bool USE_ODOM_PRIOR;
+
+	//analyze the function times
+	bool ANALYZE_RUNTIME;
+
+	// the radius to remove features at in pixels
+	int KILL_BOX_WIDTH;
+	int KILL_BOX_HEIGHT;
+
+	// the minimum feature eigen val where it is determined as lost
+	double KLT_MIN_EIGEN;
+
+	// the minimum pixel distance a feature must have between a previous feature
+	double MIN_NEW_FEATURE_DIST;
+
+	// the desired number of features more = robust...er (and slower)
+	int NUM_FEATURES;
+
+	// the amount of points needed to start pauvsi vio odometry
+	int START_FEATURE_COUNT;
+
+	// the minimum amount of mature features which is deemed dangerous
+	int DANGEROUS_MATURE_FEATURE_COUNT_LEVEL;
+
+	//minimum detected features before vo has failed
+	int MINIMUM_TRACKABLE_FEATURES;
+
+	// the amount of frames to store for feature optimization
+	int FRAME_BUFFER_SIZE;
+
+	// the number of times a feature must be observed before allowed to be optimized
+	int KEYFRAME_COUNT_FOR_OPTIMIZATION;
+
+	// the minimum ratio of translation to avg scene depth
+	double T2ASD;
+
+	// the maximum error a feature can have after an optim
+	double MAXIMUM_FEATURE_DEPTH_ERROR;
+
+	// default point depth used for initialization in meters
+	double DEFAULT_POINT_DEPTH;
+	double DEFAULT_POINT_STARTING_ERROR;
+
+	// epsilon for convergence in structure bundle adjustment and motion
+	double EPS_SBA;
+	double EPS_MOBA;
+
+	//max iterations for gausss newton
+	int MOBA_MAX_ITERATIONS;
+	int SBA_MAX_ITERATIONS;
+
+	//min and maximum point depths in meters
+	double MAX_POINT_Z;
+	double MIN_POINT_Z;
+
+	//END VISUAL ODOM
+
+	std::string ODOM_TOPIC;
+	std::string POINTS_TOPIC;
+
+	//double CAMERA_TOPIC "/guidance/left/image_rect"
+	//double CAMERA_FRAME "guidance"
+	std::string CAMERA_TOPIC;
+
+	std::string BASE_FRAME;
+
+	std::string WORLD_FRAME;
+	//END ROS PARAMS
+
 	bool initialized; // has the program been initialized
 	bool tracking_lost; // do we still have tracking
 
