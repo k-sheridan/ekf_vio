@@ -186,6 +186,8 @@ public:
 
 	void startTimer(){this->timer_start = ros::Time::now();}
 	void stopTimer(std::string prefix){ROS_INFO_STREAM(prefix <<": "<<(ros::Time::now() - this->timer_start).toSec() * 1000 << "ms");}
+
+	void parseROSParams();
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIO_H_ */

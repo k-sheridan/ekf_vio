@@ -748,3 +748,40 @@ void VIO::publishPoints(Frame& f)
 
 
 }
+
+void VIO::parseROSParams()
+{
+	ros::param::param<bool>("~publish_insight", PUBLISH_INSIGHT, D_PUBLISH_INSIGHT);
+	ros::param::param<std::string>("~insight_topic", INSIGHT_TOPIC, D_INSIGHT_TOPIC);
+	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, D_FAST_THRESHOLD);
+	ros::param::param<double>("~fast_blur_sigma", FAST_BLUR_SIGMA, D_FAST_BLUR_SIGMA);
+	ros::param::param<double>("~inverse_image_scale", INVERSE_IMAGE_SCALE, D_INVERSE_IMAGE_SCALE);
+	ros::param::param<bool>("~use_odom_prior", USE_ODOM_PRIOR, D_USE_ODOM_PRIOR);
+	ros::param::param<bool>("~analyze_runtime", ANALYZE_RUNTIME, D_ANALYZE_RUNTIME);
+	ros::param::param<int>("~kill_box_width", KILL_BOX_WIDTH, D_KILL_BOX_WIDTH);
+	ros::param::param<int>("~kill_box_height", KILL_BOX_HEIGHT, D_KILL_BOX_HEIGHT);
+	ros::param::param<double>("~min_klt_eigen_val", KLT_MIN_EIGEN, D_KLT_MIN_EIGEN);
+	ros::param::param<double>("~min_new_feature_dist", MIN_NEW_FEATURE_DIST, D_MIN_NEW_FEATURE_DIST);
+	ros::param::param<int>("~num_features", NUM_FEATURES, D_NUM_FEATURES);
+	ros::param::param<int>("~start_feature_count", START_FEATURE_COUNT, D_START_FEATURE_COUNT);
+	ros::param::param<int>("~dangerous_mature_feature_count", DANGEROUS_MATURE_FEATURE_COUNT_LEVEL, D_DANGEROUS_MATURE_FEATURE_COUNT_LEVEL);
+	ros::param::param<int>("~minimum_trackable_features", MINIMUM_TRACKABLE_FEATURES, D_MINIMUM_TRACKABLE_FEATURES);
+	ros::param::param<int>("~frame_buffer_size", FRAME_BUFFER_SIZE, D_FRAME_BUFFER_SIZE);
+	ros::param::param<int>("~keyframe_count_for_optimization", KEYFRAME_COUNT_FOR_OPTIMIZATION, D_KEYFRAME_COUNT_FOR_OPTIMIZATION);
+	ros::param::param<double>("~keyframe_translation_ratio", T2ASD, D_T2ASD);
+	ros::param::param<double>("~maximum_feature_depth_error", MAXIMUM_FEATURE_DEPTH_ERROR, D_MAXIMUM_FEATURE_DEPTH_ERROR);
+	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
+	ros::param::param<double>("~default_point_starting_error", DEFAULT_POINT_STARTING_ERROR, D_DEFAULT_POINT_STARTING_ERROR);
+	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);
+	ros::param::param<double>("~eps_sba", EPS_SBA, D_EPS_SBA);
+	ros::param::param<int>("~moba_max_iterations", MOBA_MAX_ITERATIONS, D_MOBA_MAX_ITERATIONS);
+	ros::param::param<int>("~sba_max_iterations", SBA_MAX_ITERATIONS, D_SBA_MAX_ITERATIONS);
+	ros::param::param<double>("~max_point_z", MAX_POINT_Z, D_MAX_POINT_Z);
+	ros::param::param<double>("~min_point_z", MIN_POINT_Z, D_MIN_POINT_Z);
+	ros::param::param<std::string>("~odom_topic", ODOM_TOPIC, D_ODOM_TOPIC);
+	ros::param::param<std::string>("~point_topic", POINTS_TOPIC, D_POINTS_TOPIC);
+	ros::param::param<std::string>("~camera_topic", CAMERA_TOPIC, D_CAMERA_TOPIC);
+	ros::param::param<std::string>("~base_frame", BASE_FRAME, D_BASE_FRAME);
+	ros::param::param<std::string>("~world_frame", WORLD_FRAME, D_WORLD_FRAME);
+
+}
