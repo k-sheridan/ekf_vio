@@ -7,7 +7,7 @@ invio was developed for ROS and uses a few ROS tools like tf and the rosconsole.
 
 This algorithm is intended to be used with a downward facing, **high framerate (>30fps)**, **high horizontal field of view (>90 degrees)**, **global shutter** camera, but it should still work with most other configurations. It is important that the camera is facing a textured well lit planar surface when initializing.
 
-An IMU is not required, but an IMU is highly reccomended. The IMU is used to predict how the camera traveled between frames. In the future I would like to use the IMU to estimate the metric scale of our initial motion so invio can be initialized from any situation if a velocity estimate is initially given to it.
+An IMU is not required, but an IMU is highly reccomended. The IMU is used during the prediction step to help predict how the camera has rotated between frames. In the future I would like to use the IMU to estimate the metric scale of our initial motion so invio can be initialized from any situation if a velocity estimate is initially given to it.
 
 ## Performance
 from initial tests the algorithm works well when estimating feature depths and motion. Fast rotations currently cause a tracking loss from both lack of depth estimates and "slipping" of feature tracking. The feature slipping should be fixed by integrating linear and angular velocity measurements/estimates into the KLT feature tracker. 
