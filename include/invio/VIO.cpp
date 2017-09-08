@@ -18,13 +18,15 @@ VIO::VIO() {
 
 	ros::NodeHandle nh; // we all know what this is
 
+	this->parseROSParams();
+
 	image_transport::ImageTransport it(nh);
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
 			CAMERA_TOPIC, 2, &VIO::camera_callback, this);
 
-#if PUBLISH_INSIGHT
+if(PUBLISH_INSIGHT){
 	this->insight_pub = nh.advertise<sensor_msgs::Image>(INSIGHT_TOPIC, 1);
-#endif
+}
 
 	this->odom_pub = nh.advertise<nav_msgs::Odometry>(ODOM_TOPIC, 1);
 
@@ -150,12 +152,13 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
 	}
 
-#if PUBLISH_INSIGHT
+if( PUBLISH_INSIGHT)
+{
 	if(this->frame_buffer.size() > 0)
 	{
 		this->publishInsight(this->frame_buffer.front());
 	}
-#endif
+}
 
 	ROS_DEBUG_STREAM("map size: " << this->map.size());
 
@@ -185,9 +188,9 @@ void VIO::predictPose(Frame& new_frame, Frame& old_frame)
 }
 
 void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->startTimer();
-#endif
+}
 
 	std::vector<cv::Point2f> oldPoints = this->getPixels2fInOrder(last_f);
 
@@ -240,16 +243,16 @@ void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
 
 	ROS_DEBUG_STREAM("VO LOST " << lostFeatures << "FEATURES");
 
-#if ANALYZE_RUNTIME
+if (ANALYZE_RUNTIME){
 		this->stopTimer("tracking");
-#endif
+}
 
 }
 
 void VIO::optimizePoints(Frame& f){
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->startTimer();
-#endif
+}
 	ROS_INFO("OPTIMIZING POINTS");
 	for(auto& e : f.features)
 	{
@@ -275,15 +278,15 @@ void VIO::optimizePoints(Frame& f){
 		}
 	}
 	ROS_DEBUG("DONE OPTIMIZING");
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->stopTimer("3d point optimization");
-#endif
+}
 }
 
 void VIO::keyFrameUpdate(){
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->startTimer();
-#endif
+}
 	Frame* kf; // get the key frame pointer
 
 	// find the key frame
@@ -310,17 +313,17 @@ void VIO::keyFrameUpdate(){
 		this->optimizePoints(this->frame_buffer.front()); // attempt to optimize immature points if they have enough keyframes
 	}
 
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->stopTimer("keyframeUpdate");
-#endif
+}
 
 }
 
 bool VIO::optimizePose(Frame& f, double& ppe)
 {
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->startTimer();
-#endif
+}
 	bool pass = false;
 
 	ROS_DEBUG_STREAM("found " << f.getMatureCount() << " mature pixels");
@@ -342,9 +345,9 @@ bool VIO::optimizePose(Frame& f, double& ppe)
 		ROS_ERROR("pauvsi_vio: ran out of valid features lost track of pose. try lowering the FAST feature threshold.");
 		pass = false;
 	}
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->stopTimer("pose optimization");
-#endif
+}
 	return pass;
 }
 
@@ -449,9 +452,9 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
  * get more features after updating the pose
  */
 void VIO::replenishFeatures(Frame& f) {
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->startTimer();
-#endif
+}
 	//add more features if needed
 	cv::Mat img;
 	if (FAST_BLUR_SIGMA != 0.0) {
@@ -541,17 +544,15 @@ void VIO::replenishFeatures(Frame& f) {
 			f.features.back().getPoint()->setupMapAndPointLocation(
 					(--this->map.end()), &(this->map)); // tell the point where it is in memory via an iterator and where the map is so it can delet itself later
 
-#if USE_POINT_CLOUD
-			//todo try to initialize using pointcloud projection
-#else
+
 			f.features.back().computeObjectPositionWithAverageSceneDepth();
-#endif
+
 
 		}
 	}
-#if ANALYZE_RUNTIME
+if(ANALYZE_RUNTIME){
 		this->stopTimer("feature extraction");
-#endif
+}
 }
 
 void VIO::tf2rvecAndtvec(tf::Transform tf, cv::Mat& tvec, cv::Mat& rvec) {
@@ -671,6 +672,9 @@ void VIO::publishInsight(Frame& f)
 			{
 				uchar intensity = (((e.getPoint()->temp_depth - minDepth) / (maxDepth - minDepth)) * 255);
 
+				if(intensity > 255)
+					intensity = 255;
+
 				ROS_DEBUG_STREAM("plotting depth: " << e.getPoint()->temp_depth);
 
 				cv::Mat in = cv::Mat(1, 1, CV_8UC1);
@@ -747,5 +751,46 @@ void VIO::publishPoints(Frame& f)
 {
 	sensor_msgs::PointCloud msg;
 
+
+}
+
+void VIO::parseROSParams()
+{
+	ros::param::param<bool>("~publish_insight", PUBLISH_INSIGHT, D_PUBLISH_INSIGHT);
+	ros::param::param<std::string>("~insight_topic", INSIGHT_TOPIC, D_INSIGHT_TOPIC);
+	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, D_FAST_THRESHOLD);
+	ros::param::param<double>("~fast_blur_sigma", FAST_BLUR_SIGMA, D_FAST_BLUR_SIGMA);
+	ros::param::param<double>("~inverse_image_scale", INVERSE_IMAGE_SCALE, D_INVERSE_IMAGE_SCALE);
+	ros::param::param<bool>("~use_odom_prior", USE_ODOM_PRIOR, D_USE_ODOM_PRIOR);
+	ros::param::param<bool>("~analyze_runtime", ANALYZE_RUNTIME, D_ANALYZE_RUNTIME);
+	ros::param::param<int>("~kill_box_width", KILL_BOX_WIDTH, D_KILL_BOX_WIDTH);
+	ros::param::param<int>("~kill_box_height", KILL_BOX_HEIGHT, D_KILL_BOX_HEIGHT);
+	ros::param::param<double>("~min_klt_eigen_val", KLT_MIN_EIGEN, D_KLT_MIN_EIGEN);
+	ros::param::param<double>("~min_new_feature_dist", MIN_NEW_FEATURE_DIST, D_MIN_NEW_FEATURE_DIST);
+	ros::param::param<int>("~num_features", NUM_FEATURES, D_NUM_FEATURES);
+	ros::param::param<int>("~start_feature_count", START_FEATURE_COUNT, D_START_FEATURE_COUNT);
+	ros::param::param<int>("~dangerous_mature_feature_count", DANGEROUS_MATURE_FEATURE_COUNT_LEVEL, D_DANGEROUS_MATURE_FEATURE_COUNT_LEVEL);
+	ros::param::param<int>("~minimum_trackable_features", MINIMUM_TRACKABLE_FEATURES, D_MINIMUM_TRACKABLE_FEATURES);
+	ros::param::param<int>("~frame_buffer_size", FRAME_BUFFER_SIZE, D_FRAME_BUFFER_SIZE);
+	ros::param::param<int>("~keyframe_count_for_optimization", KEYFRAME_COUNT_FOR_OPTIMIZATION, D_KEYFRAME_COUNT_FOR_OPTIMIZATION);
+	ros::param::param<double>("~keyframe_translation_ratio", T2ASD, D_T2ASD);
+	ros::param::param<double>("~maximum_feature_depth_error", MAXIMUM_FEATURE_DEPTH_ERROR, D_MAXIMUM_FEATURE_DEPTH_ERROR);
+	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
+	ros::param::param<double>("~default_point_starting_error", DEFAULT_POINT_STARTING_ERROR, D_DEFAULT_POINT_STARTING_ERROR);
+	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);
+	ros::param::param<double>("~eps_sba", EPS_SBA, D_EPS_SBA);
+	ros::param::param<int>("~moba_max_iterations", MOBA_MAX_ITERATIONS, D_MOBA_MAX_ITERATIONS);
+	ros::param::param<int>("~sba_max_iterations", SBA_MAX_ITERATIONS, D_SBA_MAX_ITERATIONS);
+	ros::param::param<double>("~max_point_z", MAX_POINT_Z, D_MAX_POINT_Z);
+	ros::param::param<double>("~min_point_z", MIN_POINT_Z, D_MIN_POINT_Z);
+	ros::param::param<std::string>("~odom_topic", ODOM_TOPIC, D_ODOM_TOPIC);
+	ros::param::param<std::string>("~point_topic", POINTS_TOPIC, D_POINTS_TOPIC);
+	ros::param::param<std::string>("~camera_topic", CAMERA_TOPIC, D_CAMERA_TOPIC);
+	ros::param::param<std::string>("~base_frame", BASE_FRAME, D_BASE_FRAME);
+	ros::param::param<std::string>("~world_frame", WORLD_FRAME, D_WORLD_FRAME);
+	ros::param::param<std::string>("~camera_frame", CAMERA_FRAME, D_CAMERA_FRAME);
+	ros::param::param<std::string>("~imu_topic", IMU_TOPIC, D_IMU_TOPIC);
+	ros::param::param<std::string>("~imu_frame", IMU_FRAME, D_IMU_FRAME);
+	ros::param::param<bool>("~use_imu", USE_IMU, D_USE_IMU);
 
 }

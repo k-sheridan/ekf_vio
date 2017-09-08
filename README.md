@@ -10,7 +10,10 @@ This algorithm is intended to be used with a downward facing, **high framerate (
 An IMU is not required, but an IMU is highly reccomended. The IMU is used during the prediction step to help predict how the camera has rotated between frames. In the future I would like to use the IMU to estimate the metric scale of our initial motion so invio can be initialized from any situation if a velocity estimate is initially given to it.
 
 ## Performance
-from initial tests the algorithm works well when estimating feature depths and motion. Fast rotations currently cause a tracking loss from both lack of depth estimates and "slipping" of feature tracking. The feature slipping should be fixed by integrating linear and angular velocity measurements/estimates into the KLT feature tracker. 
+
+![Small Scale Results](/images/invio1.png)
+
+from initial tests the algorithm works well when estimating feature depths and motion. Fast rotations currently cause a tracking loss from both lack of depth estimates and "slipping" of feature tracking due to occlusions. The feature slipping should be fixed by integrating linear and angular velocity measurements/estimates into the KLT feature tracker. 
 
 The speed of the program per frame on a laptop (2015 Macbook Pro in my case) is very variant because I wrote the program to run using only one thread. When feature positions are ready to be optimized there is a significant slow down of about 3X depending on how many feature positions are being optimized at that time.
 
