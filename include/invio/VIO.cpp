@@ -672,6 +672,9 @@ void VIO::publishInsight(Frame& f)
 			{
 				uchar intensity = (((e.getPoint()->temp_depth - minDepth) / (maxDepth - minDepth)) * 255);
 
+				if(intensity > 255)
+					intensity = 255;
+
 				ROS_DEBUG_STREAM("plotting depth: " << e.getPoint()->temp_depth);
 
 				cv::Mat in = cv::Mat(1, 1, CV_8UC1);
