@@ -1,0 +1,14 @@
+<launch>
+
+	<param name="robot_description" command="cat $(find invio)/urdf/sensorRig1_description.urdf" />
+
+	<node pkg="robot_state_publisher" type="robot_state_publisher" name="m7_state_pub" >
+      
+    </node>
+
+<node pkg="tf" type="static_transform_publisher" name="base_to_cam" args="0 0 0 0 1.57 0 /base_link /camera 100"/>
+    
+    <node name="invio" pkg="invio" type="invio_node" output="screen">
+    </node>
+
+</launch>

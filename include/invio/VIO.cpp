@@ -18,6 +18,8 @@ VIO::VIO() {
 
 	ros::NodeHandle nh; // we all know what this is
 
+	this->parseROSParams();
+
 	image_transport::ImageTransport it(nh);
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
 			CAMERA_TOPIC, 2, &VIO::camera_callback, this);

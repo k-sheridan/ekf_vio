@@ -17,7 +17,7 @@
 
 //VISUAL ODOM
 //fast corner detector for planar odometry
-#define D_FAST_THRESHOLD 100
+#define D_FAST_THRESHOLD 50
 // the amount to blur the image before feature extraction
 #define D_FAST_BLUR_SIGMA 0.0
 
@@ -58,13 +58,13 @@
 #define D_KEYFRAME_COUNT_FOR_OPTIMIZATION 5
 
 // the minimum ratio of translation to avg scene depth
-#define D_T2ASD 0.05
+#define D_T2ASD 0.1
 
 // the maximum error a feature can have after an optim
-#define D_MAXIMUM_FEATURE_DEPTH_ERROR 0.01
+#define D_MAXIMUM_FEATURE_DEPTH_ERROR 0.005
 
 // default point depth used for initialization in meters
-#define D_DEFAULT_POINT_DEPTH 1.0
+#define D_DEFAULT_POINT_DEPTH 0.5
 #define D_DEFAULT_POINT_STARTING_ERROR 10000
 
 // epsilon for convergence in structure bundle adjustment and motion
@@ -95,8 +95,8 @@
 
 //#define CAMERA_TOPIC "/guidance/left/image_rect"
 //#define CAMERA_FRAME "guidance"
-#define D_CAMERA_TOPIC "/bottom_camera/image_rect"
-#define D_CAMERA_FRAME "bottom_camera"
+#define D_CAMERA_TOPIC "/camera/image_rect"
+#define D_CAMERA_FRAME "camera"
 
 #define D_BASE_FRAME "base_link"
 
