@@ -85,8 +85,7 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 	{
 		ROS_DEBUG("adding the first frame");
 		f.setPose(
-				Sophus::SE3d(Eigen::Quaterniond(1.0, 0, 0, 0),
-						Eigen::Vector3d(0.0, 0.0, 0.0))); // set the initial position to 0 (this is world to camera)
+				Frame::tf2sophus(b2c)); // set the initial position to 0 (this is world to camera)
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
@@ -100,7 +99,7 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
 		//try to predict the frame forward
-		if(USE_ODOM_PRIOR){
+		if(USE_PREDICTED_PRIOR){
 			this->predictPose(this->frame_buffer.front(), *std::next(this->frame_buffer.begin(), 1));
 		}
 		else
@@ -159,6 +158,9 @@ if( PUBLISH_INSIGHT)
 		this->publishInsight(this->frame_buffer.front());
 	}
 }
+
+	//publish the mature 3d points
+	this->publishPoints(this->frame_buffer.front());
 
 	ROS_DEBUG_STREAM("map size: " << this->map.size());
 
@@ -675,7 +677,7 @@ void VIO::publishInsight(Frame& f)
 				if(intensity > 255)
 					intensity = 255;
 
-				ROS_DEBUG_STREAM("plotting depth: " << e.getPoint()->temp_depth);
+				//ROS_DEBUG_STREAM("plotting depth: " << e.getPoint()->temp_depth);
 
 				cv::Mat in = cv::Mat(1, 1, CV_8UC1);
 				in.at<uchar>(0, 0) = intensity;
@@ -701,8 +703,11 @@ void VIO::publishInsight(Frame& f)
 void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 {
 	nav_msgs::Odometry msg;
+	static tf::TransformBroadcaster br;
 
 	tf::Transform currentPose = (c2b * Frame::sophus2tf(new_f.getPose()));
+
+	br.sendTransform(tf::StampedTransform(Frame::sophus2tf(new_f.getPose()), new_f.t, WORLD_FRAME, ODOM_FRAME));
 
 	tf::Transform delta = (c2b * Frame::sophus2tf(last_f.getPose())).inverse() * currentPose;
 
@@ -749,9 +754,47 @@ void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 
 void VIO::publishPoints(Frame& f)
 {
+
+	if(ANALYZE_RUNTIME){
+			this->startTimer();
+	}
 	sensor_msgs::PointCloud msg;
 
+	sensor_msgs::ChannelFloat32 ch;
 
+	ch.name = "intensity";
+
+	msg.header.stamp = f.t;
+	msg.header.frame_id = ODOM_FRAME;
+
+	for(auto e : f.features)
+	{
+		if(!e.obsolete)
+		{
+			if(!e.getPoint()->isImmature())
+			{
+				Eigen::Vector3d p_in_f = f.getPose_inv() * e.getPoint()->getWorldCoordinate();
+
+				geometry_msgs::Point32 pt;
+
+				pt.x = p_in_f.x();
+				pt.y = p_in_f.y();
+				pt.z = p_in_f.z();
+
+				ch.values.push_back(f.img.at<uchar>(e.px));
+
+				msg.points.push_back(pt);
+			}
+		}
+	}
+
+	msg.channels.push_back(ch);
+
+	this->points_pub.publish(msg);
+
+	if(ANALYZE_RUNTIME){
+			this->stopTimer("point publish");
+	}
 }
 
 void VIO::parseROSParams()
@@ -761,7 +804,7 @@ void VIO::parseROSParams()
 	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, D_FAST_THRESHOLD);
 	ros::param::param<double>("~fast_blur_sigma", FAST_BLUR_SIGMA, D_FAST_BLUR_SIGMA);
 	ros::param::param<double>("~inverse_image_scale", INVERSE_IMAGE_SCALE, D_INVERSE_IMAGE_SCALE);
-	ros::param::param<bool>("~use_odom_prior", USE_ODOM_PRIOR, D_USE_ODOM_PRIOR);
+	ros::param::param<bool>("~use_predicted_prior", USE_PREDICTED_PRIOR, D_USE_PREDICTED_PRIOR);
 	ros::param::param<bool>("~analyze_runtime", ANALYZE_RUNTIME, D_ANALYZE_RUNTIME);
 	ros::param::param<int>("~kill_box_width", KILL_BOX_WIDTH, D_KILL_BOX_WIDTH);
 	ros::param::param<int>("~kill_box_height", KILL_BOX_HEIGHT, D_KILL_BOX_HEIGHT);
@@ -784,6 +827,7 @@ void VIO::parseROSParams()
 	ros::param::param<double>("~max_point_z", MAX_POINT_Z, D_MAX_POINT_Z);
 	ros::param::param<double>("~min_point_z", MIN_POINT_Z, D_MIN_POINT_Z);
 	ros::param::param<std::string>("~odom_topic", ODOM_TOPIC, D_ODOM_TOPIC);
+	ros::param::param<std::string>("~odom_frame", ODOM_FRAME, D_ODOM_FRAME);
 	ros::param::param<std::string>("~point_topic", POINTS_TOPIC, D_POINTS_TOPIC);
 	ros::param::param<std::string>("~camera_topic", CAMERA_TOPIC, D_CAMERA_TOPIC);
 	ros::param::param<std::string>("~base_frame", BASE_FRAME, D_BASE_FRAME);

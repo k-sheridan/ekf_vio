@@ -5,13 +5,13 @@
 </link>
 
 <!-- This is the frame of the left camera of the dji gudance camera -->
-<link name="guidance">
+<link name="camera">
 </link>
 
-<joint name="base_to_guidance" type="fixed">
+<joint name="base_to_camera" type="fixed">
 		<parent link="base_link" />
-		<child link="guidance" />
-		<origin xyz="-0.04826 0.0 -0.05715" rpy="3.14159265359 0 0"/>
+		<child link="camera" />
+		<origin xyz="0 0 0.06" rpy="1.5707963268 3.14159265359 1.5707963268"/>
 </joint>	
 
 </robot>

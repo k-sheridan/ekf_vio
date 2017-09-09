@@ -24,7 +24,7 @@
 #define D_INVERSE_IMAGE_SCALE 4
 
 // use previous odometry for prior
-#define D_USE_ODOM_PRIOR true
+#define D_USE_PREDICTED_PRIOR false
 
 //analyze the function times
 #define D_ANALYZE_RUNTIME true
@@ -88,6 +88,7 @@
 
 #define D_ODOM_TOPIC "invio/odom"
 #define D_POINTS_TOPIC "invio/points"
+#define D_ODOM_FRAME "invio_odom"
 
 // this topic will serve as a last resort for realignment
 #define D_POINTCLOUD_TOPIC "guidance/points2"
@@ -119,7 +120,7 @@ double FAST_BLUR_SIGMA;
 double INVERSE_IMAGE_SCALE;
 
 // use previous odometry for prior
-bool USE_ODOM_PRIOR;
+bool USE_PREDICTED_PRIOR;
 
 //analyze the function times
 bool ANALYZE_RUNTIME;
@@ -178,6 +179,7 @@ double MIN_POINT_Z;
 
 std::string ODOM_TOPIC;
 std::string POINTS_TOPIC;
+std::string ODOM_FRAME;
 
 //double CAMERA_TOPIC "/guidance/left/image_rect"
 std::string CAMERA_FRAME;

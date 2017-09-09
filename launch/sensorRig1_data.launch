@@ -5,13 +5,13 @@
 	<node pkg="robot_state_publisher" type="robot_state_publisher" name="m7_state_pub" >
       
     </node>
-
-	<node pkg="tf" type="static_transform_publisher" name="base_to_cam" args="0 0 0 0 1.57 0 /base_link /camera 100"/>
     
     <node name="invio" pkg="invio" type="invio_node" output="screen">
 
 	<rosparam command="load" file="$(find invio)/params/test.yaml" />
 
     </node>
+    
+    <node pkg="rviz" type="rviz" name="invio_rviz" args="-d $(find invio)/rviz/invio.rviz"/>
 
 </launch>
