@@ -6,17 +6,11 @@
       
     </node>
 
-<node pkg="tf" type="static_transform_publisher" name="base_to_cam" args="0 0 0 0 1.57 0 /base_link /camera 100"/>
+	<node pkg="tf" type="static_transform_publisher" name="base_to_cam" args="0 0 0 0 1.57 0 /base_link /camera 100"/>
     
     <node name="invio" pkg="invio" type="invio_node" output="screen">
 
-	<param name="maximum_feature_depth_error" value="0.001" />
-	<param name="num_features" value="300" />
-	<param name="keyframe_count_for_optimization" value="7" />
-	<param name="keyframe_translation_ratio" value="0.15" />
-	<param name="inverse_image_scale" value="2" />
-	<param name="kill_box_width" value="320" />
-	<param name="kill_box_height" value="230" />
+	<rosparam command="load" file="$(find invio)/params/test.yaml" />
 
     </node>
 
