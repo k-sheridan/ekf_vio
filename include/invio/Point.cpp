@@ -11,7 +11,7 @@
 Point::Point()
 {
 	deleted = false;
-	this->sigma = DEFAULT_POINT_STARTING_ERROR;
+	this->variance = DEFAULT_POINT_STARTING_VARIANCE;
 	this->theMap = NULL;
 	this->immature = true;
 	this->guessed = false;
@@ -22,7 +22,7 @@ Point::Point()
 Point::Point(Feature* ft){
 	_observations.push_front(ft); // add this observation to the deque
 	deleted = false;
-	this->sigma = DEFAULT_POINT_STARTING_ERROR;
+	this->variance = DEFAULT_POINT_STARTING_VARIANCE;
 	this->theMap = NULL;
 	this->immature = true;
 	this->guessed = false;
@@ -39,7 +39,7 @@ Point::Point(Feature* ft, std::list<Point>::iterator _thisPoint, std::list<Point
 	this->immature = true;
 	this->guessed = false;
 
-	this->sigma = DEFAULT_POINT_STARTING_ERROR;
+	this->variance = DEFAULT_POINT_STARTING_VARIANCE;
 	this->theMap = _map;
 	this->thisPoint = _thisPoint;
 }
@@ -101,9 +101,12 @@ void Point::safelyDeletePoint()
  * this performs structure only bundle adjustment on this point using all keyframes still in the buffer
  *
  * This function uses the gauss newton optimization method to find the optimal 3d point for a set of keyframes
+ *
+ * searches for best keyframe(s) to determine the depth of the point and update it
  */
 bool Point::SBA(int iterations)
 {
+	Eigen::Vector3d new_point = this->pos; // this will the optimum point for each iteration
 	Eigen::Vector3d old_point = this->pos;
 	Eigen::Vector3d original = this->pos;
 	double chi2 = 0.0;
@@ -122,7 +125,7 @@ bool Point::SBA(int iterations)
 		{
 			vertices.push_back(e);
 			ROS_DEBUG_STREAM("added a keyframe to the SBA problem");
-			if(vertices.size() >= KEYFRAME_COUNT_FOR_OPTIMIZATION)
+			if(vertices.size() >= MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION)
 			{
 				ROS_DEBUG_STREAM("got enough keyframes to attempt optimization");
 				break;
@@ -135,7 +138,7 @@ bool Point::SBA(int iterations)
 		}*/
 	}
 
-	if(vertices.size() < KEYFRAME_COUNT_FOR_OPTIMIZATION){
+	if(vertices.size() < MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION){
 		ROS_DEBUG_STREAM("NOT ENOUGH KEYFRAMES FOR SBA PROBLEM TO SOLVE");
 		return false;
 	}
@@ -153,7 +156,7 @@ bool Point::SBA(int iterations)
 		for(auto it = vertices.begin(); it != vertices.end(); ++it)
 		{
 			Matrix23d J;
-			const Eigen::Vector3d p_in_f((*it)->getParentFrame()->getPose_inv() * this->pos); // the 3d point projected into this keyframe's coordinate system
+			const Eigen::Vector3d p_in_f((*it)->getParentFrame()->getPose_inv() * new_point); // the 3d point projected into this keyframe's coordinate system
 
 			Point::jacobian_xyz2uv(p_in_f, (*it)->getParentFrame()->getPose_inv().rotationMatrix(), J); // this gets the jacobian of the projection function
 
@@ -179,14 +182,15 @@ bool Point::SBA(int iterations)
 			failed = true;
 			failIter = i;
 			ROS_DEBUG_STREAM("it " << i << " FAILURE  new_chi2 = " << new_chi2);
-			this->pos = old_point; // roll-back
+
+			new_point = old_point; // roll-back
+
 			break;
 		}
 
 		// update the model
-		Eigen::Vector3d new_point = this->pos + dp;
-		old_point = this->pos;
-		this->pos = new_point;
+		new_point = this->pos + dp;
+		old_point = new_point;
 		chi2 = new_chi2;
 
 		//ROS_DEBUG_STREAM("point between " << new_point);
@@ -200,12 +204,15 @@ bool Point::SBA(int iterations)
 
 	//compute the depth to the current frame
 
-	double depth = (vertices.back()->getParentFrame()->getPose_inv() * this->pos).z();
+	double depth = (vertices.back()->getParentFrame()->getPose_inv() * new_point).z();
 
 	if(!(failed && failIter < 2) && depth > MIN_POINT_Z && depth < MAX_POINT_Z && chi2 != 0.0)
 	{
 		ROS_DEBUG_STREAM("GOOD POINT DEPTH: "  << depth);
-		this->sigma = chi2 / vertices.size();
+
+		//update the points position and variance
+		this->updatePoint(new_point, chi2 / vertices.size());
+
 		// set this point to mature
 		this->setImmature(false);
 
@@ -213,12 +220,12 @@ bool Point::SBA(int iterations)
 		this->guessed = false;
 
 
-		ROS_DEBUG_STREAM("new sigma: " << this->sigma);
+		ROS_DEBUG_STREAM("new variance: " << this->variance);
 	}
 	else
 	{
-		ROS_WARN_STREAM("Point failed to converge in a valid position. depth: " << depth);
-		this->pos = original;
+		ROS_WARN_STREAM("DELETING! Point failed to converge. depth: " << depth);
+
 	}
 
 

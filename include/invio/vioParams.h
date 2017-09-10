@@ -55,21 +55,22 @@
 #define D_FRAME_BUFFER_SIZE 200
 
 // the number of times a feature must be observed before allowed to be optimized
-#define D_KEYFRAME_COUNT_FOR_OPTIMIZATION 5
+#define D_MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION 4
+#define D_MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION 7
 
 // the minimum ratio of translation to avg scene depth
 #define D_T2ASD 0.1
 
 // the maximum error a feature can have after an optim
-#define D_MAXIMUM_FEATURE_DEPTH_ERROR 0.005
+#define D_MAXIMUM_FEATURE_DEPTH_VARIANCE 0.005
 
 // default point depth used for initialization in meters
 #define D_DEFAULT_POINT_DEPTH 0.5
-#define D_DEFAULT_POINT_STARTING_ERROR 10000
+#define D_DEFAULT_POINT_STARTING_VARIANCE 10
 
 // epsilon for convergence in structure bundle adjustment and motion
-#define D_EPS_SBA 0.0001
-#define D_EPS_MOBA 0.0001
+#define D_EPS_SBA 0.0000000001
+#define D_EPS_MOBA 0.0000000001
 
 //max iterations for gausss newton
 #define D_MOBA_MAX_ITERATIONS 10
@@ -151,17 +152,19 @@ int MINIMUM_TRACKABLE_FEATURES;
 int FRAME_BUFFER_SIZE;
 
 // the number of times a feature must be observed before allowed to be optimized
-int KEYFRAME_COUNT_FOR_OPTIMIZATION;
+int MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION;
+int MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION;
 
 // the minimum ratio of translation to avg scene depth
 double T2ASD;
 
 // the maximum error a feature can have after an optim
-double MAXIMUM_FEATURE_DEPTH_ERROR;
+// if the error for a point is greater than this after an optimization it is deleted (to remove possible outliers)
+double MAXIMUM_FEATURE_DEPTH_VARIANCE;
 
 // default point depth used for initialization in meters
 double DEFAULT_POINT_DEPTH;
-double DEFAULT_POINT_STARTING_ERROR;
+double DEFAULT_POINT_STARTING_VARIANCE;
 
 // epsilon for convergence in structure bundle adjustment and motion
 double EPS_SBA;

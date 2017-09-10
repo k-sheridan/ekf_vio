@@ -35,7 +35,8 @@ private:
 
 	bool deleted;
 
-	double sigma; // the certainty of this point's depth
+	double variance; // the uncertainty of this point's depth
+
 	Eigen::Vector3d pos; // this is the world coordinate of the point
 
 	bool immature;
@@ -101,7 +102,7 @@ public:
 	void setPosition(Eigen::Vector3d pos)
 	{
 		this->immature = true;
-		this->sigma = DEFAULT_POINT_STARTING_ERROR;
+		this->variance = DEFAULT_POINT_STARTING_VARIANCE;
 		this->pos = pos;
 	}
 
@@ -114,9 +115,18 @@ public:
 	bool isImmature(){return immature;}
 	void setImmature(bool val){immature = val;}
 
-	double getSigma()
+	double getVariance()
 	{
-		return sigma;
+		return variance;
+	}
+
+	void updatePoint(Eigen::Vector3d in_pos, double in_variance)
+	{
+		ROS_ASSERT(in_variance > 0);
+		double K = this->variance / (this->variance + in_variance);
+
+		this->pos = this->pos + K*(in_pos - this->pos);
+		this->variance = (1 - K)*this->variance;
 	}
 
 	bool isDeleted()

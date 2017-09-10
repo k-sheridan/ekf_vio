@@ -815,11 +815,12 @@ void VIO::parseROSParams()
 	ros::param::param<int>("~dangerous_mature_feature_count", DANGEROUS_MATURE_FEATURE_COUNT_LEVEL, D_DANGEROUS_MATURE_FEATURE_COUNT_LEVEL);
 	ros::param::param<int>("~minimum_trackable_features", MINIMUM_TRACKABLE_FEATURES, D_MINIMUM_TRACKABLE_FEATURES);
 	ros::param::param<int>("~frame_buffer_size", FRAME_BUFFER_SIZE, D_FRAME_BUFFER_SIZE);
-	ros::param::param<int>("~keyframe_count_for_optimization", KEYFRAME_COUNT_FOR_OPTIMIZATION, D_KEYFRAME_COUNT_FOR_OPTIMIZATION);
+	ros::param::param<int>("~minimum_keyframe_count_for_optimization", MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION, D_MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION);
+	ros::param::param<int>("~maximum_keyframe_count_for_optimization", MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION, D_MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION);
 	ros::param::param<double>("~keyframe_translation_ratio", T2ASD, D_T2ASD);
-	ros::param::param<double>("~maximum_feature_depth_error", MAXIMUM_FEATURE_DEPTH_ERROR, D_MAXIMUM_FEATURE_DEPTH_ERROR);
+	ros::param::param<double>("~maximum_feature_depth_VARIANCE", MAXIMUM_FEATURE_DEPTH_VARIANCE, D_MAXIMUM_FEATURE_DEPTH_VARIANCE);
 	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
-	ros::param::param<double>("~default_point_starting_error", DEFAULT_POINT_STARTING_ERROR, D_DEFAULT_POINT_STARTING_ERROR);
+	ros::param::param<double>("~default_point_starting_error", DEFAULT_POINT_STARTING_VARIANCE, D_DEFAULT_POINT_STARTING_VARIANCE);
 	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);
 	ros::param::param<double>("~eps_sba", EPS_SBA, D_EPS_SBA);
 	ros::param::param<int>("~moba_max_iterations", MOBA_MAX_ITERATIONS, D_MOBA_MAX_ITERATIONS);
