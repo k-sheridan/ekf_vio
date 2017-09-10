@@ -203,15 +203,17 @@ bool Point::SBA(int iterations)
 	}
 
 	//compute the depth to the current frame
-
 	double depth = (vertices.back()->getParentFrame()->getPose_inv() * new_point).z();
 
-	if(!(failed && failIter < 2) && depth > MIN_POINT_Z && depth < MAX_POINT_Z && chi2 != 0.0)
+	//compute the variance
+	double measured_variance = (chi2 / vertices.size());
+
+	if(!(failed && failIter < 2) && measured_variance < MAXIMUM_FEATURE_DEPTH_VARIANCE && depth > MIN_POINT_Z && depth < MAX_POINT_Z && chi2 != 0.0)
 	{
 		ROS_DEBUG_STREAM("GOOD POINT DEPTH: "  << depth);
 
 		//update the points position and variance
-		this->updatePoint(new_point, chi2 / vertices.size());
+		this->updatePoint(new_point, measured_variance);
 
 		// set this point to mature
 		this->setImmature(false);
@@ -224,7 +226,10 @@ bool Point::SBA(int iterations)
 	}
 	else
 	{
-		ROS_WARN_STREAM("DELETING! Point failed to converge. depth: " << depth);
+		ROS_WARN_STREAM("DELETING! Point failed to converge. depth: " << depth << " and variance: " << measured_variance);
+
+		// due to a !null assertion I must flag the front feature as obsolete so that this point is deleted in the future instead of now
+		this->observations().front()->obsolete = true; // now this point will be deleted later
 
 	}
 

@@ -258,20 +258,11 @@ if(ANALYZE_RUNTIME){
 	ROS_INFO("OPTIMIZING POINTS");
 	for(auto& e : f.features)
 	{
-		if(!e.obsolete && (e.getPoint()->isImmature() || e.getPoint()->guessed)) // if the point is immature or guessed we should optimize it
+		if(!e.obsolete) // if the point is immature or guessed we should optimize it
 		{
 			if(e.getPoint()->SBA(SBA_MAX_ITERATIONS))
 			{
 
-				if(e.getPoint()->getSigma() <= MAXIMUM_FEATURE_DEPTH_ERROR)
-				{
-					ROS_DEBUG("succesful converge");
-				}
-				else
-				{
-					e.obsolete = true; // set the feature to obsolete
-					ROS_DEBUG("point failed to converge");
-				}
 			}
 			else
 			{
