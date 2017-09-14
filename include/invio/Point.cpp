@@ -213,7 +213,7 @@ bool Point::SBA(int iterations)
 		ROS_DEBUG_STREAM("GOOD POINT DEPTH: "  << depth);
 
 		//update the points position and variance
-		this->updatePoint(new_point, measured_variance);
+		this->updatePoint(new_point);
 
 		// set this point to mature
 		this->setImmature(false);
