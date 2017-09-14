@@ -34,12 +34,20 @@ class Point{
 private:
 
 	bool deleted;
+	bool immature;
 
 	double variance; // the uncertainty of this point's depth
 
-	Eigen::Vector3d pos; // this is the world coordinate of the point
+	double depth; // depth of point in first frame in meters
 
-	bool immature;
+	Eigen::Vector3d initial_homogenous_pixel; // the homogenous pixel where the feature was first observed
+
+	Eigen::Vector3d pos; // the world coordinate frame position of the feature
+
+	Sophus::SE3d initial_camera_pose; // the w2c pose when the feature was first observed
+
+	double max_depth, min_depth; // the maximum and minumum observed depths. used for outlier detection
+
 
 
 	std::deque<Feature*> _observations; // this is  a list of observations of this 3d point from different frames
@@ -51,7 +59,7 @@ private:
 public:
 
 
-	bool guessed;
+	bool guessed; // this should be set if a points depth is a complete guess
 
 	double temp_depth;
 
@@ -120,13 +128,36 @@ public:
 		return variance;
 	}
 
-	void updatePoint(Eigen::Vector3d in_pos, double in_variance)
+	void updatePoint(Eigen::Vector3d in_pos)
+	{
+		this->pos = in_pos;
+	}
+
+	void updateDepth(double measurement, double in_variance)
 	{
 		ROS_ASSERT(in_variance > 0);
 		double K = this->variance / (this->variance + in_variance);
 
-		this->pos = this->pos + K*(in_pos - this->pos);
+		this->depth = this->depth + K*(measurement - this->depth);
 		this->variance = (1 - K)*this->variance;
+
+		// update the point's position
+		this->pos = this->initial_camera_pose * (this->depth * this->initial_homogenous_pixel);
+
+		if(guessed)
+		{
+			// set the min/max to the current point
+			this->min_depth = this->max_depth = measurement;
+			this->guessed = false; // we got a measurement so it is nolonger a guessed point
+		}
+		else
+		{
+			if(measurement > max_depth)
+				max_depth = measurement;
+
+			if(measurement < min_depth)
+				min_depth = measurement;
+		}
 	}
 
 	bool isDeleted()
