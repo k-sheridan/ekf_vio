@@ -95,6 +95,65 @@ void Point::safelyDeletePoint()
 
 
 
+/*
+ * uses epipolar geometry to measure and update the depth of the pixel in the first frame
+ * using the current frame
+ *
+ * NOTE: the pose of the camera in the current frame should be predicted or known
+ */
+bool Point::measureAndUpdateDepthEpipolar()
+{
+
+	// projects a reference frame pixel into the current frame
+	Sophus::SE3d cf_2_rf = this->_observations.front()->getParentFrame()->getPose_inv() * this->initial_camera_pose; // the transform from the current frame to the reference frame
+
+	Eigen::Vector2d curr_metric_pixel = this->_observations.front()->getMetricPixel();
+
+	//rotate the reference pixel into the same plane
+	Eigen::Matrix<double,3,2> A; A << cf_2_rf.rotationMatrix() * this->initial_homogenous_pixel, Eigen::Vector3d(curr_metric_pixel.x(), curr_metric_pixel.y(), 1);
+	const Eigen::Matrix2d AtA = A.transpose()*A;
+
+	// if too close to singular that means there is not enough information to determine depth
+	if(AtA.determinant() < 0.000001)
+		return false;
+	const Eigen::Vector2d depth2 = - AtA.inverse()*A.transpose()*cf_2_rf.translation();
+
+	double measurement = fabs(depth2[0]);
+
+	return true;
+}
+
+/*
+ * bayesian update step for the depth of the first observed feature
+ * this function also tracks the minimum and maximum observed depth for outlier removal
+ */
+void Point::updateDepth(double measurement, double in_variance)
+{
+	ROS_ASSERT(in_variance > 0);
+	double K = this->variance / (this->variance + in_variance);
+
+	this->depth = this->depth + K*(measurement - this->depth);
+	this->variance = (1 - K)*this->variance;
+
+	// update the point's position
+	this->pos = this->initial_camera_pose * (this->depth * this->initial_homogenous_pixel);
+
+	if(guessed)
+	{
+		// set the min/max to the current point
+		this->min_depth = this->max_depth = measurement;
+		this->guessed = false; // we got a measurement so it is nolonger a guessed point
+	}
+	else
+	{
+		if(measurement > max_depth)
+			max_depth = measurement;
+
+		if(measurement < min_depth)
+			min_depth = measurement;
+	}
+}
+
 
 /*
  * adapted from SVO, Forster et al

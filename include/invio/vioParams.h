@@ -72,6 +72,8 @@
 #define D_EPS_SBA 0.0000000001
 #define D_EPS_MOBA 0.0000000001
 
+#define D_MINIMUM_DEPTH_DETERMINANT 0.00001
+
 //max iterations for gausss newton
 #define D_MOBA_MAX_ITERATIONS 10
 #define D_SBA_MAX_ITERATIONS 10
@@ -169,6 +171,9 @@ double DEFAULT_POINT_STARTING_VARIANCE;
 // epsilon for convergence in structure bundle adjustment and motion
 double EPS_SBA;
 double EPS_MOBA;
+
+// the minimum determinant of the linear systems used to determine the depth of the first observation
+double MINIMUM_DEPTH_DETERMINANT;
 
 //max iterations for gausss newton
 int MOBA_MAX_ITERATIONS;

@@ -814,6 +814,7 @@ void VIO::parseROSParams()
 	ros::param::param<double>("~default_point_starting_error", DEFAULT_POINT_STARTING_VARIANCE, D_DEFAULT_POINT_STARTING_VARIANCE);
 	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);
 	ros::param::param<double>("~eps_sba", EPS_SBA, D_EPS_SBA);
+	ros::param::param<double>("~minumum_depth_determinant", MINIMUM_DEPTH_DETERMINANT, D_MINIMUM_DEPTH_DETERMINANT);
 	ros::param::param<int>("~moba_max_iterations", MOBA_MAX_ITERATIONS, D_MOBA_MAX_ITERATIONS);
 	ros::param::param<int>("~sba_max_iterations", SBA_MAX_ITERATIONS, D_SBA_MAX_ITERATIONS);
 	ros::param::param<double>("~max_point_z", MAX_POINT_Z, D_MAX_POINT_Z);
