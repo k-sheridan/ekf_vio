@@ -42,8 +42,6 @@ private:
 
 	Eigen::Vector3d initial_homogenous_pixel; // the homogenous pixel where the feature was first observed
 
-	Eigen::Vector3d pos; // the world coordinate frame position of the feature
-
 	Sophus::SE3d initial_camera_pose; // the w2c pose when the feature was first observed
 
 	double max_depth, min_depth; // the maximum and minumum observed depths. used for outlier detection
@@ -91,7 +89,7 @@ public:
 	Eigen::Vector3d getWorldCoordinate()
 	{
 		ROS_ASSERT(!deleted);
-		return this->pos;
+		return this->initial_camera_pose * (this->depth * this->initial_homogenous_pixel);
 	}
 
 	tf::Vector3 getWorldCoordinateTF()
@@ -101,18 +99,6 @@ public:
 	}
 
 	std::deque<Feature*>& getObservations(){return _observations;}
-
-	/*
-	 *
-	 * externally setting the position of a point automatically makes is immature
-	 * sets the sigma of the point to the default
-	 */
-	void setPosition(Eigen::Vector3d pos)
-	{
-		this->immature = true;
-		this->variance = DEFAULT_POINT_STARTING_VARIANCE;
-		this->pos = pos;
-	}
 
 	std::list<Point>* getMap(){ROS_ASSERT(theMap != NULL); return theMap;}
 
@@ -128,14 +114,7 @@ public:
 		return variance;
 	}
 
-	void updatePoint(Eigen::Vector3d in_pos)
-	{
-		this->pos = in_pos;
-	}
-
-
-	bool measureAndUpdateDepthEpipolar();
-
+	void stereoDepthOptimizationAndUpdate();
 
 	void updateDepth(double measurement, double in_variance);
 

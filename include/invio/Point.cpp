@@ -94,33 +94,13 @@ void Point::safelyDeletePoint()
 }
 
 
-
 /*
- * uses epipolar geometry to measure and update the depth of the pixel in the first frame
- * using the current frame
- *
- * NOTE: the pose of the camera in the current frame should be predicted or known
+ * iteratively optimizes the depth of the first observation s.t. the reprojection error into the
+ * current frame is minimized
  */
-bool Point::measureAndUpdateDepthEpipolar()
+void Point::stereoDepthOptimizationAndUpdate()
 {
 
-	// projects a reference frame pixel into the current frame
-	Sophus::SE3d cf_2_rf = this->_observations.front()->getParentFrame()->getPose_inv() * this->initial_camera_pose; // the transform from the current frame to the reference frame
-
-	Eigen::Vector2d curr_metric_pixel = this->_observations.front()->getMetricPixel();
-
-	//rotate the reference pixel into the same plane
-	Eigen::Matrix<double,3,2> A; A << cf_2_rf.rotationMatrix() * this->initial_homogenous_pixel, Eigen::Vector3d(curr_metric_pixel.x(), curr_metric_pixel.y(), 1);
-	const Eigen::Matrix2d AtA = A.transpose()*A;
-
-	// if too close to singular that means there is not enough information to determine depth
-	if(AtA.determinant() < 0.000001)
-		return false;
-	const Eigen::Vector2d depth2 = - AtA.inverse()*A.transpose()*cf_2_rf.translation();
-
-	double measurement = fabs(depth2[0]);
-
-	return true;
 }
 
 /*
