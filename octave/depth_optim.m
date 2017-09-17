@@ -23,8 +23,8 @@ res = (ref_transform(1)/ref_transform(3) - u_curr)^2 + (ref_transform(2)/ref_tra
 d_res = (diff(res))
 
 %trying to minimize the derivative
-%res = d_res^2;
-%d_res = diff(res);
+res = d_res^2;
+d_res = diff(res);
 
 
 
@@ -32,12 +32,12 @@ d_res = (diff(res))
 res = subs(res, rotation, [1, 0, 0; 0, 1, 0; 0, 0, 1]);
 res = subs(res, translation, [-0.05; 0; 0]);
 res = subs(res, [u_ref, v_ref], [0, 0]);
-res = subs(res, [u_curr, v_curr], [-0.01, 0.1])
+res = subs(res, [u_curr, v_curr], [-0.05, 0.1])
 
 d_res = subs(d_res, rotation, [1, 0, 0; 0, 1, 0; 0, 0, 1]);
 d_res = subs(d_res, translation, [-0.05; 0; 0]);
 d_res = subs(d_res, [u_ref, v_ref], [0, 0]);
-d_res = subs(d_res, [u_curr, v_curr], [-0.01, 0.1])
+d_res = subs(d_res, [u_curr, v_curr], [-0.05, 0.1])
 
 
 %test gauss newton (but 1-d)
