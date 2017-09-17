@@ -34,24 +34,40 @@ projected_measurement3 = (dot(measured_epiline, epiline) / dot(epiline, epiline)
 
 projected_measurement = [(projected_measurement3(1)/projected_measurement3(3)); (projected_measurement3(2)/projected_measurement3(3))]
 
-temp = subs(projected_measurement, rotation, [1, 0, 0; 0, 1, 0; 0, 0, 1]);
-temp = subs(temp, translation, [-0.05; 0; 0.0]);
-temp = subs(temp, [u_ref, v_ref], [0, 0]);
-double(subs(temp, [u_curr, v_curr], [-0.05, 0.0]))
+%temp = subs(projected_measurement, rotation, [1, 0, 0; 0, 1, 0; 0, 0, 1]);
+%temp = subs(temp, translation, [-0.05; 0; 0.0]);
+%temp = subs(temp, [u_ref, v_ref], [0, 0]);
+%double(subs(temp, [u_curr, v_curr], [-0.05, 0.0]))
 
-u_curr = projected_measurement(1);
-v_curr = projected_measurement(2);
+printf('here1')
 
+u_curr_proj = simplify(projected_measurement(1))
 
-A = [(rotation * [u_ref;v_ref;1]), [u_curr;v_curr;1]];
+printf('here2')
+
+v_curr_proj = simplify(projected_measurement(2))
+
+printf('here3')
+
+A = [(rotation * [u_ref;v_ref;1]), [u_curr_proj;v_curr_proj;1]];
+
+printf('here4')
 
 AtA = A' * A;
 
+printf('here5')
+
 depth2 = - inv(AtA)*A'*translation;
+
+printf('here6')
 
 soln = simplify(depth2(1))
 
+printf('here7')
+
 z = abs(soln)
+
+printf('here8')
 
 ccode(z)
 
