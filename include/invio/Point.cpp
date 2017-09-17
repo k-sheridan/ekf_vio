@@ -20,7 +20,7 @@ Point::Point()
 }
 
 Point::Point(Feature* ft){
-	_observations.push_front(ft); // add this observation to the deque
+	this->addObservation(ft); // add this observation to the deque
 	deleted = false;
 	this->variance = DEFAULT_POINT_STARTING_VARIANCE;
 	this->theMap = NULL;
@@ -31,7 +31,7 @@ Point::Point(Feature* ft){
 
 Point::Point(Feature* ft, std::list<Point>::iterator _thisPoint, std::list<Point>* _map)
 {
-	_observations.push_front(ft); // add this observation to the deque
+	this->addObservation(ft); // add this observation to the deque
 	deleted = false;
 
 	ROS_ASSERT(_map != NULL);
@@ -51,6 +51,13 @@ void Point::addObservation(Feature* ft)
 	{
 		ROS_DEBUG_STREAM("this feature frame " << ft->frame << " last frame: " << observations.at(0)->frame);
 	}*/
+
+	//set up the initial params if this is the first observation
+	if(_observations.size() == 0)
+	{
+		this->initial_camera_pose = ft->getParentFrame()->getPose();
+		this->initial_homogenous_pixel = ft->getHomogenousCoord();
+	}
 
 	_observations.push_front(ft);
 
@@ -93,15 +100,6 @@ void Point::safelyDeletePoint()
 	ROS_DEBUG("point deleted");
 }
 
-
-/*
- * iteratively optimizes the depth of the first observation s.t. the reprojection error into the
- * current frame is minimized
- */
-void Point::stereoDepthOptimizationAndUpdate()
-{
-
-}
 
 /*
  * bayesian update step for the depth of the first observed feature

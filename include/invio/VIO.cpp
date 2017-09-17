@@ -538,7 +538,9 @@ if(ANALYZE_RUNTIME){
 					(--this->map.end()), &(this->map)); // tell the point where it is in memory via an iterator and where the map is so it can delet itself later
 
 
-			f.features.back().computeObjectPositionWithAverageSceneDepth();
+			//set up point's depth and initial variance
+			f.features.back().getPoint()->setDepth(f.getAverageFeatureDepth());
+			f.features.back().getPoint()->setVariance(DEFAULT_POINT_STARTING_VARIANCE);
 
 
 		}

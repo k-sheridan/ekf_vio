@@ -52,10 +52,6 @@ public:
 	Feature(Frame* parent, cv::Point2f px);
 	virtual ~Feature();
 
-	bool computeObjectPositionWithPlanarApproximation(tf::Transform w2c, cv::Mat_<float> K);
-
-	void computeObjectPositionWithAverageSceneDepth();
-
 	Frame* getParentFrame(){ROS_ASSERT(parentFrame != NULL); return parentFrame;}
 
 	Point* getPoint(){ ROS_ASSERT(point != NULL); return point;}
@@ -72,6 +68,7 @@ public:
 	}
 
 	Eigen::Vector2d getMetricPixel();
+	Eigen::Vector3d getHomogenousCoord();
 
 	double getAverageFeatureDepth();
 

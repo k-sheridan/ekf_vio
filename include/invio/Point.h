@@ -114,7 +114,17 @@ public:
 		return variance;
 	}
 
-	void stereoDepthOptimizationAndUpdate();
+	double setVariance(double var){
+		this->variance = var;
+	}
+
+	double getDepth(){
+		return depth;
+	}
+
+	void setDepth(double d){
+		this->depth = d;
+	}
 
 	void updateDepth(double measurement, double in_variance);
 
