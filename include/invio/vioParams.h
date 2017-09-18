@@ -66,7 +66,7 @@
 
 // default point depth used for initialization in meters
 #define D_DEFAULT_POINT_DEPTH 0.5
-#define D_DEFAULT_POINT_STARTING_VARIANCE 10
+#define D_DEFAULT_POINT_STARTING_VARIANCE 10000
 
 // epsilon for convergence in structure bundle adjustment and motion
 #define D_EPS_SBA 0.0000000001
