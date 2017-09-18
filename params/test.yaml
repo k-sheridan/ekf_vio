@@ -1,9 +1,10 @@
-min_new_feature_dist: 40
+min_new_feature_dist: 20
 maximum_feature_depth_error: 0.0001
-num_features: 100
+num_features: 200
 minimum_keyframe_count_for_optimization: 2
 maximum_keyframe_count_for_optimization: 5
-keyframe_translation_ratio: 0.2
+keyframe_translation_ratio: 0.05
+default_point_depth: 0.5
 inverse_image_scale: 2
 kill_box_width: 320
 kill_box_height: 230

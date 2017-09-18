@@ -28,11 +28,17 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 {
 	// first orthogonally project the current feature onto the epiline
 	Eigen::Vector3d epiline = cf_2_rf.rotationMatrix() * pt->getInitialHomogenousCoordinate();
-	Eigen::Vector3d measured_vector = curr_ft - cf_2_rf.translation();
+	//Eigen::Vector3d measured_vector = curr_ft - cf_2_rf.translation();
 
-	Eigen::Vector3d projected3 = (measured_vector.dot(epiline) / epiline.dot(epiline)) * epiline + cf_2_rf.translation();
+	//Eigen::Vector3d projected3 = (measured_vector.dot(epiline) / epiline.dot(epiline)) * epiline + cf_2_rf.translation();
 	// this is the final projected point
-	Eigen::Vector3d projected_ft; projected_ft << (projected3(0) / projected3(2)), (projected3(1) / projected3(2)), 1.0;
+	Eigen::Vector3d projected_ft; 
+	
+	//projected_ft << (projected3(0) / projected3(2)), (projected3(1) / projected3(2)), 1.0;
+
+	projected_ft = curr_ft;
+
+	//ROS_INFO_STREAM("original: " << curr_ft << " projected: " << projected_ft);
 
 	//solve for the depth
 	Eigen::Matrix<double,3,2> A; A << epiline, projected_ft;
@@ -60,6 +66,8 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 	ROS_INFO_STREAM("updating point with depth: " << depth << " and variance: " << variance);
 
 	pt->updateDepth(depth, variance);
+	
+	pt->setImmature(false);
 
 	return true;
 
