@@ -40,6 +40,7 @@
 #include "../invio/Frame.h"
 #include <sophus/types.hpp>
 #include "../invio/vioParams.h"
+#include <DepthSolver.h>
 
 class VIO {
 public:
@@ -55,6 +56,8 @@ public:
 	std::list<Point> map; // this is a list of all active 3d points
 
 	tf::TransformListener tf_listener;
+
+	DepthSolver depth_solver;
 
 	tf::Transform b2c, c2b, c2imu, c2stereo;
 
@@ -85,8 +88,6 @@ public:
 	bool MOBA(Frame& f, double& perPixelError, bool useImmature);
 
 	bool optimizePose(Frame& f, double& ppe);
-
-	void optimizePoints(Frame& f);
 
 	void keyFrameUpdate();
 

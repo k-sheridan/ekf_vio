@@ -92,12 +92,6 @@ public:
 		return this->initial_camera_pose * (this->depth * this->initial_homogenous_pixel);
 	}
 
-	tf::Vector3 getWorldCoordinateTF()
-	{
-		ROS_ASSERT(!deleted);
-		return tf::Vector3(this->pos.x(), this->pos.y(), this->pos.z());
-	}
-
 	std::deque<Feature*>& getObservations(){return _observations;}
 
 	std::list<Point>* getMap(){ROS_ASSERT(theMap != NULL); return theMap;}
@@ -120,6 +114,20 @@ public:
 
 	double getDepth(){
 		return depth;
+	}
+
+	/*
+	 * the coord at initial obs
+	 */
+	Eigen::Vector3d getInitialHomogenousCoordinate(){
+		return initial_homogenous_pixel;
+	}
+
+	/*
+	 * the pose at first obs
+	 */
+	Sophus::SE3d getInitialCameraPose(){
+		return initial_camera_pose;
 	}
 
 	void setDepth(double d){
@@ -164,7 +172,7 @@ public:
 		return Eigen::Vector2d(in(0) / in(2), in(1) / in(2));
 	}
 
-	bool SBA(int iterations);
+	//bool SBA(int iterations);
 };
 
 

@@ -113,9 +113,6 @@ void Point::updateDepth(double measurement, double in_variance)
 	this->depth = this->depth + K*(measurement - this->depth);
 	this->variance = (1 - K)*this->variance;
 
-	// update the point's position
-	this->pos = this->initial_camera_pose * (this->depth * this->initial_homogenous_pixel);
-
 	if(guessed)
 	{
 		// set the min/max to the current point
@@ -141,7 +138,7 @@ void Point::updateDepth(double measurement, double in_variance)
  *
  * searches for best keyframe(s) to determine the depth of the point and update it
  */
-bool Point::SBA(int iterations)
+/*bool Point::SBA(int iterations)
 {
 	Eigen::Vector3d new_point = this->pos; // this will the optimum point for each iteration
 	Eigen::Vector3d old_point = this->pos;
@@ -168,11 +165,11 @@ bool Point::SBA(int iterations)
 				break;
 			}
 		}
-		/*if(e->frame->finalFrame) // this is the last frame in the buffer do not search past this point due to potential dangling pointer
+		if(e->frame->finalFrame) // this is the last frame in the buffer do not search past this point due to potential dangling pointer
 		{
 			ROS_DEBUG("breaking out of keyframe search because the final frame has been passed");
 			break;
-		}*/
+		}
 	}
 
 	if(vertices.size() < MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION){
@@ -275,7 +272,7 @@ bool Point::SBA(int iterations)
 
 	return true;
 
-}
+}*/
 
 
 

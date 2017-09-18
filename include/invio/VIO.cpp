@@ -251,30 +251,7 @@ if (ANALYZE_RUNTIME){
 
 }
 
-void VIO::optimizePoints(Frame& f){
-if(ANALYZE_RUNTIME){
-		this->startTimer();
-}
-	ROS_INFO("OPTIMIZING POINTS");
-	for(auto& e : f.features)
-	{
-		if(!e.obsolete) // if the point is immature or guessed we should optimize it
-		{
-			if(e.getPoint()->SBA(SBA_MAX_ITERATIONS))
-			{
 
-			}
-			else
-			{
-				ROS_DEBUG_STREAM("could not optimize point too few keyframes");
-			}
-		}
-	}
-	ROS_DEBUG("DONE OPTIMIZING");
-if(ANALYZE_RUNTIME){
-		this->stopTimer("3d point optimization");
-}
-}
 
 void VIO::keyFrameUpdate(){
 if(ANALYZE_RUNTIME){
@@ -303,7 +280,9 @@ if(ANALYZE_RUNTIME){
 	{
 		ROS_INFO_STREAM("ADDING KEYFRAME WITH TRANSLATION TO SCENE DEPTH RATIO OF: " << ratio);
 		this->frame_buffer.front().setKeyFrame(true); // make this frame a keyframe
-		this->optimizePoints(this->frame_buffer.front()); // attempt to optimize immature points if they have enough keyframes
+
+		// something else?
+		this->depth_solver.updatePointDepths(this->frame_buffer.front());
 	}
 
 if(ANALYZE_RUNTIME){
