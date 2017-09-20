@@ -18,9 +18,19 @@ DepthSolver::~DepthSolver() {
 
 void DepthSolver::updatePointDepths(Frame& f)
 {
-	for(auto e : f.features)
+	for(auto& e : f.features)
 	{
 		this->solveAndUpdatePointDepth(e.getPoint(), f.getPose_inv() * e.getPoint()->getInitialCameraPose(), e.getHomogenousCoord());
+
+		//OUTLIER REMOVAL
+		double range_per_depth = e.getPoint()->getRangePerDepth(); // range of measured depths over the depth
+		//ROS_INFO_STREAM("range per depth: " << range_per_depth);
+
+		if(range_per_depth > MAX_RANGE_PER_DEPTH)
+		{
+			ROS_INFO_STREAM("deleting point to high range per depth: " << range_per_depth);
+			e.obsolete = true; // flag this point for removal it is likely an outlier or slipping or occluded
+		}
 	}
 }
 
@@ -46,7 +56,10 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 	const Eigen::Matrix2d AtA = A.transpose()*A;
 
 	if(AtA.determinant() < MINIMUM_DEPTH_DETERMINANT)
+	{
+		ROS_INFO("determinant too low");
 	    return false;
+	}
 
 	const Eigen::Vector2d depth2 = - AtA.inverse()*A.transpose()*cf_2_rf.translation();
 
@@ -61,13 +74,14 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 	//double chi2 = pow(projected_ref_ft(0)/projected_ref_ft(2) - curr_ft(0), 2) + pow(projected_ref_ft(1)/projected_ref_ft(2) - curr_ft(1), 2);
 
 
-	double variance = (depth*pt->getInitialHomogenousCoordinate()).squaredNorm() / std::max(cf_2_rf.inverse().translation().cross(depth*pt->getInitialHomogenousCoordinate()).squaredNorm(), 0.00000000001);
+
+	double variance = (depth*pt->getInitialHomogenousCoordinate()).squaredNorm() / std::max(cf_2_rf.inverse().translation().cross(depth*pt->getInitialHomogenousCoordinate()).squaredNorm(), 0.0000000000001);
 
 	ROS_INFO_STREAM("updating point with depth: " << depth << " and variance: " << variance);
 
 	pt->updateDepth(depth, variance);
 	
-	pt->setImmature(false);
+	pt->setImmature(false); // once a measurement has come in this point becomes mature
 
 	return true;
 

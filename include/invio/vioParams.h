@@ -70,9 +70,9 @@
 
 // epsilon for convergence in structure bundle adjustment and motion
 #define D_EPS_SBA 0.0000000001
-#define D_EPS_MOBA 0.0000000001
+#define D_EPS_MOBA 0.000001
 
-#define D_MINIMUM_DEPTH_DETERMINANT 0.00001
+#define D_MINIMUM_DEPTH_DETERMINANT 0.001
 
 //max iterations for gausss newton
 #define D_MOBA_MAX_ITERATIONS 10
@@ -83,6 +83,8 @@
 #define D_MIN_POINT_Z 0.02
 
 //OUTLIER DETECTION
+#define D_MAX_RANGE_PER_DEPTH 0.1
+
 
 //if the ppe of our planar odometry exceeds this value we have lost odometry
 #define D_MAXIMUM_VO_PPE 7.0
@@ -182,6 +184,8 @@ int SBA_MAX_ITERATIONS;
 //min and maximum point depths in meters
 double MAX_POINT_Z;
 double MIN_POINT_Z;
+
+double MAX_RANGE_PER_DEPTH;
 
 //END VISUAL ODOM
 

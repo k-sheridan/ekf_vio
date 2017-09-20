@@ -521,6 +521,9 @@ if(ANALYZE_RUNTIME){
 			f.features.back().getPoint()->setDepth(f.getAverageFeatureDepth());
 			f.features.back().getPoint()->setVariance(DEFAULT_POINT_STARTING_VARIANCE);
 
+			//important set the point to guessed so the range of measurements is accurate
+			f.features.back().getPoint()->guessed = true;
+
 
 		}
 	}
@@ -632,6 +635,9 @@ void VIO::publishInsight(Frame& f)
 	//run depth comp just in case
 	maxDepth = 2.0 * this->frame_buffer.front().getAverageFeatureDepth();
 
+	//temp
+	maxDepth = 7.0;
+
 
 
 	for(auto& e : frame_buffer.front().features)
@@ -644,10 +650,9 @@ void VIO::publishInsight(Frame& f)
 			}
 			else
 			{
-				uchar intensity = (((e.getPoint()->temp_depth - minDepth) / (maxDepth - minDepth)) * 255);
+				uchar intensity = std::min((e.getPoint()->temp_depth - minDepth) / (maxDepth - minDepth), 1.0) * 255;
 
-				if(intensity > 255)
-					intensity = 255;
+
 
 				//ROS_DEBUG_STREAM("plotting depth: " << e.getPoint()->temp_depth);
 
@@ -796,6 +801,7 @@ void VIO::parseROSParams()
 	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);
 	ros::param::param<double>("~eps_sba", EPS_SBA, D_EPS_SBA);
 	ros::param::param<double>("~minumum_depth_determinant", MINIMUM_DEPTH_DETERMINANT, D_MINIMUM_DEPTH_DETERMINANT);
+	ros::param::param<double>("~max_range_per_depth", MAX_RANGE_PER_DEPTH, D_MAX_RANGE_PER_DEPTH);
 	ros::param::param<int>("~moba_max_iterations", MOBA_MAX_ITERATIONS, D_MOBA_MAX_ITERATIONS);
 	ros::param::param<int>("~sba_max_iterations", SBA_MAX_ITERATIONS, D_SBA_MAX_ITERATIONS);
 	ros::param::param<double>("~max_point_z", MAX_POINT_Z, D_MAX_POINT_Z);

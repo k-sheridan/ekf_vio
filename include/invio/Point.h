@@ -116,6 +116,11 @@ public:
 		return depth;
 	}
 
+	double getRangePerDepth(){
+		ROS_ASSERT(this->depth != 0);
+		return (this->max_depth - this->min_depth) / this->depth;
+	}
+
 	/*
 	 * the coord at initial obs
 	 */
