@@ -7,21 +7,26 @@ invio was developed for ROS and uses a few ROS tools like tf and the rosconsole.
 
 This algorithm is intended to be used with a downward facing, **high framerate (>30fps)**, **high horizontal field of view (>90 degrees)**, **global shutter** camera, but it should still work with most other configurations. It is important that the camera is facing a textured well lit planar surface when initializing.
 
+The best scenario for invio is the bottom facing camera scenario. In this scenario there is very little occlusions and a lot of parallax for depth estimation. The forward facing scenario is the most difficult one because there are many occlusions and sometimes very little parallax to determine the depth of pixels accurately. Currently the forward facing scenario is working with most but not all of my datasets.
+
 An IMU is not required, but an IMU is highly reccomended. The IMU is used during the prediction step to help predict how the camera has rotated between frames. In the future I would like to use the IMU to estimate the metric scale of our initial motion so invio can be initialized from any situation if a velocity estimate is initially given to it.
 
 ## Performance
 
 ![Small Scale Results](/images/invio1.png)
 
-from initial tests the algorithm works well when estimating feature depths and motion. Fast rotations currently cause a tracking loss from both lack of depth estimates and "slipping" of feature tracking due to occlusions. The feature slipping should be fixed by integrating linear and angular velocity measurements/estimates into the KLT feature tracker. 
+I am constantly improving the performance of the algorithm while decreasing the runtime. Most recently I added occlusion detection based on the range of depth estimates. I also now compute the variance of depth measurements based on both the measured depth and its parallax.
 
-The speed of the program per frame on a laptop (2015 Macbook Pro in my case) is very variant because I wrote the program to run using only one thread. When feature positions are ready to be optimized there is a significant slow down of about 3X depending on how many feature positions are being optimized at that time.
-
+The speed of the program per frame on a laptop (2015 Macbook Pro in my case) 
 ### runtimes per frame:
-typical: 5-10ms 
-peak: 30ms
+Feature Extraction: 0.1-0.3ms
+KLT Feature Tracking for 200 features: 0.8-3ms (will be decreased once IMU is fully fused)
+Motion Estimation with 20 features: 1-3ms (currently for debugging purposes I am using all valid features ~150 at 30ms)
+Depth Measurement and Update for 200 features: 5ms (in the future I will update only ~20 features per frame for speed improvement)
 
-I would like to keep Invio running on only one thread, so I plan to address the periodic slow downs by more evenly distributing the feature position optimizations through out the frames. I will investigate the extent to which my use of STL Lists is impacting the performance during a search/insert/delete operation.
+Total: 6.9-8.3ms 
+
+I run invio on 1 thread only currently so that it consumes as little CPU as possible. For my application this algorithm must be running along side much hungrier programs.
 
 
 ## Quick ROS installation guide
