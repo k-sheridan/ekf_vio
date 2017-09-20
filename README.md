@@ -20,8 +20,11 @@ I am constantly improving the performance of the algorithm while decreasing the 
 The speed of the program per frame on a laptop (2015 Macbook Pro in my case) 
 ### runtimes per frame:
 Feature Extraction: 0.1-0.3ms
+
 KLT Feature Tracking for 200 features: 0.8-3ms (will be decreased once IMU is fully fused)
+
 Motion Estimation with 20 features: 1-3ms (currently for debugging purposes I am using all valid features ~150 at 30ms)
+
 Depth Measurement and Update for 200 features: 5ms (in the future I will update only ~20 features per frame for speed improvement)
 
 Total: 6.9-8.3ms 
