@@ -66,13 +66,13 @@
 
 // default point depth used for initialization in meters
 #define D_DEFAULT_POINT_DEPTH 0.5
-#define D_DEFAULT_POINT_STARTING_VARIANCE 10000
+#define D_DEFAULT_POINT_STARTING_VARIANCE 1000
 
 // epsilon for convergence in structure bundle adjustment and motion
 #define D_EPS_SBA 0.0000000001
 #define D_EPS_MOBA 0.000001
 
-#define D_MINIMUM_DEPTH_DETERMINANT 0.001
+#define D_MINIMUM_DEPTH_DETERMINANT 0.0000001
 
 //max iterations for gausss newton
 #define D_MOBA_MAX_ITERATIONS 10
@@ -90,6 +90,9 @@
 #define D_MAXIMUM_VO_PPE 7.0
 
 //END VISUAL ODOM
+
+#define D_MAX_VARIANCE_SIZE 15
+#define D_MIN_VARIANCE_SIZE 5
 
 #define D_ODOM_TOPIC "invio/odom"
 #define D_POINTS_TOPIC "invio/points"
@@ -115,6 +118,8 @@
 //ROS PARAMS
 bool PUBLISH_INSIGHT;
 std::string INSIGHT_TOPIC;
+
+int MAX_VARIANCE_SIZE, MIN_VARIANCE_SIZE;
 
 //VISUAL ODOM
 //fast corner detector for planar odometry

@@ -73,9 +73,15 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 
 	//double chi2 = pow(projected_ref_ft(0)/projected_ref_ft(2) - curr_ft(0), 2) + pow(projected_ref_ft(1)/projected_ref_ft(2) - curr_ft(1), 2);
 
+	Eigen::Vector3d t = cf_2_rf.inverse().translation();
+	Eigen::Vector3d d = depth*pt->getInitialHomogenousCoordinate();
 
+	double d_norm = d.norm();
+	double t_norm = t.norm();
 
-	double variance = (depth*pt->getInitialHomogenousCoordinate()).squaredNorm() / std::max(cf_2_rf.inverse().translation().cross(depth*pt->getInitialHomogenousCoordinate()).squaredNorm(), 0.0000000000001);
+	double sine_theta_d_t = std::max(d.cross(t).norm() / (d_norm*t_norm), DBL_MIN);
+
+	double variance = d_norm/(t_norm*sine_theta_d_t+DBL_MIN);
 
 	ROS_INFO_STREAM("updating point with depth: " << depth << " and variance: " << variance);
 

@@ -636,7 +636,7 @@ void VIO::publishInsight(Frame& f)
 	maxDepth = 2.0 * this->frame_buffer.front().getAverageFeatureDepth();
 
 	//temp
-	maxDepth = 7.0;
+	maxDepth = 4.0;
 
 
 
@@ -662,7 +662,9 @@ void VIO::publishInsight(Frame& f)
 				cv::Mat out;
 				cv::applyColorMap(in, out, cv::COLORMAP_RAINBOW);
 
-				cv::drawMarker(img, e.px, out.at<cv::Vec3b>(0, 0), cv::MARKER_SQUARE, 8);
+				int markerSize = std::min((int)((e.getPoint()->getVariance() / 100) * (MAX_VARIANCE_SIZE - MIN_VARIANCE_SIZE) + MIN_VARIANCE_SIZE), MAX_VARIANCE_SIZE);
+
+				cv::drawMarker(img, e.px, out.at<cv::Vec3b>(0, 0), cv::MARKER_SQUARE, markerSize);
 			}
 		}
 	}
@@ -816,5 +818,8 @@ void VIO::parseROSParams()
 	ros::param::param<std::string>("~imu_topic", IMU_TOPIC, D_IMU_TOPIC);
 	ros::param::param<std::string>("~imu_frame", IMU_FRAME, D_IMU_FRAME);
 	ros::param::param<bool>("~use_imu", USE_IMU, D_USE_IMU);
+	ros::param::param<int>("~min_variance_box_size", MIN_VARIANCE_SIZE, D_MIN_VARIANCE_SIZE);
+	ros::param::param<int>("~max_variance_box_size", MAX_VARIANCE_SIZE, D_MAX_VARIANCE_SIZE);
+
 
 }
