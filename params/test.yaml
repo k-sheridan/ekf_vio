@@ -1,6 +1,6 @@
-min_new_feature_dist: 5
-num_features: 300
-keyframe_translation_ratio: 0.04
+min_new_feature_dist: 20
+num_features: 200
+keyframe_translation_ratio: 0.1
 default_point_depth: 0.5
 inverse_image_scale: 2
 kill_box_width: 300

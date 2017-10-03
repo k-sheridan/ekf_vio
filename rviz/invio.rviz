@@ -6,7 +6,6 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
-        - /PointCloud1
       Splitter Ratio: 0.5
     Tree Height: 436
   - Class: rviz/Selection
@@ -107,7 +106,7 @@ Visualization Manager:
       Position Transformer: XYZ
       Queue Size: 10
       Selectable: true
-      Size (Pixels): 3
+      Size (Pixels): 5
       Size (m): 0.00999999978
       Style: Points
       Topic: /invio/points
@@ -139,7 +138,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 3.72102261
+      Distance: 1.31869888
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -154,10 +153,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.335398197
+      Pitch: 0.115398198
       Target Frame: invio_odom
       Value: Orbit (rviz)
-      Yaw: 3.56549525
+      Yaw: 4.30545998
     Saved: ~
 Window Geometry:
   Displays:

@@ -22,7 +22,7 @@ VIO::VIO() {
 
 	image_transport::ImageTransport it(nh);
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
-			CAMERA_TOPIC, 2, &VIO::camera_callback, this);
+			CAMERA_TOPIC, 20, &VIO::camera_callback, this);
 
 if(PUBLISH_INSIGHT){
 	this->insight_pub = nh.advertise<sensor_msgs::Image>(INSIGHT_TOPIC, 1);
