@@ -21,16 +21,6 @@ void DepthSolver::updatePointDepths(Frame& f)
 	for(auto& e : f.features)
 	{
 		this->solveAndUpdatePointDepth(e.getPoint(), f.getPose_inv() * e.getPoint()->getInitialCameraPose(), e.getHomogenousCoord());
-
-		//OUTLIER REMOVAL
-		double range_per_depth = e.getPoint()->getRangePerDepth(); // range of measured depths over the depth
-		//ROS_INFO_STREAM("range per depth: " << range_per_depth);
-
-		if(range_per_depth > MAX_RANGE_PER_DEPTH)
-		{
-			ROS_INFO_STREAM("deleting point to high range per depth: " << range_per_depth);
-			e.obsolete = true; // flag this point for removal it is likely an outlier or slipping or occluded
-		}
 	}
 }
 

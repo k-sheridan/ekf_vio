@@ -1,5 +1,6 @@
-min_new_feature_dist: 5
-num_features: 500
+min_new_feature_dist: 10
+num_features: 200
+fast_threshold: 70
 keyframe_translation_ratio: 0.1
 default_point_depth: 0.5
 inverse_image_scale: 2

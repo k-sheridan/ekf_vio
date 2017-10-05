@@ -382,13 +382,11 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 			Eigen::Vector2d e = (*it)->getMetricPixel() - Point::toMetricPixel(xyz_f);
 
 
-			double weight = 1/(*it)->getPoint()->getVariance();
-
 			ROS_DEBUG_STREAM("edge chi: " << e.squaredNorm());
 
-			A.noalias() += J.transpose()*J*weight;
-			b.noalias() -= J.transpose()*e*weight;
-			new_chi2 += e.squaredNorm()*weight;
+			A.noalias() += J.transpose()*J;
+			b.noalias() -= J.transpose()*e;
+			new_chi2 += e.squaredNorm();
 		}
 
 		// solve linear system
