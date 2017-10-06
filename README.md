@@ -23,11 +23,11 @@ Feature Extraction: 0.1-0.3ms
 
 KLT Feature Tracking for 200 features: 0.8-3ms (will be decreased once IMU is fully fused)
 
-Motion Estimation with 20 features: 1-3ms (currently for debugging purposes I am using all valid features ~150 at 30ms)
+Motion Estimation with 20 features: 0.03 - 0.2ms (currently for debugging purposes I am using all valid features ~150 at 30ms)
 
-Depth Measurement and Update for 200 features: 5ms (in the future I will update only ~20 features per frame for speed improvement)
+Depth Measurement and Update for 200 features: 0.5ms (in the future I will update only ~20 features per frame for speed improvement)
 
-Total: 6.9-8.3ms 
+###Total: 1.43 - 5.43ms 
 
 I run invio on 1 thread only currently so that it consumes as little CPU as possible. For my application this algorithm must be running along side much hungrier programs.
 

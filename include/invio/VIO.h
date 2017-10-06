@@ -51,7 +51,7 @@ public:
 
 	ros::Time timer_start;
 
-	std::list<Frame> frame_buffer; // stores all frames and pose estimates at this frames
+	std::deque<Frame> frame_buffer; // stores all frames and pose estimates at this frames
 
 	std::list<Point> map; // this is a list of all active 3d points
 

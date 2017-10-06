@@ -100,15 +100,15 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 
 		//try to predict the frame forward
 		if(USE_PREDICTED_PRIOR){
-			this->predictPose(this->frame_buffer.front(), *std::next(this->frame_buffer.begin(), 1));
+			this->predictPose(this->frame_buffer.front(), this->frame_buffer.at(1));
 		}
 		else
 		{
-			this->frame_buffer.front().setPose(std::next(this->frame_buffer.begin(), 1)->getPose()); // temp assume zero velocity
+			this->frame_buffer.front().setPose(this->frame_buffer.at(1).getPose()); // temp assume zero velocity
 		}
 
 		// attempt to flow features into the next frame if there are features
-		this->updateFeatures(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
+		this->updateFeatures(this->frame_buffer.at(1), this->frame_buffer.front());
 
 		// make the final determination whether or not we are initialized
 		if(!this->initialized)
@@ -134,7 +134,7 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 
 			if(moba_passed)
 			{
-				this->publishOdometry(*std::next(this->frame_buffer.begin(), 1), this->frame_buffer.front());
+				this->publishOdometry(this->frame_buffer.at(1), this->frame_buffer.front());
 			}
 			else
 			{
