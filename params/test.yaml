@@ -6,3 +6,4 @@ default_point_depth: 0.5
 inverse_image_scale: 2
 kill_box_width: 300
 kill_box_height: 210
+publish_insight: false

@@ -85,6 +85,8 @@ public:
 
 	void updateFeatures(Frame& last_f, Frame& new_f);
 
+	double getHuberWeight(double error);
+
 	bool MOBA(Frame& f, double& perPixelError, bool useImmature);
 
 	bool optimizePose(Frame& f, double& ppe);

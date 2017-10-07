@@ -36,6 +36,8 @@
 // the minimum feature eigen val where it is determined as lost
 #define D_KLT_MIN_EIGEN 1e-4
 
+#define D_HUBER_WIDTH 1e-5
+
 // the minimum pixel distance a feature must have between a previous feature
 #define D_MIN_NEW_FEATURE_DIST 30
 
@@ -178,6 +180,9 @@ double DEFAULT_POINT_STARTING_VARIANCE;
 // epsilon for convergence in structure bundle adjustment and motion
 double EPS_SBA;
 double EPS_MOBA;
+
+// the huber width for robust moba
+double HUBER_WIDTH;
 
 // the minimum determinant of the linear systems used to determine the depth of the first observation
 double MINIMUM_DEPTH_DETERMINANT;

@@ -323,6 +323,18 @@ if(ANALYZE_RUNTIME){
 	return pass;
 }
 
+double VIO::getHuberWeight(double error)
+{
+	if(error <= HUBER_WIDTH)
+	{
+		return 1.0;
+	}
+	else
+	{
+		return HUBER_WIDTH / error;
+	}
+}
+
 bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 {
 	double chi2(0.0);
@@ -381,12 +393,14 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 			Frame::jacobian_xyz2uv(xyz_f, J);
 			Eigen::Vector2d e = (*it)->getMetricPixel() - Point::toMetricPixel(xyz_f);
 
+			double squared_error = e.squaredNorm();
+			double weight = this->getHuberWeight(sqrt(squared_error));
 
-			ROS_DEBUG_STREAM("edge chi: " << e.squaredNorm());
+			ROS_DEBUG_STREAM("edge error2: " << squared_error);
 
-			A.noalias() += J.transpose()*J;
-			b.noalias() -= J.transpose()*e;
-			new_chi2 += e.squaredNorm();
+			A.noalias() += J.transpose()*J*weight;
+			b.noalias() -= J.transpose()*e*weight;
+			new_chi2 += squared_error*weight;
 		}
 
 		// solve linear system
@@ -802,6 +816,7 @@ void VIO::parseROSParams()
 	ros::param::param<double>("~default_point_starting_error", DEFAULT_POINT_STARTING_VARIANCE, D_DEFAULT_POINT_STARTING_VARIANCE);
 	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);
 	ros::param::param<double>("~eps_sba", EPS_SBA, D_EPS_SBA);
+	ros::param::param<double>("~huber_width", HUBER_WIDTH, D_HUBER_WIDTH);
 	ros::param::param<double>("~minumum_depth_determinant", MINIMUM_DEPTH_DETERMINANT, D_MINIMUM_DEPTH_DETERMINANT);
 	ros::param::param<double>("~max_range_per_depth", MAX_RANGE_PER_DEPTH, D_MAX_RANGE_PER_DEPTH);
 	ros::param::param<int>("~moba_max_iterations", MOBA_MAX_ITERATIONS, D_MOBA_MAX_ITERATIONS);
