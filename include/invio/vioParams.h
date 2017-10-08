@@ -93,7 +93,7 @@
 
 //END VISUAL ODOM
 
-#define D_MAX_VARIANCE_SIZE 15
+#define D_MAX_VARIANCE_SIZE 40
 #define D_MIN_VARIANCE_SIZE 5
 
 #define D_ODOM_TOPIC "invio/odom"

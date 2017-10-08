@@ -394,7 +394,7 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 			Eigen::Vector2d e = (*it)->getMetricPixel() - Point::toMetricPixel(xyz_f);
 
 			double squared_error = e.squaredNorm();
-			double weight = this->getHuberWeight(sqrt(squared_error));
+			double weight = this->getHuberWeight(sqrt(squared_error)) / sqrt((*it)->getPoint()->getVariance());
 
 			ROS_DEBUG_STREAM("edge error2: " << squared_error);
 
@@ -650,7 +650,7 @@ void VIO::publishInsight(Frame& f)
 	maxDepth = 2.0 * this->frame_buffer.front().getAverageFeatureDepth();
 
 	//temp
-	maxDepth = 4.0;
+	maxDepth = 2.0;
 
 
 
@@ -676,7 +676,7 @@ void VIO::publishInsight(Frame& f)
 				cv::Mat out;
 				cv::applyColorMap(in, out, cv::COLORMAP_RAINBOW);
 
-				int markerSize = std::min((int)((e.getPoint()->getVariance() / 100) * (MAX_VARIANCE_SIZE - MIN_VARIANCE_SIZE) + MIN_VARIANCE_SIZE), MAX_VARIANCE_SIZE);
+				int markerSize = std::min((int)((e.getPoint()->getVariance() / 10) * (MAX_VARIANCE_SIZE - MIN_VARIANCE_SIZE) + MIN_VARIANCE_SIZE), MAX_VARIANCE_SIZE);
 
 				cv::drawMarker(img, e.px, out.at<cv::Vec3b>(0, 0), cv::MARKER_SQUARE, markerSize);
 			}
@@ -813,7 +813,7 @@ void VIO::parseROSParams()
 	ros::param::param<double>("~keyframe_translation_ratio", T2ASD, D_T2ASD);
 	ros::param::param<double>("~maximum_feature_depth_VARIANCE", MAXIMUM_FEATURE_DEPTH_VARIANCE, D_MAXIMUM_FEATURE_DEPTH_VARIANCE);
 	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
-	ros::param::param<double>("~default_point_starting_error", DEFAULT_POINT_STARTING_VARIANCE, D_DEFAULT_POINT_STARTING_VARIANCE);
+	ros::param::param<double>("~default_point_depth_variance", DEFAULT_POINT_STARTING_VARIANCE, D_DEFAULT_POINT_STARTING_VARIANCE);
 	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);
 	ros::param::param<double>("~eps_sba", EPS_SBA, D_EPS_SBA);
 	ros::param::param<double>("~huber_width", HUBER_WIDTH, D_HUBER_WIDTH);

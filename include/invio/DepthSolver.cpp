@@ -65,15 +65,17 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 
 	Eigen::Vector3d t = cf_2_rf.inverse().translation();
 	Eigen::Vector3d d = depth*pt->getInitialHomogenousCoordinate();
+	Eigen::Vector3d t2d = d - t;
 
 	double d_norm = d.norm();
-	double t_norm = t.norm();
+	double t2d_norm = t2d.norm();
+	//double t_norm = t.norm();
 
-	double sine_theta_d_t = std::max(d.cross(t).norm() / (d_norm*t_norm), DBL_MIN);
+	double sine_theta_d_t = d.cross(t2d).norm() / (d_norm*t2d_norm);
 
-	double variance = d_norm/(t_norm*sine_theta_d_t+DBL_MIN);
+	double variance = 1 / pow(sine_theta_d_t + DBL_MIN, 2);
 
-	ROS_INFO_STREAM("updating point with depth: " << depth << " and variance: " << variance);
+	ROS_INFO_STREAM("updating point with depth: " << depth << " and variance: " << variance << "where the sine is: " << sine_theta_d_t);
 
 	pt->updateDepth(depth, variance);
 	
