@@ -29,7 +29,7 @@
 
 <!-- Rectify monochrome images -->
     <node pkg="nodelet" type="nodelet" name="rectify_mono"
-          args="load image_proc/rectify $(arg manager)" />	
+          args="load image_proc/rectify camera_nodelet_manager" />	
 
   </group>
 </launch>
