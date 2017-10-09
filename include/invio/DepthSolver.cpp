@@ -47,7 +47,7 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 
 	if(AtA.determinant() < MINIMUM_DEPTH_DETERMINANT)
 	{
-		ROS_INFO("determinant too low");
+		ROS_DEBUG("determinant too low");
 	    return false;
 	}
 
@@ -75,7 +75,7 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 
 	double variance = 1 / pow(sine_theta_d_t + DBL_MIN, 2);
 
-	ROS_INFO_STREAM("updating point with depth: " << depth << " and variance: " << variance << "where the sine is: " << sine_theta_d_t);
+	ROS_DEBUG_STREAM("updating point with depth: " << depth << " and variance: " << variance << "where the sine is: " << sine_theta_d_t);
 
 	pt->updateDepth(depth, variance);
 	

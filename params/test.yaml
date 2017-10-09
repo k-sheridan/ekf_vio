@@ -1,11 +1,18 @@
 min_new_feature_dist: 25
 num_features: 300
 fast_threshold: 40
+
 keyframe_translation_ratio: 0.05
+
 default_point_depth: 0.5
 default_point_depth_variance: 1000
-huber_width: 1e-6
+
+# this is the norm not squared norm
+huber_width: 1e-8 
+maximum_reprojection_error: 0.001
+
 inverse_image_scale: 2
 kill_box_width: 300
 kill_box_height: 210
+
 publish_insight: true

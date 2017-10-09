@@ -63,8 +63,8 @@
 // the minimum ratio of translation to avg scene depth
 #define D_T2ASD 0.1
 
-// the maximum error a feature can have after an optim
-#define D_MAXIMUM_FEATURE_DEPTH_VARIANCE 0.005
+// the maximum error a feature can have after moba
+#define D_MAXIMUM_REPROJECTION_ERROR 0.0005
 
 // default point depth used for initialization in meters
 #define D_DEFAULT_POINT_DEPTH 0.5
@@ -171,7 +171,7 @@ double T2ASD;
 
 // the maximum error a feature can have after an optim
 // if the error for a point is greater than this after an optimization it is deleted (to remove possible outliers)
-double MAXIMUM_FEATURE_DEPTH_VARIANCE;
+double MAXIMUM_REPROJECTION_ERROR;
 
 // default point depth used for initialization in meters
 double DEFAULT_POINT_DEPTH;

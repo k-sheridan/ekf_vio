@@ -278,7 +278,7 @@ if(ANALYZE_RUNTIME){
 
 	if(ratio > T2ASD)
 	{
-		ROS_INFO_STREAM("ADDING KEYFRAME WITH TRANSLATION TO SCENE DEPTH RATIO OF: " << ratio);
+		ROS_DEBUG_STREAM("ADDING KEYFRAME WITH TRANSLATION TO SCENE DEPTH RATIO OF: " << ratio);
 		this->frame_buffer.front().setKeyFrame(true); // make this frame a keyframe
 
 		// something else?
@@ -338,7 +338,8 @@ double VIO::getHuberWeight(double error)
 bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 {
 	double chi2(0.0);
-	std::vector<double> chi2_vec_init, chi2_vec_final;
+	std::vector<double> error2_vec;
+#define SQUARED_ERROR error2_vec[index]
 
 	std::vector<Feature*> edges;
 
@@ -374,8 +375,7 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 	ROS_DEBUG_STREAM("found " << edgeCount << " valid points for MOBA");
 
 	//reserve the space for all chi2 of edges
-	chi2_vec_init.reserve(edgeCount);
-	chi2_vec_final.reserve(edgeCount);
+	error2_vec.resize(edgeCount);
 
 	//run the motion only bundle adjustment
 	for(size_t iter = 0; iter < MOBA_MAX_ITERATIONS; iter++)
@@ -385,6 +385,8 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 		A.setZero();
 		double new_chi2(0.0);
 
+		int index = 0;
+
 		// compute residual
 		for(auto it=edges.begin(); it!=edges.end(); ++it)
 		{
@@ -393,14 +395,17 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 			Frame::jacobian_xyz2uv(xyz_f, J);
 			Eigen::Vector2d e = (*it)->getMetricPixel() - Point::toMetricPixel(xyz_f);
 
-			double squared_error = e.squaredNorm();
-			double weight = this->getHuberWeight(sqrt(squared_error)) / sqrt((*it)->getPoint()->getVariance());
 
-			ROS_DEBUG_STREAM("edge error2: " << squared_error);
+			SQUARED_ERROR = e.squaredNorm();
+			double weight = this->getHuberWeight(sqrt(SQUARED_ERROR)) / (*it)->getPoint()->getVariance();
+
+			ROS_DEBUG_STREAM("edge error2: " << SQUARED_ERROR);
 
 			A.noalias() += J.transpose()*J*weight;
 			b.noalias() -= J.transpose()*e*weight;
-			new_chi2 += squared_error*weight;
+			new_chi2 += SQUARED_ERROR * weight;
+
+			index++;
 		}
 
 		// solve linear system
@@ -431,6 +436,21 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 	f.setPose_inv(currentGuess); // set the new optimized pose
 
 
+	//remove outliers
+	int index = 0;
+	for(auto it=edges.begin(); it!=edges.end(); ++it)
+	{
+		if(error2_vec[index] > MAXIMUM_REPROJECTION_ERROR) // if the error after robust moba is too high we call this point an outlier and remove it so it cannot yank the estimate next time
+		{
+			ROS_DEBUG_STREAM("removing feature with reprojection error: " << error2_vec[index]);
+
+			(*it)->obsolete = true; // set this feature to obsolete so it is nolonger tracked and deleted later
+		}
+
+		index++;
+	}
+
+
 	return true;
 }
 
@@ -449,7 +469,7 @@ if(ANALYZE_RUNTIME){
 		img = f.img;
 	}
 
-	ROS_INFO_STREAM("current 2d feature count: " << f.features.size());
+	ROS_DEBUG_STREAM("current 2d feature count: " << f.features.size());
 
 	if (f.features.size() < NUM_FEATURES) {
 		std::vector<cv::KeyPoint> fast_kp;
@@ -494,7 +514,7 @@ if(ANALYZE_RUNTIME){
 
 			//check if there is already a close feature
 			if (checkImg.at<unsigned char>(fast_kp.at(i).pt)) {
-				ROS_DEBUG("feature too close to previous feature, not adding");
+				//ROS_DEBUG("feature too close to previous feature, not adding");
 				needed++; // we need one more now
 				continue;
 			}
@@ -811,7 +831,7 @@ void VIO::parseROSParams()
 	ros::param::param<int>("~minimum_keyframe_count_for_optimization", MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION, D_MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION);
 	ros::param::param<int>("~maximum_keyframe_count_for_optimization", MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION, D_MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION);
 	ros::param::param<double>("~keyframe_translation_ratio", T2ASD, D_T2ASD);
-	ros::param::param<double>("~maximum_feature_depth_VARIANCE", MAXIMUM_FEATURE_DEPTH_VARIANCE, D_MAXIMUM_FEATURE_DEPTH_VARIANCE);
+	ros::param::param<double>("~maximum_reprojection_error", MAXIMUM_REPROJECTION_ERROR, D_MAXIMUM_REPROJECTION_ERROR);
 	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
 	ros::param::param<double>("~default_point_depth_variance", DEFAULT_POINT_STARTING_VARIANCE, D_DEFAULT_POINT_STARTING_VARIANCE);
 	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);

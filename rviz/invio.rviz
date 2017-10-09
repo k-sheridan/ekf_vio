@@ -7,7 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
       Splitter Ratio: 0.5
-    Tree Height: 436
+    Tree Height: 359
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -26,7 +26,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Image
+    SyncSource: ""
 Visualization Manager:
   Class: ""
   Displays:
@@ -57,19 +57,13 @@ Visualization Manager:
           Value: true
         camera:
           Value: true
-        invio_odom:
-          Value: true
-        world:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
       Show Axes: true
       Show Names: true
       Tree:
-        world:
-          invio_odom:
-            {}
+        {}
       Update Interval: 0
       Value: true
     - Class: rviz/Image
@@ -137,26 +131,26 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/Orbit
-      Distance: 1.31869888
+      Class: rviz/ThirdPersonFollower
+      Distance: 0.586735904
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.324507296
-        Y: 0.15829508
-        Z: 0.0322867557
+        X: 0.25732404
+        Y: -0.283090532
+        Z: -1.49011612e-08
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.115398198
+      Pitch: 0.145398021
       Target Frame: invio_odom
-      Value: Orbit (rviz)
-      Yaw: 4.30545998
+      Value: ThirdPersonFollower (rviz)
+      Yaw: 4.6554656
     Saved: ~
 Window Geometry:
   Displays:
