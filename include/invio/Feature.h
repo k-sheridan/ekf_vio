@@ -70,8 +70,6 @@ public:
 	Eigen::Vector2d getMetricPixel();
 	Eigen::Vector3d getHomogenousCoord();
 
-	double getAverageFeatureDepth();
-
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FEATURE_H_ */

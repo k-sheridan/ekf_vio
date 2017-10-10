@@ -8,48 +8,22 @@
 #include "../invio/Frame.h"
 
 Frame::Frame() {
-	this->keyframe = false; // initially we are not a keyframe
-	avgFeatureDepthSet = false;
-	featureCountsSet = false;
+
 
 }
 
 Frame::Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t)
 {
-	this->keyframe = false; // initially we are not a keyframe
+
 	this->img = _img;
 	this->K = _k;
 	this->t = _t;
-
-	avgFeatureDepthSet = false;
-	featureCountsSet = false;
 
 
 }
 
 Frame::~Frame() {
 	// TODO Auto-generated destructor stub
-}
-
-void Frame::computeFeatureStatusCounts()
-{
-	matureCount = 0;
-	validCount = 0;
-	for(auto& e : features)
-	{
-		if(!e.obsolete)
-		{
-			validCount++;
-			if(!e.getPoint()->isImmature())
-			{
-				matureCount++;
-			}
-		}
-	}
-
-	ROS_DEBUG_STREAM("mature count: " << matureCount << " valid count: " << validCount);
-
-	featureCountsSet = true;
 }
 
 void Frame::setAllPointsMature(){
@@ -62,63 +36,56 @@ void Frame::setAllPointsMature(){
 
 double Frame::getAverageFeatureDepth()
 {
-	if(this->avgFeatureDepthSet)
-	{
-		return avgFeatureDepth;
-	}
-	else
-	{
-		Eigen::Matrix3d mat3 = this->getPose_inv().rotationMatrix();
-		double a = mat3(2, 0);
-		double b = mat3(2, 1);
-		double c = mat3(2, 2);
-		double d = this->getPose_inv().translation().z();
 
-		// compute the average feature depth of this frame
-		int maturePointCount = 0;
-		double depth = 0;
-		for(auto e : this->features)
-		{
-			if(!e.obsolete){
-				if(!e.getPoint()->isImmature())
+	Eigen::Matrix3d mat3 = this->getPose_inv().rotationMatrix();
+	double a = mat3(2, 0);
+	double b = mat3(2, 1);
+	double c = mat3(2, 2);
+	double d = this->getPose_inv().translation().z();
+
+	// compute the average feature depth of this frame
+	int maturePointCount = 0;
+	double depth = 0;
+	for(auto e : this->features)
+	{
+		if(!e.obsolete){
+			if(!e.getPoint()->isImmature())
+			{
+				maturePointCount++;
+
+				//make more efficient
+				//tf::Vector3 pointInCameraFrame = this->getPose_inv() * e.obj;
+
+				double z_depth = a * e.getPoint()->getWorldCoordinate().x() + b * e.getPoint()->getWorldCoordinate().y() + c * e.getPoint()->getWorldCoordinate().z() + d; // add the z parts together
+
+				e.getPoint()->temp_depth = z_depth;
+
+				if(z_depth > 0)
 				{
-					maturePointCount++;
-
-					//make more efficient
-					//tf::Vector3 pointInCameraFrame = this->getPose_inv() * e.obj;
-
-					double z_depth = a * e.getPoint()->getWorldCoordinate().x() + b * e.getPoint()->getWorldCoordinate().y() + c * e.getPoint()->getWorldCoordinate().z() + d; // add the z parts together
-
-					e.getPoint()->temp_depth = z_depth;
-
-					if(z_depth > 0)
-					{
-						depth += z_depth;
-					}
-					else
-					{
-						maturePointCount--;
-						ROS_WARN("point is behind camera");
-					}
+					depth += z_depth;
+				}
+				else
+				{
+					maturePointCount--;
+					ROS_WARN("point is behind camera");
 				}
 			}
 		}
+	}
 
-		if(maturePointCount > 0)
-		{
-			avgFeatureDepth = depth / (double)maturePointCount;
-			avgFeatureDepthSet = true;
-			return avgFeatureDepth;
-		}
-		else
-		{
-			ROS_WARN("no valid mature points for average feature depth computation");
-			avgFeatureDepth = DEFAULT_POINT_DEPTH;
-			avgFeatureDepthSet = true;
-			return avgFeatureDepth;
-		}
+	if(maturePointCount > 0)
+	{
+		ROS_DEBUG_STREAM("average scene depth computed: " << depth / (double)maturePointCount);
+		return depth / (double)maturePointCount;
+	}
+	else
+	{
+		ROS_WARN("no valid mature points for average feature depth computation");
+
+		return DEFAULT_POINT_DEPTH;
 	}
 }
+
 
 void Frame::setPose(Sophus::SE3d tf){
 	this->poseEstimate = tf;

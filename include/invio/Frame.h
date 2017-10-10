@@ -17,14 +17,6 @@ class Feature;
 class Frame {
 private:
 
-	bool keyframe;
-
-	int matureCount, validCount;
-	bool featureCountsSet;
-
-	double avgFeatureDepth;
-	bool avgFeatureDepthSet;
-
 	Sophus::SE3d poseEstimate; // this is a world to camera pose estimate
 	Sophus::SE3d poseEstimate_inv;
 
@@ -40,9 +32,6 @@ public:
 	Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t);
 
 	virtual ~Frame();
-
-	bool isKeyframe(){return this->keyframe;}
-	void setKeyFrame(bool val){this->keyframe = val;}
 
 	Sophus::SE3d getPose(){return poseEstimate;}
 	Sophus::SE3d getPose_inv(){return poseEstimate_inv;}
@@ -94,25 +83,6 @@ public:
 		Eigen::Quaterniond q = se3.unit_quaternion();
 
 		return tf::Transform(tf::Quaternion(q.x(), q.y(), q.z(), q.w()), tf::Vector3(se3.translation().x(), se3.translation().y(), se3.translation().z()));
-	}
-
-	void computeFeatureStatusCounts();
-
-
-	int getMatureCount(){
-		if(!featureCountsSet)
-		{
-			this->computeFeatureStatusCounts();
-		}
-		return matureCount;
-	}
-
-	int getValidCount(){
-		if(!featureCountsSet)
-		{
-			this->computeFeatureStatusCounts();
-		}
-		return validCount;
 	}
 
 	void setAllPointsMature();

@@ -24,9 +24,9 @@ VIO::VIO() {
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
 			CAMERA_TOPIC, 20, &VIO::camera_callback, this);
 
-if(PUBLISH_INSIGHT){
-	this->insight_pub = nh.advertise<sensor_msgs::Image>(INSIGHT_TOPIC, 1);
-}
+	if(PUBLISH_INSIGHT){
+		this->insight_pub = nh.advertise<sensor_msgs::Image>(INSIGHT_TOPIC, 1);
+	}
 
 	this->odom_pub = nh.advertise<nav_msgs::Odometry>(ODOM_TOPIC, 1);
 
@@ -89,31 +89,22 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
-		//set the first frame as a keyframe
-		this->frame_buffer.front().setKeyFrame(true);
-
 		this->replenishFeatures((this->frame_buffer.front()));
 	} else // we have atleast 1 frame in the buffer
 	{
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
-		//try to predict the frame forward
-		if(USE_PREDICTED_PRIOR){
-			this->predictPose(this->frame_buffer.front(), this->frame_buffer.at(1));
-		}
-		else
-		{
-			this->frame_buffer.front().setPose(this->frame_buffer.at(1).getPose()); // temp assume zero velocity
-		}
+		//set the predicted pose of the current frame
+		this->frame_buffer.front().setPose(this->frame_buffer.at(1).getPose()); // temp assume zero velocity
 
 		// attempt to flow features into the next frame if there are features
-		this->updateFeatures(this->frame_buffer.at(1), this->frame_buffer.front());
+		this->flowFeatures(this->frame_buffer.at(1), this->frame_buffer.front());
 
 		// make the final determination whether or not we are initialized
 		if(!this->initialized)
 		{
-			if(this->frame_buffer.front().getValidCount() >= START_FEATURE_COUNT)
+			if(this->frame_buffer.front().features.size() >= START_FEATURE_COUNT)
 			{
 				// set all current valid features to mature
 				this->frame_buffer.front().setAllPointsMature();
@@ -126,7 +117,7 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		}
 
 
-		if(this->initialized) // run moba and sba if initialized
+		if(this->initialized) // run moba and depth update if initialized
 		{
 			// attempt to compute our new camera pose from flowed features and their respective depth/position
 			double ppe = 0;
@@ -134,6 +125,7 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 
 			if(moba_passed)
 			{
+				// extract the odometry from invio and publish it
 				this->publishOdometry(this->frame_buffer.at(1), this->frame_buffer.front());
 			}
 			else
@@ -142,22 +134,24 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 				this->tracking_lost = true;
 			}
 
-			//update the keyframes
-			// this checks if this frame is a keyframe and then attempts to optimize immature points
-			this->keyFrameUpdate();
+			// solve for the depth of the a chunk of points
+			this->depth_solver.updatePointDepths(this->frame_buffer.front());
 
 		}
 
 		this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
 	}
 
-if( PUBLISH_INSIGHT)
-{
-	if(this->frame_buffer.size() > 0)
+
+	// publish visualization info
+
+	if( PUBLISH_INSIGHT)
 	{
-		this->publishInsight(this->frame_buffer.front());
+		if(this->frame_buffer.size() > 0)
+		{
+			this->publishInsight(this->frame_buffer.front());
+		}
 	}
-}
 
 	//publish the mature 3d points
 	this->publishPoints(this->frame_buffer.front());
@@ -167,32 +161,10 @@ if( PUBLISH_INSIGHT)
 	ROS_ERROR_COND(this->tracking_lost, "lost tracking!");
 }
 
-/*
- * delta t is derived from the frame times
- */
-void VIO::predictPose(Frame& new_frame, Frame& old_frame)
-{
-	if(this->velocity_set)
-	{
-		double dt = (new_frame.t - old_frame.t).toSec();
-
-		Sophus::SE3d delta;
-
-		tf::Quaternion q;
-		q.setRPY(this->omega.x()*dt, this->omega.y()*dt, this->omega.z()*dt);
-
-		Sophus::SE3d::Point spt = (this->velocity* dt);
-
-		delta = Sophus::SE3d(Eigen::Quaterniond(q.w(), q.x(), q.y(), q.z()), spt);
-
-		new_frame.setPose(old_frame.getPose() * delta);
-	}
-}
-
-void VIO::updateFeatures(Frame& last_f, Frame& new_f) {
-if(ANALYZE_RUNTIME){
+void VIO::flowFeatures(Frame& last_f, Frame& new_f) {
+	if(ANALYZE_RUNTIME){
 		this->startTimer();
-}
+	}
 
 	std::vector<cv::Point2f> oldPoints = this->getPixels2fInOrder(last_f);
 
@@ -245,81 +217,26 @@ if(ANALYZE_RUNTIME){
 
 	ROS_DEBUG_STREAM("VO LOST " << lostFeatures << "FEATURES");
 
-if (ANALYZE_RUNTIME){
+	if (ANALYZE_RUNTIME){
 		this->stopTimer("tracking");
-}
-
-}
-
-
-
-void VIO::keyFrameUpdate(){
-if(ANALYZE_RUNTIME){
-		this->startTimer();
-}
-	Frame* kf; // get the key frame pointer
-
-	// find the key frame
-	for(auto& e : this->frame_buffer)
-	{
-		if(e.isKeyframe())
-		{
-			kf = &e;
-			break;
-		}
 	}
 
-	//if the camera has translated enough make the current frame a keyframe and begin the point optimization
-	double dr = (kf->getPose_inv() * this->frame_buffer.front().getPose()).translation().norm();
-
-	double avgDepth = (kf->getAverageFeatureDepth() + this->frame_buffer.front().getAverageFeatureDepth()) / 2.0;
-
-	double ratio = dr / avgDepth;
-
-	if(ratio > T2ASD)
-	{
-		ROS_DEBUG_STREAM("ADDING KEYFRAME WITH TRANSLATION TO SCENE DEPTH RATIO OF: " << ratio);
-		this->frame_buffer.front().setKeyFrame(true); // make this frame a keyframe
-
-		// something else?
-		this->depth_solver.updatePointDepths(this->frame_buffer.front());
-	}
-
-if(ANALYZE_RUNTIME){
-		this->stopTimer("keyframeUpdate");
 }
 
-}
-
-bool VIO::optimizePose(Frame& f, double& ppe)
+bool VIO::optimizePose(Frame& f, double& tension)
 {
-if(ANALYZE_RUNTIME){
+	if(ANALYZE_RUNTIME){
 		this->startTimer();
-}
+	}
+
 	bool pass = false;
 
-	ROS_DEBUG_STREAM("found " << f.getMatureCount() << " mature pixels");
+	pass = this->MOBA(f, tension, false);
 
-	//ROS_WARN_COND(f.getMatureCount() < DANGEROUS_MATURE_FEATURE_COUNT_LEVEL, "mature feature count at dangerous level! " << f.getMatureCount());
-
-	if(f.getMatureCount() >= MINIMUM_TRACKABLE_FEATURES)
-	{
-		ROS_DEBUG_STREAM("running moba with " << f.getMatureCount() << " mature features only. out of: " << f.getValidCount());
-		pass = this->MOBA(f, ppe, false);
-	}
-	else if(f.getValidCount() >= MINIMUM_TRACKABLE_FEATURES)
-	{
-		ROS_WARN_STREAM("pauvsi_vio: DANGEROUS! too few MATURE features. forced to run motion only bundle adjustment with all " << f.getValidCount() << " features");
-		pass = this->MOBA(f, ppe, true);
-	}
-	else
-	{
-		ROS_ERROR("pauvsi_vio: ran out of valid features lost track of pose. try lowering the FAST feature threshold.");
-		pass = false;
-	}
-if(ANALYZE_RUNTIME){
+	if(ANALYZE_RUNTIME){
 		this->stopTimer("pose optimization");
-}
+	}
+
 	return pass;
 }
 
@@ -335,7 +252,7 @@ double VIO::getHuberWeight(double error)
 	}
 }
 
-bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
+bool VIO::MOBA(Frame& f, double& tension, bool useImmature)
 {
 	double chi2(0.0);
 	std::vector<double> error2_vec;
@@ -480,9 +397,9 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
  * get more features after updating the pose
  */
 void VIO::replenishFeatures(Frame& f) {
-if(ANALYZE_RUNTIME){
+	if(ANALYZE_RUNTIME){
 		this->startTimer();
-}
+	}
 	//add more features if needed
 	cv::Mat img;
 	if (FAST_BLUR_SIGMA != 0.0) {
@@ -583,62 +500,10 @@ if(ANALYZE_RUNTIME){
 
 		}
 	}
-if(ANALYZE_RUNTIME){
+	if(ANALYZE_RUNTIME){
 		this->stopTimer("feature extraction");
+	}
 }
-}
-
-void VIO::tf2rvecAndtvec(tf::Transform tf, cv::Mat& tvec, cv::Mat& rvec) {
-	cv::Mat_<double> R =
-			(cv::Mat_<double>(3, 3) << tf.getBasis().getRow(0).x(), tf.getBasis().getRow(
-					0).y(), tf.getBasis().getRow(0).z(), tf.getBasis().getRow(1).x(), tf.getBasis().getRow(
-							1).y(), tf.getBasis().getRow(1).z(), tf.getBasis().getRow(2).x(), tf.getBasis().getRow(
-									2).y(), tf.getBasis().getRow(2).z());
-
-	//ROS_DEBUG("setting up tvec and rvec");
-
-	cv::Rodrigues(R, rvec);
-
-	tvec =
-			(cv::Mat_<double>(3, 1) << tf.getOrigin().x(), tf.getOrigin().y(), tf.getOrigin().z());
-
-	//ROS_DEBUG_STREAM("tvec: " << tvec << "\nrvec: " << rvec);
-}
-
-tf::Transform VIO::rvecAndtvec2tf(cv::Mat tvec, cv::Mat rvec) {
-	//ROS_DEBUG("rvectvec to tf");
-	cv::Mat_<double> rot;
-	cv::Rodrigues(rvec, rot);
-	/*ROS_DEBUG_STREAM("rot: " << rot);
-	 ROS_DEBUG_STREAM("rvec: " << rvec);*/
-	//ROS_DEBUG_STREAM("tvec " << tvec);
-	tf::Transform trans;
-
-	trans.getBasis().setValue(rot(0), rot(1), rot(2), rot(3), rot(4), rot(5),
-			rot(6), rot(7), rot(8));
-	trans.setOrigin(
-			tf::Vector3(tvec.at<double>(0), tvec.at<double>(1),
-					tvec.at<double>(2)));
-
-	//ROS_DEBUG_STREAM("rot: " << trans.getRotation().w() << ", " << trans.getRotation().x() << ", " << trans.getRotation().y() << ", " << trans.getRotation().z());
-	/*double x, y, z;
-	 trans.getBasis().getRPY(x, y, z);
-	 ROS_DEBUG_STREAM("tf rvec " << x <<", "<<y<<", "<<z);*/
-	//ROS_DEBUG_STREAM(trans.getOrigin().x() << ", " << trans.getOrigin().y() << ", " << trans.getOrigin().z());
-	//ROS_DEBUG("finished");
-	return trans;
-}
-
-/*std::vector<cv::Point2d> VIO::getPixelsInOrder(Frame& f){
- std::vector<cv::Point2d> pixels;
-
- for(auto e : f.features)
- {
- pixels.push_back(cv::Point2d(e.px.x, e.px.y));
- }
-
- return pixels;
- }*/
 
 std::vector<cv::Point2f> VIO::getPixels2fInOrder(Frame& f) {
 	std::vector<cv::Point2f> pixels;
@@ -650,34 +515,7 @@ std::vector<cv::Point2f> VIO::getPixels2fInOrder(Frame& f) {
 	return pixels;
 }
 
-/*std::vector<cv::Point3d> VIO::getObjectsInOrder(Frame& f){
- std::vector<cv::Point3d> obj;
 
- for(auto e : f.features)
- {
- obj.push_back(cv::Point3d(e.obj.x(), e.obj.y(), e.obj.z()));
- }
-
- return obj;
- }*/
-
-void VIO::correctPointers(bool allFrames)
-{
-	ROS_ASSERT(this->frame_buffer.size() > 0);
-
-	if(allFrames)
-	{
-		ROS_WARN("cannot correct all frame's pointers");
-	}
-	else
-	{
-		for(std::list<Feature>::iterator it = this->frame_buffer.front().features.begin(); it != this->frame_buffer.front().features.end(); it++)
-		{
-			//ROS_ASSERT(&(*it) == it->getPoint()->getObservations().front());
-			it->getPoint()->getObservations().front() = &(*it);
-		}
-	}
-}
 
 void VIO::publishInsight(Frame& f)
 {
@@ -791,7 +629,7 @@ void VIO::publishPoints(Frame& f)
 {
 
 	if(ANALYZE_RUNTIME){
-			this->startTimer();
+		this->startTimer();
 	}
 	sensor_msgs::PointCloud msg;
 
@@ -828,7 +666,7 @@ void VIO::publishPoints(Frame& f)
 	this->points_pub.publish(msg);
 
 	if(ANALYZE_RUNTIME){
-			this->stopTimer("point publish");
+		this->stopTimer("point publish");
 	}
 }
 
@@ -839,7 +677,6 @@ void VIO::parseROSParams()
 	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, D_FAST_THRESHOLD);
 	ros::param::param<double>("~fast_blur_sigma", FAST_BLUR_SIGMA, D_FAST_BLUR_SIGMA);
 	ros::param::param<double>("~inverse_image_scale", INVERSE_IMAGE_SCALE, D_INVERSE_IMAGE_SCALE);
-	ros::param::param<bool>("~use_predicted_prior", USE_PREDICTED_PRIOR, D_USE_PREDICTED_PRIOR);
 	ros::param::param<bool>("~analyze_runtime", ANALYZE_RUNTIME, D_ANALYZE_RUNTIME);
 	ros::param::param<int>("~kill_box_width", KILL_BOX_WIDTH, D_KILL_BOX_WIDTH);
 	ros::param::param<int>("~kill_box_height", KILL_BOX_HEIGHT, D_KILL_BOX_HEIGHT);

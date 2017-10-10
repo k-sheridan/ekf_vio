@@ -81,9 +81,7 @@ public:
 
 	void addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t);
 
-	void predictPose(Frame& new_frame, Frame& old_frame);
-
-	void updateFeatures(Frame& last_f, Frame& new_f);
+	void flowFeatures(Frame& last_f, Frame& new_f);
 
 	double getHuberWeight(double error);
 
@@ -91,21 +89,13 @@ public:
 
 	bool optimizePose(Frame& f, double& ppe);
 
-	void keyFrameUpdate();
-
 	void replenishFeatures(Frame& f);
-
-	void tf2rvecAndtvec(tf::Transform tf, cv::Mat& tvec, cv::Mat& rvec);
-
-	tf::Transform rvecAndtvec2tf(cv::Mat tvec, cv::Mat rvec);
 
 	void publishInsight(Frame& f);
 
 	void publishOdometry(Frame& last_f, Frame& new_f);
 
 	void publishPoints(Frame& f);
-
-	void correctPointers(bool allFrames = false);
 
 	void startTimer(){this->timer_start = ros::Time::now();}
 	void stopTimer(std::string prefix){ROS_INFO_STREAM(prefix <<": "<<(ros::Time::now() - this->timer_start).toSec() * 1000 << "ms");}

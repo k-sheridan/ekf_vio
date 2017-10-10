@@ -23,9 +23,6 @@
 
 #define D_INVERSE_IMAGE_SCALE 4
 
-// use previous odometry for prior
-#define D_USE_PREDICTED_PRIOR false
-
 //analyze the function times
 #define D_ANALYZE_RUNTIME true
 
@@ -132,9 +129,6 @@ int FAST_THRESHOLD;
 double FAST_BLUR_SIGMA;
 
 double INVERSE_IMAGE_SCALE;
-
-// use previous odometry for prior
-bool USE_PREDICTED_PRIOR;
 
 //analyze the function times
 bool ANALYZE_RUNTIME;
