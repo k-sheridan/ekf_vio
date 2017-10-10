@@ -504,6 +504,9 @@ void VIO::replenishFeatures(Frame& f) {
 
 			//set up point's depth and initial variance
 			f.features.back().getPoint()->setDepth(f.getAverageFeatureDepth());
+
+			f.features.back().getPoint()->last_update_pose_depth = f.features.back().getPoint()->getDepth();
+
 			f.features.back().getPoint()->setVariance(DEFAULT_POINT_STARTING_VARIANCE);
 
 			//important set the point to guessed so the range of measurements is accurate

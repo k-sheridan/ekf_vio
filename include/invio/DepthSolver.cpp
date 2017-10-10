@@ -54,18 +54,24 @@ void DepthSolver::updatePointDepths(Frame& f)
 			break;
 		}
 
-		//compute the translation/depth ratio
-		double t2d = (f.getPose().translation() - e->getPoint()->getInitialCameraPose().translation()).norm() / e->getPoint()->getDepth();
+		//compute the change in translation/depth ratio
+		double t2d = ((f.getPose().translation() - e->getPoint()->last_update_pose.translation()).norm() / e->getPoint()->last_update_pose_depth);
 
 		if(t2d >= MIN_T2D) // if the camera has translated enough perform an update
 		{
 			ROS_DEBUG_STREAM("updating a feature with a translation ratio of: " << t2d);
 
-			this->solveAndUpdatePointDepth(e->getPoint(), f.getPose_inv() * e->getPoint()->getInitialCameraPose(), e->getHomogenousCoord());
+			Sophus::SE3d cf_2_rf = f.getPose_inv() * e->getPoint()->getInitialCameraPose();
+
+			this->solveAndUpdatePointDepth(e->getPoint(), cf_2_rf, e->getHomogenousCoord());
 
 			updates++; // another update has been performed (even if it is bad or failed)
 
 			e->getPoint()->frames_since_depth_update = 0; // reset the frame counter because this feature just had an update
+
+			//update the last t2d
+			e->getPoint()->last_update_pose = f.getPose();
+			e->getPoint()->last_update_pose_depth = (cf_2_rf * (e->getPoint()->getDepth() * e->getPoint()->getInitialHomogenousCoordinate())).z(); // compute the depth in the update pose frame
 		}
 	}
 
@@ -77,6 +83,8 @@ void DepthSolver::updatePointDepths(Frame& f)
 
 /*
  * i could completely remove this if I move updated elements to the back of the vector once everything is done
+ *
+ * HOWEVER, this runs in about 0.02 ms so I think its good enough
  */
 void DepthSolver::sortFeaturesByNeedForUpdate(std::vector<Feature*>& feature_ptrs)
 {

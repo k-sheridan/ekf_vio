@@ -63,6 +63,7 @@ void Point::addObservation(Feature* ft)
 	if(_observations.size() == 0)
 	{
 		this->initial_camera_pose = ft->getParentFrame()->getPose();
+		this->last_update_pose = this->initial_camera_pose; // set last update pose
 		this->initial_homogenous_pixel = ft->getHomogenousCoord();
 	}
 

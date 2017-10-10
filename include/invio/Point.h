@@ -59,7 +59,8 @@ public:
 
 	int frames_since_depth_update; // keeps track of the frame count since this point has last been updated
 
-	double last_update_t2d; // the translation to depth ratio last used for a depth update
+	Sophus::SE3d last_update_pose; // the pose last used for a depth update
+	double last_update_pose_depth; // the depth of the feature in the last update pose
 
 	bool guessed; // this should be set if a points depth is a complete guess
 
