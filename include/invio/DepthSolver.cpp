@@ -16,12 +16,76 @@ DepthSolver::~DepthSolver() {
 	// TODO Auto-generated destructor stub
 }
 
+
 void DepthSolver::updatePointDepths(Frame& f)
 {
+	ros::Time start;
+	if(ANALYZE_RUNTIME)
+	{
+		start = ros::Time::now();
+	}
+
+	std::vector<Feature*> feature_ptrs;
+
+	feature_ptrs.reserve(f.features.size());
+
 	for(auto& e : f.features)
 	{
-		this->solveAndUpdatePointDepth(e.getPoint(), f.getPose_inv() * e.getPoint()->getInitialCameraPose(), e.getHomogenousCoord());
+		if(e.obsolete) // skip if this point has been flagged for deletion
+		{
+			continue;
+		}
+
+		feature_ptrs.push_back(&e); // add the feature
+
+		//increment the frame count for each point
+		e.getPoint()->frames_since_depth_update++;
 	}
+
+	// sort in order of need for update descending
+	this->sortFeaturesByNeedForUpdate(feature_ptrs);
+
+	int updates = 0;
+
+	for(auto& e : feature_ptrs)
+	{
+		if(updates >= MAX_DEPTH_UPDATES_PER_FRAME) // stop once enough points have been updated
+		{
+			break;
+		}
+
+		//compute the translation/depth ratio
+		double t2d = (f.getPose().translation() - e->getPoint()->getInitialCameraPose().translation()).norm() / e->getPoint()->getDepth();
+
+		if(t2d >= MIN_T2D) // if the camera has translated enough perform an update
+		{
+			ROS_DEBUG_STREAM("updating a feature with a translation ratio of: " << t2d);
+
+			this->solveAndUpdatePointDepth(e->getPoint(), f.getPose_inv() * e->getPoint()->getInitialCameraPose(), e->getHomogenousCoord());
+
+			updates++; // another update has been performed (even if it is bad or failed)
+
+			e->getPoint()->frames_since_depth_update = 0; // reset the frame counter because this feature just had an update
+		}
+	}
+
+	if(ANALYZE_RUNTIME)
+	{
+		ROS_INFO_STREAM("depth update runtime: " << (ros::Time::now() - start).toSec() * 1000 << " ms");
+	}
+}
+
+/*
+ * i could completely remove this if I move updated elements to the back of the vector once everything is done
+ */
+void DepthSolver::sortFeaturesByNeedForUpdate(std::vector<Feature*>& feature_ptrs)
+{
+	// this sorts from high to low
+	struct SortComparison {
+	  bool operator() (Feature* i,Feature* j) { return (i->getPoint()->frames_since_depth_update > j->getPoint()->frames_since_depth_update);}
+	} sort_key;
+
+	std::sort(feature_ptrs.begin(), feature_ptrs.end(), sort_key);
 }
 
 bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eigen::Vector3d curr_ft)

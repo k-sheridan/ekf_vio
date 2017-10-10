@@ -57,6 +57,10 @@ private:
 public:
 
 
+	int frames_since_depth_update; // keeps track of the frame count since this point has last been updated
+
+	double last_update_t2d; // the translation to depth ratio last used for a depth update
+
 	bool guessed; // this should be set if a points depth is a complete guess
 
 	bool moba_candidate; // if the point should be evaluated for moba integration

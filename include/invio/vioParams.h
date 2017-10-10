@@ -58,7 +58,10 @@
 #define D_MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION 7
 
 // the minimum ratio of translation to avg scene depth
-#define D_T2ASD 0.1
+#define D_MIN_T2D 0.1
+
+// the maximum number of features whose depth will be updated each frame
+#define D_MAX_DEPTH_UPDATES_PER_FRAME 10
 
 // the variance when a point becomes a motion estimation candidate
 #define D_MOBA_CANDIDATE_VARIANCE 0.2
@@ -163,7 +166,10 @@ int MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION;
 int MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION;
 
 // the minimum ratio of translation to avg scene depth
-double T2ASD;
+double MIN_T2D;
+
+// the maximum number of features whose depth will be updated each frame
+double MAX_DEPTH_UPDATES_PER_FRAME;
 
 // the maximum error a feature can have after an optim
 // if the error for a point is greater than this after an optimization it is deleted (to remove possible outliers)

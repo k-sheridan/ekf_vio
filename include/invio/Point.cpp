@@ -16,6 +16,7 @@ Point::Point()
 	this->immature = true;
 	this->guessed = false;
 	this->moba_candidate = false;
+	this->frames_since_depth_update = 0;
 	//this->thisPoint = 0;
 
 }
@@ -28,6 +29,7 @@ Point::Point(Feature* ft){
 	this->immature = true;
 	this->guessed = false;
 	this->moba_candidate = false;
+	this->frames_since_depth_update = 0;
 	//this->thisPoint = 0;
 }
 
@@ -45,6 +47,8 @@ Point::Point(Feature* ft, std::list<Point>::iterator _thisPoint, std::list<Point
 	this->variance = DEFAULT_POINT_STARTING_VARIANCE;
 	this->theMap = _map;
 	this->thisPoint = _thisPoint;
+
+	this->frames_since_depth_update = 0;
 }
 
 void Point::addObservation(Feature* ft)
@@ -78,19 +82,19 @@ void Point::safelyDeletePoint()
 	//ROS_ASSERT(this->observations().size() <= 100);
 
 
-	for(auto& e : this->observations())
+	/*for(auto& e : this->observations())
 	{
 		ROS_DEBUG_STREAM("check feature (" << e << ") pos for deleted memory" << e->px);
 		e->setPoint(NULL); // null the point reference
 		e->obsolete = true;
 
-		/*
+
 		if(e->frame->finalFrame) // this is the last frame in the buffer do not search past this point due to potential dangling pointer
 		{
 			ROS_DEBUG("breaking out of point deletion dereferencer because the final frame has been passed");
 			break;
-		}*/
-	}
+		}
+	}*/
 
 	ROS_DEBUG_STREAM("point deleting itself");
 

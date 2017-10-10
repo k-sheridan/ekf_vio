@@ -22,6 +22,8 @@ public:
 
 	bool solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eigen::Vector3d curr_ft);
 
+	void sortFeaturesByNeedForUpdate(std::vector<Feature*>& feature_ptrs);
+
 };
 
 #endif /* INVIO_INCLUDE_INVIO_DEPTHSOLVER_H_ */

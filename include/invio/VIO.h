@@ -81,6 +81,8 @@ public:
 
 	void addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t);
 
+	void removeExcessFrames(std::deque<Frame>& buffer);
+
 	void flowFeatures(Frame& last_f, Frame& new_f);
 
 	double getHuberWeight(double error);

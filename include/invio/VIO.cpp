@@ -159,6 +159,18 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 	ROS_DEBUG_STREAM("map size: " << this->map.size());
 
 	ROS_ERROR_COND(this->tracking_lost, "lost tracking!");
+
+	//finally remove excess frames from the buffer
+	this->removeExcessFrames(this->frame_buffer);
+}
+
+void VIO::removeExcessFrames(std::deque<Frame>& buffer)
+{
+	// remove the last element if the buffer is larger than the desired size
+	if(buffer.size() > (size_t)FRAME_BUFFER_SIZE)
+	{
+		buffer.pop_back();
+	}
 }
 
 void VIO::flowFeatures(Frame& last_f, Frame& new_f) {
@@ -192,7 +204,7 @@ void VIO::flowFeatures(Frame& last_f, Frame& new_f) {
 
 	std::list<Feature>::iterator last_f_feat_iter = last_f.features.begin();
 
-	for (int i = 0; i < status.size(); i++) {
+	for (int i = 0; (size_t)i < status.size(); i++) {
 		//TODO remove features at too high of a radius
 		if (status.at(i) == 1 && !last_f_feat_iter->obsolete && new_f.isPixelInBox(newPoints.at(i))) { // new - check if the feature is obsolete and remove it if it is
 			Feature updated_feature = (*last_f_feat_iter);
@@ -283,7 +295,7 @@ bool VIO::MOBA(Frame& f, double& tension, bool useImmature)
 
 	int edgeCount = edges.size();
 
-	if(edgeCount < 3)
+	if(edgeCount < 4)
 	{
 		ROS_DEBUG_STREAM("too few edges to do motion only BA");
 		return false;
@@ -295,7 +307,7 @@ bool VIO::MOBA(Frame& f, double& tension, bool useImmature)
 	error2_vec.resize(edgeCount);
 
 	//run the motion only bundle adjustment
-	for(size_t iter = 0; iter < MOBA_MAX_ITERATIONS; iter++)
+	for(size_t iter = 0; iter < (size_t)MOBA_MAX_ITERATIONS; iter++)
 	{
 
 		b.setZero();
@@ -410,7 +422,7 @@ void VIO::replenishFeatures(Frame& f) {
 
 	ROS_DEBUG_STREAM("current 2d feature count: " << f.features.size());
 
-	if (f.features.size() < NUM_FEATURES) {
+	if (f.features.size() < (size_t)NUM_FEATURES) {
 		std::vector<cv::KeyPoint> fast_kp;
 
 		cv::FAST(img, fast_kp, FAST_THRESHOLD, true);
@@ -433,7 +445,7 @@ void VIO::replenishFeatures(Frame& f) {
 			cv::circle(checkImg, e.px, MIN_NEW_FEATURE_DIST, cv::Scalar(255), -1);
 		}
 
-		for (int i = 0; i < needed && i < fast_kp.size(); i++) {
+		for (int i = 0; i < needed && (size_t)i < fast_kp.size(); i++) {
 			/*if (this->state.features.size() > 0) {
 			 //make sure that this corner is not too close to any old corners
 			 std::vector<float> query;
@@ -514,7 +526,6 @@ std::vector<cv::Point2f> VIO::getPixels2fInOrder(Frame& f) {
 
 	return pixels;
 }
-
 
 
 void VIO::publishInsight(Frame& f)
@@ -689,7 +700,8 @@ void VIO::parseROSParams()
 	ros::param::param<int>("~frame_buffer_size", FRAME_BUFFER_SIZE, D_FRAME_BUFFER_SIZE);
 	ros::param::param<int>("~minimum_keyframe_count_for_optimization", MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION, D_MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION);
 	ros::param::param<int>("~maximum_keyframe_count_for_optimization", MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION, D_MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION);
-	ros::param::param<double>("~keyframe_translation_ratio", T2ASD, D_T2ASD);
+	ros::param::param<double>("~depth_translation_ratio", MIN_T2D, D_MIN_T2D);
+	ros::param::param<double>("~max_depth_updates_per_frame", MAX_DEPTH_UPDATES_PER_FRAME, D_MAX_DEPTH_UPDATES_PER_FRAME);
 	ros::param::param<double>("~maximum_reprojection_error", MAXIMUM_REPROJECTION_ERROR, D_MAXIMUM_REPROJECTION_ERROR);
 	ros::param::param<double>("~moba_candidate_variance", MOBA_CANDIDATE_VARIANCE, D_MOBA_CANDIDATE_VARIANCE);
 	ros::param::param<double>("~maximum_candidate_reprojection_error", MAXIMUM_CANDIDATE_REPROJECTION_ERROR, D_MAXIMUM_CANDIDATE_REPROJECTION_ERROR);

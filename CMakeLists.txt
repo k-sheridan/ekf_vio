@@ -70,7 +70,7 @@ target_link_libraries(vioFrame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_
 add_library(depthSolver include/invio/DepthSolver.cpp)
 target_link_libraries(depthSolver ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioPoint vioFrame)
 
-add_library(full_vio include/invio/VIO.cpp)
+add_library(full_vio include/invio/VIO.h include/invio/VIO.cpp)
 target_link_libraries(full_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioFrame depthSolver)
 
 add_executable(invio_node src/invio_node.cpp)
