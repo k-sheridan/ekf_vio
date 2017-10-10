@@ -450,6 +450,28 @@ bool VIO::MOBA(Frame& f, double& perPixelError, bool useImmature)
 		index++;
 	}
 
+	// evaluate all moba candidates for whether they are outliers or inliers
+	for(auto& e : f.features)
+	{
+		if(e.getPoint()->moba_candidate && e.getPoint()->isImmature())
+		{
+			double squared_error = (e.getMetricPixel() - Point::toMetricPixel((currentGuess * e.getPoint()->getWorldCoordinate()))).squaredNorm();
+
+			if(squared_error <= MAXIMUM_CANDIDATE_REPROJECTION_ERROR)
+			{
+				ROS_DEBUG_STREAM("allow candidate into moba problem with reprojection error: " << squared_error);
+
+				// set this feature to mature because it is an inlier with the current motion estimate
+				e.getPoint()->setImmature(false);
+			}
+			else
+			{
+				ROS_DEBUG_STREAM("removing candidate with reprojection error: " << squared_error);
+				e.obsolete = true; // flag the feature for deletion because it is likely an outlier
+			}
+		}
+	}
+
 
 	return true;
 }
@@ -832,13 +854,14 @@ void VIO::parseROSParams()
 	ros::param::param<int>("~maximum_keyframe_count_for_optimization", MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION, D_MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION);
 	ros::param::param<double>("~keyframe_translation_ratio", T2ASD, D_T2ASD);
 	ros::param::param<double>("~maximum_reprojection_error", MAXIMUM_REPROJECTION_ERROR, D_MAXIMUM_REPROJECTION_ERROR);
+	ros::param::param<double>("~moba_candidate_variance", MOBA_CANDIDATE_VARIANCE, D_MOBA_CANDIDATE_VARIANCE);
+	ros::param::param<double>("~maximum_candidate_reprojection_error", MAXIMUM_CANDIDATE_REPROJECTION_ERROR, D_MAXIMUM_CANDIDATE_REPROJECTION_ERROR);
 	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
 	ros::param::param<double>("~default_point_depth_variance", DEFAULT_POINT_STARTING_VARIANCE, D_DEFAULT_POINT_STARTING_VARIANCE);
 	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);
 	ros::param::param<double>("~eps_sba", EPS_SBA, D_EPS_SBA);
 	ros::param::param<double>("~huber_width", HUBER_WIDTH, D_HUBER_WIDTH);
 	ros::param::param<double>("~minumum_depth_determinant", MINIMUM_DEPTH_DETERMINANT, D_MINIMUM_DEPTH_DETERMINANT);
-	ros::param::param<double>("~max_range_per_depth", MAX_RANGE_PER_DEPTH, D_MAX_RANGE_PER_DEPTH);
 	ros::param::param<int>("~moba_max_iterations", MOBA_MAX_ITERATIONS, D_MOBA_MAX_ITERATIONS);
 	ros::param::param<int>("~sba_max_iterations", SBA_MAX_ITERATIONS, D_SBA_MAX_ITERATIONS);
 	ros::param::param<double>("~max_point_z", MAX_POINT_Z, D_MAX_POINT_Z);

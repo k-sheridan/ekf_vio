@@ -15,6 +15,7 @@ Point::Point()
 	this->theMap = NULL;
 	this->immature = true;
 	this->guessed = false;
+	this->moba_candidate = false;
 	//this->thisPoint = 0;
 
 }
@@ -26,6 +27,7 @@ Point::Point(Feature* ft){
 	this->theMap = NULL;
 	this->immature = true;
 	this->guessed = false;
+	this->moba_candidate = false;
 	//this->thisPoint = 0;
 }
 
@@ -38,6 +40,7 @@ Point::Point(Feature* ft, std::list<Point>::iterator _thisPoint, std::list<Point
 
 	this->immature = true;
 	this->guessed = false;
+	this->moba_candidate = false;
 
 	this->variance = DEFAULT_POINT_STARTING_VARIANCE;
 	this->theMap = _map;

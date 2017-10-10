@@ -54,7 +54,7 @@
 #define D_MINIMUM_TRACKABLE_FEATURES 4
 
 // the amount of frames to store for feature optimization
-#define D_FRAME_BUFFER_SIZE 200
+#define D_FRAME_BUFFER_SIZE 2
 
 // the number of times a feature must be observed before allowed to be optimized
 #define D_MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION 4
@@ -63,8 +63,17 @@
 // the minimum ratio of translation to avg scene depth
 #define D_T2ASD 0.1
 
+// the variance when a point becomes a motion estimation candidate
+#define D_MOBA_CANDIDATE_VARIANCE 0.2
+
+
+//OUTLIER DETECTION
+
 // the maximum error a feature can have after moba
 #define D_MAXIMUM_REPROJECTION_ERROR 0.0005
+
+// the maximum reprojection error a candidate can have before it is allowed into the moba problem
+#define D_MAXIMUM_CANDIDATE_REPROJECTION_ERROR 0.00005
 
 // default point depth used for initialization in meters
 #define D_DEFAULT_POINT_DEPTH 0.5
@@ -83,13 +92,6 @@
 //min and maximum point depths in meters
 #define D_MAX_POINT_Z 10
 #define D_MIN_POINT_Z 0.02
-
-//OUTLIER DETECTION
-#define D_MAX_RANGE_PER_DEPTH 0.1
-
-
-//if the ppe of our planar odometry exceeds this value we have lost odometry
-#define D_MAXIMUM_VO_PPE 7.0
 
 //END VISUAL ODOM
 
@@ -172,6 +174,13 @@ double T2ASD;
 // the maximum error a feature can have after an optim
 // if the error for a point is greater than this after an optimization it is deleted (to remove possible outliers)
 double MAXIMUM_REPROJECTION_ERROR;
+
+// the maximum reprojection error a candidate can have before it is allowed into the moba problem
+double MAXIMUM_CANDIDATE_REPROJECTION_ERROR;
+
+
+// the variance when a point becomes a motion estimation candidate
+double MOBA_CANDIDATE_VARIANCE;
 
 // default point depth used for initialization in meters
 double DEFAULT_POINT_DEPTH;

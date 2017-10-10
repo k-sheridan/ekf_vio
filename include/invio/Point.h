@@ -59,6 +59,8 @@ public:
 
 	bool guessed; // this should be set if a points depth is a complete guess
 
+	bool moba_candidate; // if the point should be evaluated for moba integration
+
 	double temp_depth;
 
 

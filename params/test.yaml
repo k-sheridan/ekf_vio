@@ -11,6 +11,9 @@ default_point_depth_variance: 1000
 huber_width: 1e-8 
 maximum_reprojection_error: 0.001
 
+maximum_candidate_reprojection_error: 0.0005
+moba_candidate_variance: 10
+
 inverse_image_scale: 2
 kill_box_width: 300
 kill_box_height: 210

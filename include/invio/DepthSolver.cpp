@@ -79,7 +79,11 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 
 	pt->updateDepth(depth, variance);
 	
-	pt->setImmature(false); // once a measurement has come in this point becomes mature
+	//check if the feature has converged enough to become a candidate
+	if(pt->getVariance() <= MOBA_CANDIDATE_VARIANCE)
+	{
+		pt->moba_candidate = true; // flag for final step before moba integration or deletion
+	}
 
 	return true;
 
