@@ -28,6 +28,8 @@ public:
 	cv::Mat img;
 	ros::Time t;
 
+	double undistorted_width, undistorted_height; // used for border weight computation.
+
 	Frame();
 	Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t);
 

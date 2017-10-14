@@ -42,6 +42,8 @@ private:
 
 	Point* point;
 
+	double border_weight; // the precomputed border wieght which is used during MOBA
+
 public:
 
 	bool obsolete;
@@ -66,6 +68,14 @@ public:
 	{
 		point = pt;
 	}
+
+	double getBorderWeight()
+	{
+		return border_weight;
+	}
+
+
+	void computeBorderWeight();
 
 	Eigen::Vector2d getMetricPixel();
 	Eigen::Vector3d getHomogenousCoord();

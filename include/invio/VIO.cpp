@@ -288,6 +288,8 @@ bool VIO::MOBA(Frame& f, double& tension, bool useImmature)
 			{
 				ROS_DEBUG_STREAM("using position for moba: " << e.getPoint()->getWorldCoordinate());
 
+				e.computeBorderWeight(); // precompute the border weight of this edge
+
 				edges.push_back(&e);
 			}
 		}
@@ -326,7 +328,7 @@ bool VIO::MOBA(Frame& f, double& tension, bool useImmature)
 
 
 			SQUARED_ERROR = e.squaredNorm();
-			double weight = this->getHuberWeight(sqrt(SQUARED_ERROR)) / std::pow((*it)->getPoint()->getVariance(), 2);
+			double weight = this->getHuberWeight(sqrt(SQUARED_ERROR)) * (*it)->getBorderWeight() / std::pow((*it)->getPoint()->getVariance(), 2);
 
 			ROS_DEBUG_STREAM("edge error2: " << SQUARED_ERROR);
 
@@ -692,8 +694,8 @@ void VIO::parseROSParams()
 	ros::param::param<double>("~fast_blur_sigma", FAST_BLUR_SIGMA, D_FAST_BLUR_SIGMA);
 	ros::param::param<double>("~inverse_image_scale", INVERSE_IMAGE_SCALE, D_INVERSE_IMAGE_SCALE);
 	ros::param::param<bool>("~analyze_runtime", ANALYZE_RUNTIME, D_ANALYZE_RUNTIME);
-	ros::param::param<int>("~kill_box_width", KILL_BOX_WIDTH, D_KILL_BOX_WIDTH);
-	ros::param::param<int>("~kill_box_height", KILL_BOX_HEIGHT, D_KILL_BOX_HEIGHT);
+	ros::param::param<int>("~kill_pad", KILL_PAD, D_KILL_PAD);
+	ros::param::param<double>("~border_weight_exponent", BORDER_WEIGHT_EXPONENT, D_BORDER_WEIGHT_EXPONENT);
 	ros::param::param<double>("~min_klt_eigen_val", KLT_MIN_EIGEN, D_KLT_MIN_EIGEN);
 	ros::param::param<double>("~min_new_feature_dist", MIN_NEW_FEATURE_DIST, D_MIN_NEW_FEATURE_DIST);
 	ros::param::param<int>("~num_features", NUM_FEATURES, D_NUM_FEATURES);

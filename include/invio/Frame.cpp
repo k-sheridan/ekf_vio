@@ -20,6 +20,10 @@ Frame::Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t)
 	this->t = _t;
 
 
+	//TODO make work for different rectification cases
+	this->undistorted_width = this->img.cols;
+	this->undistorted_height = this->img.rows;
+
 }
 
 Frame::~Frame() {
@@ -100,9 +104,7 @@ void Frame::setPose_inv(Sophus::SE3d tf){
 
 bool Frame::isPixelInBox(cv::Point2f px)
 {
-	int centerX = this->img.cols / 2.0;
-	int centerY = this->img.rows / 2.0;
-	if(abs((int)px.x - centerX) > KILL_BOX_WIDTH || abs((int)px.y - centerY) > KILL_BOX_HEIGHT)
+	if(px.x < KILL_PAD || px.y < KILL_PAD || this->img.cols - px.x < KILL_PAD || this->img.rows - px.y < KILL_PAD)
 	{
 		ROS_DEBUG_STREAM("pixel is outside of kill box");
 		return false;

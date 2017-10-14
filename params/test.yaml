@@ -16,6 +16,8 @@ max_depth_updates_per_frame: 200
 huber_width: 1e-3
 maximum_reprojection_error: 0.001
 
+border_weight_exponent: 6
+
 maximum_candidate_reprojection_error: 0.0001
 moba_candidate_variance: 10
 

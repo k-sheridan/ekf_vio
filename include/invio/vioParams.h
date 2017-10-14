@@ -26,14 +26,14 @@
 //analyze the function times
 #define D_ANALYZE_RUNTIME true
 
-// the radius to remove features at in pixels
-#define D_KILL_BOX_WIDTH 110
-#define D_KILL_BOX_HEIGHT 110
+#define D_KILL_PAD 11
 
 // the minimum feature eigen val where it is determined as lost
 #define D_KLT_MIN_EIGEN 1e-4
 
 #define D_HUBER_WIDTH 1e-5
+
+#define D_BORDER_WEIGHT_EXPONENT 10
 
 // the minimum pixel distance a feature must have between a previous feature
 #define D_MIN_NEW_FEATURE_DIST 30
@@ -136,9 +136,8 @@ double INVERSE_IMAGE_SCALE;
 //analyze the function times
 bool ANALYZE_RUNTIME;
 
-// the radius to remove features at in pixels
-int KILL_BOX_WIDTH;
-int KILL_BOX_HEIGHT;
+// the distance from the image border where a feature is marginalized
+int KILL_PAD;
 
 // the minimum feature eigen val where it is determined as lost
 double KLT_MIN_EIGEN;
@@ -192,6 +191,9 @@ double EPS_MOBA;
 
 // the huber width for robust moba
 double HUBER_WIDTH;
+
+// the exponent for the border weight function
+double BORDER_WEIGHT_EXPONENT;
 
 // the minimum determinant of the linear systems used to determine the depth of the first observation
 double MINIMUM_DEPTH_DETERMINANT;
