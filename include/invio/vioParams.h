@@ -83,7 +83,7 @@
 #define D_EPS_SBA 0.0000000001
 #define D_EPS_MOBA 0.000001
 
-#define D_MINIMUM_DEPTH_DETERMINANT 0.0000001
+#define D_MINIMUM_DEPTH_DETERMINANT 0.001
 
 //max iterations for gausss newton
 #define D_MOBA_MAX_ITERATIONS 10

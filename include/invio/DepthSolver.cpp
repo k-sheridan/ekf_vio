@@ -104,7 +104,7 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 
 	//Eigen::Vector3d projected3 = (measured_vector.dot(epiline) / epiline.dot(epiline)) * epiline + cf_2_rf.translation();
 	// this is the final projected point
-	Eigen::Vector3d projected_ft; 
+	Eigen::Vector3d projected_ft;
 	
 	//projected_ft << (projected3(0) / projected3(2)), (projected3(1) / projected3(2)), 1.0;
 
@@ -116,6 +116,8 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 	Eigen::Matrix<double,3,2> A; A << epiline, projected_ft;
 
 	const Eigen::Matrix2d AtA = A.transpose()*A;
+
+	double AtA_det = AtA.determinant();
 
 	if(AtA.determinant() < MINIMUM_DEPTH_DETERMINANT)
 	{
@@ -135,7 +137,8 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 
 	//double chi2 = pow(projected_ref_ft(0)/projected_ref_ft(2) - curr_ft(0), 2) + pow(projected_ref_ft(1)/projected_ref_ft(2) - curr_ft(1), 2);
 
-	Eigen::Vector3d t = cf_2_rf.inverse().translation();
+	//Angle variance
+	/*Eigen::Vector3d t = cf_2_rf.inverse().translation();
 	Eigen::Vector3d d = depth*pt->getInitialHomogenousCoordinate();
 	Eigen::Vector3d t2d = d - t;
 
@@ -147,7 +150,11 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 
 	double variance = 1 / pow(sine_theta_d_t + DBL_MIN, 2);
 
-	ROS_DEBUG_STREAM("updating point with depth: " << depth << " and variance: " << variance << "where the sine is: " << sine_theta_d_t);
+	ROS_DEBUG_STREAM("updating point with depth: " << depth << " and variance: " << variance << "where the sine is: " << sine_theta_d_t);*/
+
+	double variance = 1 / AtA_det;
+
+	ROS_DEBUG_STREAM("updating point with depth: " << depth << " and determinant: " << AtA_det);
 
 	pt->updateDepth(depth, variance);
 	

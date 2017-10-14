@@ -326,7 +326,7 @@ bool VIO::MOBA(Frame& f, double& tension, bool useImmature)
 
 
 			SQUARED_ERROR = e.squaredNorm();
-			double weight = this->getHuberWeight(sqrt(SQUARED_ERROR)) / (*it)->getPoint()->getVariance();
+			double weight = this->getHuberWeight(sqrt(SQUARED_ERROR)) / std::pow((*it)->getPoint()->getVariance(), 2);
 
 			ROS_DEBUG_STREAM("edge error2: " << SQUARED_ERROR);
 
@@ -544,7 +544,7 @@ void VIO::publishInsight(Frame& f)
 	maxDepth = 2.0 * this->frame_buffer.front().getAverageFeatureDepth();
 
 	//temp
-	maxDepth = 2.0;
+	maxDepth = 5;
 
 
 
