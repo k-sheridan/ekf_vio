@@ -11,7 +11,13 @@
 Point::Point()
 {
 	deleted = false;
-	this->variance = DEFAULT_POINT_STARTING_VARIANCE;
+
+	this->Sigma.setIdentity();
+
+	this->Sigma(0, 0) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
+	this->Sigma(1, 1) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
+	this->Sigma(2, 2) = DEFAULT_POINT_DEPTH_VARIANCE;
+
 	this->theMap = NULL;
 	this->immature = true;
 	this->guessed = false;
@@ -24,7 +30,13 @@ Point::Point()
 Point::Point(Feature* ft){
 	this->addObservation(ft); // add this observation to the deque
 	deleted = false;
-	this->variance = DEFAULT_POINT_STARTING_VARIANCE;
+
+	this->Sigma.setIdentity();
+
+	this->Sigma(0, 0) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
+	this->Sigma(1, 1) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
+	this->Sigma(2, 2) = DEFAULT_POINT_DEPTH_VARIANCE;
+
 	this->theMap = NULL;
 	this->immature = true;
 	this->guessed = false;
@@ -44,7 +56,12 @@ Point::Point(Feature* ft, std::list<Point>::iterator _thisPoint, std::list<Point
 	this->guessed = false;
 	this->moba_candidate = false;
 
-	this->variance = DEFAULT_POINT_STARTING_VARIANCE;
+	this->Sigma.setIdentity();
+
+	this->Sigma(0, 0) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
+	this->Sigma(1, 1) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
+	this->Sigma(2, 2) = DEFAULT_POINT_DEPTH_VARIANCE;
+
 	this->theMap = _map;
 	this->thisPoint = _thisPoint;
 
@@ -63,8 +80,11 @@ void Point::addObservation(Feature* ft)
 	if(_observations.size() == 0)
 	{
 		this->initial_camera_pose = ft->getParentFrame()->getPose();
+		this->initial_camera_pose_inv = this->initial_camera_pose.inverse();
 		this->last_update_pose = this->initial_camera_pose; // set last update pose
-		this->initial_homogenous_pixel = ft->getHomogenousCoord();
+
+		this->mu.head(2) = ft->getMetricPixel(); // set the first two values of mu
+
 	}
 
 	_observations.push_front(ft);
@@ -111,29 +131,41 @@ void Point::safelyDeletePoint()
 
 /*
  * bayesian update step for the depth of the first observed feature
- * this function also tracks the minimum and maximum observed depth for outlier removal
  */
-void Point::updateDepth(double measurement, double in_variance)
+void Point::update(Eigen::Vector3d measurement, Eigen::Vector3d sigmas)
 {
-	ROS_ASSERT(in_variance > 0);
-	double K = this->variance / (this->variance + in_variance);
+	ROS_ASSERT(sigmas(0)*sigmas(1)*sigmas(2) != 0.0);
 
-	this->depth = this->depth + K*(measurement - this->depth);
-	this->variance = (1 - K)*this->variance;
+	//u
+	double K_0 = this->Sigma(0, 0) / (this->Sigma(0, 0) + sigmas(0));
+	this->mu(0) = this->mu(0) + K_0*(measurement(0) - this->mu(0));
+	this->Sigma(0, 0) = (1 - K_0)*this->Sigma(0, 0);
+
+	//v
+	double K_1 = this->Sigma(1, 1) / (this->Sigma(1, 1) + sigmas(1));
+	this->mu(1) = this->mu(1) + K_1*(measurement(1) - this->mu(1));
+	this->Sigma(1, 1) = (1 - K_1)*this->Sigma(1, 1);
+
+	//d
+	double K_2 = this->Sigma(2, 2) / (this->Sigma(2, 2) + sigmas(2));
+	this->mu(2) = this->getDepth() + K_2*(measurement(2) - this->getDepth());
+	this->Sigma(2, 2) = (1 - K_2)*this->Sigma(2, 2);
+
+
 
 	if(guessed)
 	{
 		// set the min/max to the current point
-		this->min_depth = this->max_depth = measurement;
+		this->min_depth = this->max_depth = measurement(2);
 		this->guessed = false; // we got a measurement so it is nolonger a guessed point
 	}
 	else
 	{
-		if(measurement > max_depth)
-			max_depth = measurement;
+		if(measurement(2) > max_depth)
+			max_depth = measurement(2);
 
-		if(measurement < min_depth)
-			min_depth = measurement;
+		if(measurement(2) < min_depth)
+			min_depth = measurement(2);
 	}
 }
 

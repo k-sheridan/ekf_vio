@@ -22,10 +22,11 @@ VIO::VIO() {
 
 	image_transport::ImageTransport it(nh);
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
-			CAMERA_TOPIC, 20, &VIO::camera_callback, this);
+			CAMERA_TOPIC, 10, &VIO::camera_callback, this);
 
 	if(PUBLISH_INSIGHT){
 		this->insight_pub = nh.advertise<sensor_msgs::Image>(INSIGHT_TOPIC, 1);
+		this->insight_cinfo_pub = nh.advertise<sensor_msgs::CameraInfo>(INSIGHT_CINFO_TOPIC, 1);
 	}
 
 	this->odom_pub = nh.advertise<nav_msgs::Odometry>(ODOM_TOPIC, 1);
@@ -328,7 +329,7 @@ bool VIO::MOBA(Frame& f, double& tension, bool useImmature)
 
 
 			SQUARED_ERROR = e.squaredNorm();
-			double weight = this->getHuberWeight(sqrt(SQUARED_ERROR)) * (*it)->getBorderWeight() / std::pow((*it)->getPoint()->getVariance(), 2);
+			double weight = this->getHuberWeight(sqrt(SQUARED_ERROR)) * (*it)->getBorderWeight() / std::pow((*it)->getPoint()->getDepthVariance(), 2);
 
 			ROS_DEBUG_STREAM("edge error2: " << SQUARED_ERROR);
 
@@ -509,7 +510,7 @@ void VIO::replenishFeatures(Frame& f) {
 
 			f.features.back().getPoint()->last_update_pose_depth = f.features.back().getPoint()->getDepth();
 
-			f.features.back().getPoint()->setVariance(DEFAULT_POINT_STARTING_VARIANCE);
+			f.features.back().getPoint()->setDepthVariance(DEFAULT_POINT_DEPTH_VARIANCE);
 
 			//important set the point to guessed so the range of measurements is accurate
 			f.features.back().getPoint()->guessed = true;
@@ -539,50 +540,56 @@ void VIO::publishInsight(Frame& f)
 
 	cv::cvtColor(f.img, img, CV_GRAY2BGR);
 
-	double minDepth = MIN_POINT_Z;
-	double maxDepth = 1;
-
-	//run depth comp just in case
-	maxDepth = 2.0 * this->frame_buffer.front().getAverageFeatureDepth();
-
-	//temp
-	maxDepth = 5;
-
-
-
 	for(auto& e : frame_buffer.front().features)
 	{
 		if(!e.obsolete)
 		{
 			if(e.getPoint()->isImmature())
 			{
-				cv::drawMarker(img, e.px, cv::Scalar(0, 255, 255), cv::MARKER_STAR, 5);
+				cv::drawMarker(img, e.px, cv::Scalar(255, 255, 0), cv::MARKER_CROSS, 5, 2);
 			}
 			else
 			{
-				uchar intensity = std::min((e.getPoint()->temp_depth - minDepth) / (maxDepth - minDepth), 1.0) * 255;
-
-
-
-				//ROS_DEBUG_STREAM("plotting depth: " << e.getPoint()->temp_depth);
-
-				cv::Mat in = cv::Mat(1, 1, CV_8UC1);
-				in.at<uchar>(0, 0) = intensity;
-
-				cv::Mat out;
-				cv::applyColorMap(in, out, cv::COLORMAP_RAINBOW);
-
-				int markerSize = std::min((int)((e.getPoint()->getVariance() / 10) * (MAX_VARIANCE_SIZE - MIN_VARIANCE_SIZE) + MIN_VARIANCE_SIZE), MAX_VARIANCE_SIZE);
-
-				cv::drawMarker(img, e.px, out.at<cv::Vec3b>(0, 0), cv::MARKER_SQUARE, markerSize);
+				e.computeBorderWeight();
+				cv::drawMarker(img, e.px, cv::Scalar(0, 255, 0, 0.1), cv::MARKER_SQUARE, 20, 2);
 			}
 		}
 	}
 
+	sensor_msgs::CameraInfo cinfo;
+
+	cinfo.header.frame_id = ODOM_FRAME;
+	cinfo.header.stamp = f.t;
+
+	cinfo.height = img.rows;
+	cinfo.width = img.cols;
+
+	cinfo.K.at(0) = f.K.at<float>(0);
+	cinfo.K.at(1) = f.K.at<float>(1);
+	cinfo.K.at(2) = f.K.at<float>(2);
+	cinfo.K.at(3) = f.K.at<float>(3);
+	cinfo.K.at(4) = f.K.at<float>(4);
+	cinfo.K.at(5) = f.K.at<float>(5);
+	cinfo.K.at(6) = f.K.at<float>(6);
+	cinfo.K.at(7) = f.K.at<float>(7);
+	cinfo.K.at(8) = f.K.at<float>(8);
+
+	//TODO make it the actual projection mat
+	cinfo.P.at(0) = f.K.at<float>(0);
+	cinfo.P.at(2) = f.K.at<float>(2);
+	cinfo.P.at(5) = f.K.at<float>(4);
+	cinfo.P.at(6) = f.K.at<float>(5);
+	cinfo.P.at(10) = 1.0;
+
+	//TODO add distortion coeffs
+
+	this->insight_cinfo_pub.publish(cinfo);
+
 	cv_bridge::CvImage cv_img;
 
 	cv_img.image = img;
-	cv_img.header.frame_id = CAMERA_FRAME;
+	cv_img.header.frame_id = ODOM_FRAME;
+	cv_img.header.stamp = f.t;
 	cv_img.encoding = sensor_msgs::image_encodings::BGR8;
 
 	this->insight_pub.publish(cv_img.toImageMsg());
@@ -690,6 +697,7 @@ void VIO::parseROSParams()
 {
 	ros::param::param<bool>("~publish_insight", PUBLISH_INSIGHT, D_PUBLISH_INSIGHT);
 	ros::param::param<std::string>("~insight_topic", INSIGHT_TOPIC, D_INSIGHT_TOPIC);
+	ros::param::param<std::string>("~insight_camera_info_topic", INSIGHT_CINFO_TOPIC, D_INSIGHT_CINFO_TOPIC);
 	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, D_FAST_THRESHOLD);
 	ros::param::param<double>("~fast_blur_sigma", FAST_BLUR_SIGMA, D_FAST_BLUR_SIGMA);
 	ros::param::param<double>("~inverse_image_scale", INVERSE_IMAGE_SCALE, D_INVERSE_IMAGE_SCALE);
@@ -711,7 +719,8 @@ void VIO::parseROSParams()
 	ros::param::param<double>("~moba_candidate_variance", MOBA_CANDIDATE_VARIANCE, D_MOBA_CANDIDATE_VARIANCE);
 	ros::param::param<double>("~maximum_candidate_reprojection_error", MAXIMUM_CANDIDATE_REPROJECTION_ERROR, D_MAXIMUM_CANDIDATE_REPROJECTION_ERROR);
 	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
-	ros::param::param<double>("~default_point_depth_variance", DEFAULT_POINT_STARTING_VARIANCE, D_DEFAULT_POINT_STARTING_VARIANCE);
+	ros::param::param<double>("~default_point_depth_variance", DEFAULT_POINT_DEPTH_VARIANCE, D_DEFAULT_POINT_DEPTH_VARIANCE);
+	ros::param::param<double>("~default_point_homogenous_variance", DEFAULT_POINT_HOMOGENOUS_VARIANCE, D_DEFAULT_POINT_HOMOGENOUS_VARIANCE);
 	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);
 	ros::param::param<double>("~eps_sba", EPS_SBA, D_EPS_SBA);
 	ros::param::param<double>("~huber_width", HUBER_WIDTH, D_HUBER_WIDTH);

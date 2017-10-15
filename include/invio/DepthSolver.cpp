@@ -57,13 +57,19 @@ void DepthSolver::updatePointDepths(Frame& f)
 		//compute the change in translation/depth ratio
 		double t2d = ((f.getPose().translation() - e->getPoint()->last_update_pose.translation()).norm() / e->getPoint()->last_update_pose_depth);
 
+		double depth_in_current_frame;
+
+		Sophus::SE3d cf_2_rf;
+
 		if(t2d >= MIN_T2D) // if the camera has translated enough perform an update
 		{
 			ROS_DEBUG_STREAM("updating a feature with a translation ratio of: " << t2d);
 
-			Sophus::SE3d cf_2_rf = f.getPose_inv() * e->getPoint()->getInitialCameraPose();
+			Sophus::SE3d rf_2_cf = e->getPoint()->getInitialCameraPose_inv() * f.getPose();
 
-			this->solveAndUpdatePointDepth(e->getPoint(), cf_2_rf, e->getHomogenousCoord());
+			cf_2_rf = rf_2_cf.inverse();
+
+			this->solveAndUpdatePointDepth(e->getPoint(), rf_2_cf, cf_2_rf, e->getHomogenousCoord(), depth_in_current_frame);
 
 			updates++; // another update has been performed (even if it is bad or failed)
 
@@ -96,24 +102,15 @@ void DepthSolver::sortFeaturesByNeedForUpdate(std::vector<Feature*>& feature_ptr
 	std::sort(feature_ptrs.begin(), feature_ptrs.end(), sort_key);
 }
 
-bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eigen::Vector3d curr_ft)
+bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d rf_2_cf, Sophus::SE3d cf_2_rf, Eigen::Vector3d curr_ft, double& depth_in_current_frame)
 {
-	// first orthogonally project the current feature onto the epiline
-	Eigen::Vector3d epiline = cf_2_rf.rotationMatrix() * pt->getInitialHomogenousCoordinate();
-	//Eigen::Vector3d measured_vector = curr_ft - cf_2_rf.translation();
 
-	//Eigen::Vector3d projected3 = (measured_vector.dot(epiline) / epiline.dot(epiline)) * epiline + cf_2_rf.translation();
-	// this is the final projected point
-	Eigen::Vector3d projected_ft;
-	
-	//projected_ft << (projected3(0) / projected3(2)), (projected3(1) / projected3(2)), 1.0;
+	// stereo depth estimate of feature in current frame
 
-	projected_ft = curr_ft;
-
-	//ROS_INFO_STREAM("original: " << curr_ft << " projected: " << projected_ft);
+	Eigen::Vector3d epiline = rf_2_cf.rotationMatrix() * curr_ft;
 
 	//solve for the depth
-	Eigen::Matrix<double,3,2> A; A << epiline, projected_ft;
+	Eigen::Matrix<double,3,2> A; A << epiline, pt->getInitialHomogenousCoordinate();
 
 	const Eigen::Matrix2d AtA = A.transpose()*A;
 
@@ -125,12 +122,15 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 	    return false;
 	}
 
-	const Eigen::Vector2d depth2 = - AtA.inverse()*A.transpose()*cf_2_rf.translation();
+	const Eigen::Vector2d depth2 = - AtA.inverse()*A.transpose()*rf_2_cf.translation();
 
 	double depth = fabs(depth2[0]);
 
 	if(depth < MIN_POINT_Z || depth > MAX_POINT_Z)
+	{
+		ROS_DEBUG_STREAM("point at extreme depth");
 		return false;
+	}
 
 	//evaluate the reprojection error
 	//Eigen::Vector3d projected_ref_ft = (cf_2_rf * (depth * pt->getInitialHomogenousCoordinate()));
@@ -138,8 +138,8 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 	//double chi2 = pow(projected_ref_ft(0)/projected_ref_ft(2) - curr_ft(0), 2) + pow(projected_ref_ft(1)/projected_ref_ft(2) - curr_ft(1), 2);
 
 	//Angle variance
-	Eigen::Vector3d t = cf_2_rf.inverse().translation();
-	Eigen::Vector3d d = depth*pt->getInitialHomogenousCoordinate();
+	Eigen::Vector3d t = cf_2_rf.translation();
+	Eigen::Vector3d d = depth*curr_ft;
 	Eigen::Vector3d t2d = d - t;
 
 	double d_norm = d.norm();
@@ -150,16 +150,20 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d cf_2_rf, Eige
 
 	double variance = 1 / pow(sine_theta_d_t + DBL_MIN, 2);
 
-	ROS_DEBUG_STREAM("updating point with depth: " << depth << " and variance: " << variance << "where the sine is: " << sine_theta_d_t);
+	ROS_DEBUG_STREAM("updating point with depth: " << depth << " and depth variance: " << variance << "where the sine is: " << sine_theta_d_t);
 
-	//double variance = 1 / AtA_det;
 
-	//ROS_DEBUG_STREAM("updating point with depth: " << depth << " and determinant: " << AtA_det);
+	//TODO find good homogeneous variance
+	Eigen::Vector3d point_in_rf = rf_2_cf * (depth * curr_ft); // transform the measured point into the reference frame
 
-	pt->updateDepth(depth, variance);
+	Eigen::Vector3d sigma = Eigen::Vector3d(2 * DEFAULT_POINT_HOMOGENOUS_VARIANCE, 2 * DEFAULT_POINT_HOMOGENOUS_VARIANCE, variance);
+
+	Eigen::Vector3d z = Eigen::Vector3d(point_in_rf(0) / point_in_rf(2), point_in_rf(1) / point_in_rf(2), point_in_rf(2));
+
+	pt->update(z, sigma);
 	
 	//check if the feature has converged enough to become a candidate
-	if(pt->getVariance() <= MOBA_CANDIDATE_VARIANCE)
+	if(pt->getDepthVariance() <= MOBA_CANDIDATE_VARIANCE)
 	{
 		pt->moba_candidate = true; // flag for final step before moba integration or deletion
 	}

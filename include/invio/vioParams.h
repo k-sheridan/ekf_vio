@@ -14,6 +14,7 @@
 
 #define D_PUBLISH_INSIGHT true
 #define D_INSIGHT_TOPIC "invio/insight"
+#define D_INSIGHT_CINFO_TOPIC "invio/camera_info"
 
 //VISUAL ODOM
 //fast corner detector for planar odometry
@@ -77,7 +78,9 @@
 
 // default point depth used for initialization in meters
 #define D_DEFAULT_POINT_DEPTH 0.5
-#define D_DEFAULT_POINT_STARTING_VARIANCE 1000
+#define D_DEFAULT_POINT_DEPTH_VARIANCE 1000
+
+#define D_DEFAULT_POINT_HOMOGENOUS_VARIANCE 0.5
 
 // epsilon for convergence in structure bundle adjustment and motion
 #define D_EPS_SBA 0.0000000001
@@ -102,6 +105,7 @@
 #define D_POINTS_TOPIC "invio/points"
 #define D_ODOM_FRAME "invio_odom"
 
+
 // this topic will serve as a last resort for realignment
 #define D_POINTCLOUD_TOPIC "guidance/points2"
 #define D_POINTCLOUD_FRAME "guidance"
@@ -122,6 +126,7 @@
 //ROS PARAMS
 bool PUBLISH_INSIGHT;
 std::string INSIGHT_TOPIC;
+std::string INSIGHT_CINFO_TOPIC;
 
 int MAX_VARIANCE_SIZE, MIN_VARIANCE_SIZE;
 
@@ -183,7 +188,10 @@ double MOBA_CANDIDATE_VARIANCE;
 
 // default point depth used for initialization in meters
 double DEFAULT_POINT_DEPTH;
-double DEFAULT_POINT_STARTING_VARIANCE;
+double DEFAULT_POINT_DEPTH_VARIANCE;
+
+// initially this is a fairly certain value, but not infinitely certain. we allow the homogeneous part to drift slightly with more measurements
+double DEFAULT_POINT_HOMOGENOUS_VARIANCE;
 
 // epsilon for convergence in structure bundle adjustment and motion
 double EPS_SBA;

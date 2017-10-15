@@ -61,7 +61,7 @@ public:
 
 	tf::Transform b2c, c2b, c2imu, c2stereo;
 
-	ros::Publisher insight_pub, odom_pub, points_pub;
+	ros::Publisher insight_pub, insight_cinfo_pub, odom_pub, points_pub;
 
 	bool velocity_set;
 	Eigen::Vector3d omega, velocity; // meant to store the last angular and linear velocity

@@ -12,6 +12,8 @@
 #include <sophus/se3.hpp>
 #include "../invio/vioParams.h"
 
+#include "sensor_msgs/CameraInfo.h"
+
 class Feature;
 
 class Frame {

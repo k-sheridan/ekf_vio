@@ -36,13 +36,12 @@ private:
 	bool deleted;
 	bool immature;
 
-	double variance; // the uncertainty of this point's depth
+	Eigen::Matrix3d Sigma; // sigma of the mu
 
-	double depth; // depth of point in first frame in meters
-
-	Eigen::Vector3d initial_homogenous_pixel; // the homogenous pixel where the feature was first observed
+	Eigen::Vector3d mu; // u (homogeneous), v (homogeneous), depth
 
 	Sophus::SE3d initial_camera_pose; // the w2c pose when the feature was first observed
+	Sophus::SE3d initial_camera_pose_inv; // the c2w pose when the feature was first observed
 
 	double max_depth, min_depth; // the maximum and minumum observed depths. used for outlier detection
 
@@ -96,7 +95,7 @@ public:
 	Eigen::Vector3d getWorldCoordinate()
 	{
 		ROS_ASSERT(!deleted);
-		return this->initial_camera_pose * (this->depth * this->initial_homogenous_pixel);
+		return this->initial_camera_pose * Eigen::Vector3d(mu(0) * mu(2), mu(1) * mu(2), mu(2));
 	}
 
 	std::deque<Feature*>& getObservations(){return _observations;}
@@ -110,29 +109,28 @@ public:
 	bool isImmature(){return immature;}
 	void setImmature(bool val){immature = val;}
 
-	double getVariance()
+	double getDepthVariance()
 	{
-		return variance;
+		return this->Sigma(2, 2);
 	}
 
-	double setVariance(double var){
-		this->variance = var;
+	void setDepthVariance(double var){
+		this->Sigma(2, 2) = var;
 	}
 
 	double getDepth(){
-		return depth;
+		return mu(2);
 	}
 
-	double getRangePerDepth(){
-		ROS_ASSERT(this->depth != 0);
-		return (this->max_depth - this->min_depth) / this->depth;
+	double getRange(){
+		return (this->max_depth - this->min_depth);
 	}
 
 	/*
 	 * the coord at initial obs
 	 */
 	Eigen::Vector3d getInitialHomogenousCoordinate(){
-		return initial_homogenous_pixel;
+		return Eigen::Vector3d(mu(0), mu(1), 1.0);
 	}
 
 	/*
@@ -142,11 +140,15 @@ public:
 		return initial_camera_pose;
 	}
 
-	void setDepth(double d){
-		this->depth = d;
+	Sophus::SE3d getInitialCameraPose_inv(){
+		return initial_camera_pose_inv;
 	}
 
-	void updateDepth(double measurement, double in_variance);
+	void setDepth(double d){
+		this->mu(2) = d;
+	}
+
+	void update(Eigen::Vector3d measurement, Eigen::Vector3d sigmas);
 
 	bool isDeleted()
 	{
