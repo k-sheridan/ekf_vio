@@ -5,7 +5,7 @@ fast_threshold: 50
 depth_translation_ratio: 0.02
 
 default_point_depth: 0.5
-default_point_depth_variance: 1e5
+default_point_depth_variance: 1000
 
 minumum_depth_determinant: 0.001
 
@@ -13,13 +13,16 @@ minumum_depth_determinant: 0.001
 max_depth_updates_per_frame: 200
 
 # this is the norm not squared norm
-huber_width: 1e-3
-maximum_reprojection_error: 0.001
+huber_width: 1e-4
+maximum_reprojection_error: 0.005
 
-border_weight_exponent: 6
+border_weight_exponent: 8
 
-maximum_candidate_reprojection_error: 0.0001
-moba_candidate_variance: 10
+maximum_candidate_reprojection_error: 0.001
+moba_candidate_variance: 5
+
+moba_max_iterations: 20
+eps_moba: 0.00000001
 
 inverse_image_scale: 2
 kill_box_width: 300
