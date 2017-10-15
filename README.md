@@ -1,31 +1,31 @@
 # invio
 ## Indirect Visual Inertial Odometry algorithm.
-Developed by Kevin Sheridan(@Trexter), Purdue University.
+Developed by Kevin Sheridan, Purdue University.
 
 ## Purpose and Intended Use
 invio was developed for ROS and uses a few ROS tools like tf and the rosconsole. In addition to standard ROS libraries, this algorithm extensively uses OpenCV 3.0/2.0, Sophus and Eigen.
 
-This algorithm is intended to be used with a downward facing, **high framerate (>30fps)**, **high horizontal field of view (>90 degrees)**, **global shutter** camera, but it should still work with most other configurations. It is important that the camera is facing a textured well lit planar surface when initializing.
+This algorithm is intended to be used with a downward facing, **high framerate (>30fps)**, **high horizontal field of view (>90 degrees)**, **global shutter** camera, but it should still work with most other configurations. It is important that the camera is facing a textured well lit planar surface when initializing. I have been trying to get good results with forward facing results, and in some cases it is working well.
 
 The best scenario for invio is the bottom facing camera scenario. In this scenario there is very little occlusions and a lot of parallax for depth estimation. The forward facing scenario is the most difficult one because there are many occlusions and sometimes very little parallax to determine the depth of pixels accurately. Currently the forward facing scenario is working with most but not all of my datasets.
 
-An IMU is not required, but an IMU is highly reccomended. The IMU is used during the prediction step to help predict how the camera has rotated between frames. In the future I would like to use the IMU to estimate the metric scale of our initial motion so invio can be initialized from any situation if a velocity estimate is initially given to it.
+An IMU is not required, but an IMU is highly reccomended. The IMU's body frame linear accelerations and angular velocities are fused into a large state vector bewteen frames essentially predicting the pose for the next frame.
 
 ## Performance
 
 ![Small Scale Results](/images/invio1.png)
 
-I am constantly improving the performance of the algorithm while decreasing the runtime. Most recently I added occlusion detection based on the range of depth estimates. I also now compute the variance of depth measurements based on both the measured depth and its parallax.
+I am currently hevily working on this algorithm at the moment.
 
 The speed of the program per frame on a laptop (2015 Macbook Pro in my case) 
 ### runtimes per frame:
-Feature Extraction: 0.1-0.3ms
+Feature Extraction: 0.1-0.3ms (I will attempt to decrese this later)
 
-KLT Feature Tracking for 200 features: 0.8-3ms (will be decreased once IMU is fully fused)
+KLT Feature Tracking for 200 features: 0.8-3ms (decreases once IMU is fused)
 
-Motion Estimation with 20 features: 0.03 - 0.2ms (currently for debugging purposes I am using all valid features ~150 at 30ms)
+Motion Estimation with 100-300 features: 0.03 - 0.2ms 
 
-Depth Measurement and Update for 200 features: 0.5ms (in the future I will update only ~20 features per frame for speed improvement)
+Depth Measurement and Update for 200 features: 0.5ms
 
 ###Total: 1.43 - 5.43ms 
 
@@ -34,26 +34,24 @@ I run invio on 1 thread only currently so that it consumes as little CPU as poss
 
 ## Quick ROS installation guide
 
+(developed using ROS Kinetic)
+
 1. >cd ~/catkin_ws/src
 2. >git clone https://github.com/pauvsi/invio
 3. >sudo apt-get install ros-{your distribution}-sophus
 4. >cd ..
 5. >catkin_make
 
-this should compile the entire package
+this should compile the entire package. If there is an issue please create an issue on this repo!
 
 ## Development Status
 
 - [x] initialize with guessed uniform depth estimate of all features and estimate camera motion
 - [x] optimize depths of new points when they are added
 - [x] publish odometry message
-- [ ] remove old frames from the buffer safely preventing the algorithm from using an extremely high amount of memory
+- [x] remove old frames from the buffer safely preventing the algorithm from using an extremely high amount of memory
 - [ ] integrate imu readings
 - [ ] determine fast and accurate params and increase speed
 - [ ] add third party initialization through rosservice
 - [ ] add realtime reinitialization feature
 - [ ] add more initialization methods
-
-## Closed Source Version
-
-if you would like a closed source version with more sensor integration please contact Kevin Sheridan @Trexter.
