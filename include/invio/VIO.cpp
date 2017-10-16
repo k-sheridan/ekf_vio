@@ -551,7 +551,9 @@ void VIO::publishInsight(Frame& f)
 			else
 			{
 				e.computeBorderWeight();
-				cv::drawMarker(img, e.px, cv::Scalar(0, 255, 0, 0.1), cv::MARKER_SQUARE, 20, 2);
+
+				//ROS_INFO_STREAM(e.getBorderWeight());
+				cv::drawMarker(img, e.px, cv::Scalar(0, e.getBorderWeight() * 255, 0), cv::MARKER_SQUARE, 20, 2);
 			}
 		}
 	}

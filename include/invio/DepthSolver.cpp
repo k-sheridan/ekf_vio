@@ -156,7 +156,7 @@ bool DepthSolver::solveAndUpdatePointDepth(Point* pt, Sophus::SE3d rf_2_cf, Soph
 	//TODO find good homogeneous variance
 	Eigen::Vector3d point_in_rf = rf_2_cf * (depth * curr_ft); // transform the measured point into the reference frame
 
-	Eigen::Vector3d sigma = Eigen::Vector3d(2 * DEFAULT_POINT_HOMOGENOUS_VARIANCE, 2 * DEFAULT_POINT_HOMOGENOUS_VARIANCE, variance);
+	Eigen::Vector3d sigma = Eigen::Vector3d(variance, variance, variance);
 
 	Eigen::Vector3d z = Eigen::Vector3d(point_in_rf(0) / point_in_rf(2), point_in_rf(1) / point_in_rf(2), point_in_rf(2));
 

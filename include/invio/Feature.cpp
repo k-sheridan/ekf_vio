@@ -33,7 +33,7 @@ Eigen::Vector2d Feature::getMetricPixel() {
 void Feature::computeBorderWeight()
 {
 	ROS_ASSERT(this->parentFrame != NULL);
-	this->border_weight = -std::pow(std::max(std::fabs((this->px.x - this->parentFrame->undistorted_width / 2.0) / (this->parentFrame->undistorted_width - KILL_PAD*2)),
-			std::fabs((this->px.y - this->parentFrame->undistorted_height / 2.0) / (this->parentFrame->undistorted_height - KILL_PAD*2))), BORDER_WEIGHT_EXPONENT) + 1.0;
+	this->border_weight = -std::pow(std::max(std::fabs(2.0 * (this->px.x - getParentFrame()->K(2)) / (this->parentFrame->undistorted_width - KILL_PAD)),
+			std::fabs(2.0 * (this->px.y - getParentFrame()->K(5)) / (this->parentFrame->undistorted_height - KILL_PAD))), BORDER_WEIGHT_EXPONENT) + 1.0;
 }
 
