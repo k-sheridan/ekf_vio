@@ -1,4 +1,4 @@
-# invio
+# invio (still under heavy development)
 ## INdirect VIsual Inertial Odometry.
 Developed by Kevin Sheridan, Purdue University.
 
