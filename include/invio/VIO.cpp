@@ -11,10 +11,8 @@ VIO::VIO() {
 
 	//set uninitialized
 	this->initialized = false;
-	//set tracking lost to false initialially
+	//set tracking lost to false initially
 	this->tracking_lost = false;
-	// initially we do not know our velocities
-	this->velocity_set = false;
 
 	ros::NodeHandle nh; // we all know what this is
 
@@ -600,7 +598,7 @@ void VIO::publishInsight(Frame& f)
 
 void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 {
-	nav_msgs::Odometry msg;
+	/*nav_msgs::Odometry msg;
 	static tf::TransformBroadcaster br;
 
 	tf::Transform currentPose = (c2b * Frame::sophus2tf(new_f.getPose()));
@@ -646,7 +644,7 @@ void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 
 	//TODO add convariance computation
 
-	this->odom_pub.publish(msg); // publish
+	this->odom_pub.publish(msg); // publish*/
 
 }
 
