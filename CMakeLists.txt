@@ -67,6 +67,9 @@ target_link_libraries(vioFeature ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen
 add_library(vioFrame include/invio/Frame.cpp)
 target_link_libraries(vioFrame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature)
 
+add_library(vioPoseEKF include/invio/PoseEKF.cpp)
+target_link_libraries(vioPoint ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams)
+
 add_library(depthSolver include/invio/DepthSolver.cpp)
 target_link_libraries(depthSolver ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioPoint vioFrame)
 
