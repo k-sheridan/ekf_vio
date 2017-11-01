@@ -47,6 +47,10 @@ Runs using 1 thread.
 
 this should compile the entire package. If there is an issue please create an issue on this repo!
 
+## Usage
+
+You must provide a rectified mono image with a corresponding camera info on topics /camera/image_rect and /camera/camera_info respectively. This is temporary.
+
 ## Development Status
 
 - [x] initialize with guessed uniform depth estimate of all features and estimate camera motion
