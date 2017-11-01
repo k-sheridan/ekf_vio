@@ -18,6 +18,9 @@ VIO::VIO() {
 
 	this->parseROSParams();
 
+	// initialize EKF
+	this->pose_ekf = PoseEKF(ros::Time::now()); //TODO make sure this is ok
+
 	image_transport::ImageTransport it(nh);
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
 			CAMERA_TOPIC, 10, &VIO::camera_callback, this);
