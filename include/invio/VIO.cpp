@@ -601,14 +601,14 @@ void VIO::publishInsight(Frame& f)
 
 void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 {
-	/*nav_msgs::Odometry msg;
+	nav_msgs::Odometry msg;
 	static tf::TransformBroadcaster br;
 
 	tf::Transform currentPose = (c2b * Frame::sophus2tf(new_f.getPose()));
 
 	br.sendTransform(tf::StampedTransform(Frame::sophus2tf(new_f.getPose()), new_f.t, WORLD_FRAME, ODOM_FRAME));
 
-	tf::Transform delta = (c2b * Frame::sophus2tf(last_f.getPose())).inverse() * currentPose;
+	/*tf::Transform delta = (c2b * Frame::sophus2tf(last_f.getPose())).inverse() * currentPose;
 
 	double dt = (new_f.t - last_f.t).toSec();
 
