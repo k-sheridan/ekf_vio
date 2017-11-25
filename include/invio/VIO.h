@@ -40,8 +40,7 @@
 #include "../invio/Frame.h"
 #include <sophus/types.hpp>
 #include "../invio/vioParams.h"
-#include <DepthSolver.h>
-#include <PoseEKF.h>
+#include <TightlyCoupledEKF.h>
 
 class VIO {
 public:
@@ -53,8 +52,6 @@ public:
 	ros::Time timer_start;
 
 	std::deque<Frame> frame_buffer; // stores all frames and pose estimates at this frames
-
-	std::list<Point> map; // this is a list of all active 3d points
 
 	tf::TransformListener tf_listener;
 

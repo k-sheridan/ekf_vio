@@ -29,10 +29,7 @@
 #include <tf/tfMessage.h>
 
 #include "../invio/Frame.h"
-#include "../invio/Point.h"
 #include "../invio/vioParams.h"
-
-class Point; // tell it that point is a class
 
 class Frame; // need to tell the feature that there is something called frame
 
@@ -40,7 +37,9 @@ class Feature {
 private:
 	Frame* parentFrame;
 
-	Point* point;
+	cv::Point2f px; // undistorted pixel coordinate
+
+	double depth; // the current depth estimate
 
 	double border_weight; // the precomputed border wieght which is used during MOBA
 
@@ -48,25 +47,16 @@ public:
 
 	bool obsolete;
 
-	cv::Point2f px;
-
 	Feature();
 	Feature(Frame* parent, cv::Point2f px);
 	virtual ~Feature();
 
 	Frame* getParentFrame(){ROS_ASSERT(parentFrame != NULL); return parentFrame;}
 
-	Point* getPoint(){ ROS_ASSERT(point != NULL); return point;}
-
 	void setParentFrame(Frame* f)
 	{
 		ROS_ASSERT(f != NULL);
 		parentFrame = f;
-	}
-
-	void setPoint(Point* pt)
-	{
-		point = pt;
 	}
 
 	double getBorderWeight()
