@@ -16,13 +16,10 @@ Frame::Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t)
 {
 
 	this->img = _img;
-	this->K = _k;
+
 	this->t = _t;
 
-
-	//TODO make work for different rectification cases
-	this->undistorted_width = this->img.cols;
-	this->undistorted_height = this->img.rows;
+	this->K << _k(0), _k(1), _k(2), _k(3), _k(4), _k(5), _k(6), _k(7), _k(8);
 
 }
 
