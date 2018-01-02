@@ -31,44 +31,22 @@
 #include "../invio/Frame.h"
 #include "../invio/vioParams.h"
 
+#include <Eigen/Core>
+
 class Frame; // need to tell the feature that there is something called frame
 
 class Feature {
 private:
-	Frame* parentFrame;
 
-	cv::Point2f px; // undistorted pixel coordinate
-
-	double depth; // the current depth estimate
-
-	double border_weight; // the precomputed border wieght which is used during MOBA
+	Eigen::Vector3d mu;
 
 public:
 
-	bool obsolete;
-
 	Feature();
-	Feature(Frame* parent, cv::Point2f px);
+	Feature();
 	virtual ~Feature();
 
-	Frame* getParentFrame(){ROS_ASSERT(parentFrame != NULL); return parentFrame;}
-
-	void setParentFrame(Frame* f)
-	{
-		ROS_ASSERT(f != NULL);
-		parentFrame = f;
-	}
-
-	double getBorderWeight()
-	{
-		return border_weight;
-	}
-
-
-	void computeBorderWeight();
-
 	Eigen::Vector2d getMetricPixel();
-	Eigen::Vector3d getHomogenousCoord();
 
 };
 
