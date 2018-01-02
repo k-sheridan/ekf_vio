@@ -18,9 +18,6 @@ VIO::VIO() {
 
 	this->parseROSParams();
 
-	// initialize EKF
-	this->pose_ekf = PoseEKF(ros::Time::now()); //TODO make sure this is ok
-
 	image_transport::ImageTransport it(nh);
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
 			CAMERA_TOPIC, 10, &VIO::camera_callback, this);
@@ -175,247 +172,12 @@ void VIO::removeExcessFrames(std::deque<Frame>& buffer)
 	}
 }
 
-void VIO::flowFeatures(Frame& last_f, Frame& new_f) {
-	if(ANALYZE_RUNTIME){
-		this->startTimer();
-	}
-
-	std::vector<cv::Point2f> oldPoints = this->getPixels2fInOrder(last_f);
-
-	if(oldPoints.size() == 0)
-		return;
-
-	//ROS_DEBUG_STREAM_ONCE("got " << oldPoints.size() << " old point2fs from the oldframe which has " << oldFrame.features.size() << " features");
-	std::vector<cv::Point2f> newPoints;
-
-	std::vector<uchar> status; // status vector for each point
-	cv::Mat error; // error vector for each point
-
-	ROS_DEBUG("before klt");
-
-	cv::calcOpticalFlowPyrLK(last_f.img, new_f.img, oldPoints, newPoints,
-			status, error, cv::Size(21, 21), 3,
-			cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS,
-					30, 0.01), 0, KLT_MIN_EIGEN);
-
-	ROS_DEBUG("after klt");
-
-	std::vector<Feature> flowedFeatures;
-
-	int lostFeatures = 0;
-
-	std::list<Feature>::iterator last_f_feat_iter = last_f.features.begin();
-
-	for (int i = 0; (size_t)i < status.size(); i++) {
-		//TODO remove features at too high of a radius
-		if (status.at(i) == 1 && !last_f_feat_iter->obsolete && new_f.isPixelInBox(newPoints.at(i))) { // new - check if the feature is obsolete and remove it if it is
-			Feature updated_feature = (*last_f_feat_iter);
-
-			updated_feature.px = newPoints.at(i); // set feature's new pixel location
-
-			updated_feature.setParentFrame(&new_f); // set this features parent frame
-
-			new_f.features.push_back(updated_feature); // add the new feature
-
-			//add this feature to the point's observation buffer with the frame's feature buffer memory location
-			new_f.features.back().getPoint()->addObservation(&(new_f.features.back()));
-
-		} else {
-			lostFeatures++;
-			// this feature is lost so we should/must safely null all references to it and remove it from the map
-			last_f_feat_iter->getPoint()->safelyDeletePoint();
-		}
-
-		last_f_feat_iter++;
-	}
-
-	ROS_DEBUG_STREAM("VO LOST " << lostFeatures << "FEATURES");
-
-	if (ANALYZE_RUNTIME){
-		this->stopTimer("tracking");
-	}
-
-}
-
-bool VIO::optimizePose(Frame& f, double& tension)
-{
-	if(ANALYZE_RUNTIME){
-		this->startTimer();
-	}
-
-	bool pass = false;
-
-	pass = this->MOBA(f, tension, false);
-
-	if(ANALYZE_RUNTIME){
-		this->stopTimer("pose optimization");
-	}
-
-	return pass;
-}
-
-double VIO::getHuberWeight(double error)
-{
-	if(error <= HUBER_WIDTH)
-	{
-		return 1.0;
-	}
-	else
-	{
-		return HUBER_WIDTH / error;
-	}
-}
-
-bool VIO::MOBA(Frame& f, double& tension, bool useImmature)
-{
-	double chi2(0.0);
-	std::vector<double> error2_vec;
-#define SQUARED_ERROR error2_vec[index]
-
-	std::vector<Feature*> edges;
-
-	Sophus::SE3d currentGuess = f.getPose_inv(); // stores the current best guess
-
-	Sophus::Matrix6d A; //LHS
-	Sophus::Vector6d b; //RHS
-
-	ROS_DEBUG_STREAM("start trans " << currentGuess.translation());
-
-	//store all valid edges
-	for(auto& e : f.features)
-	{
-		if(!e.obsolete)
-		{
-			if(useImmature || !e.getPoint()->isImmature())
-			{
-				ROS_DEBUG_STREAM("using position for moba: " << e.getPoint()->getWorldCoordinate());
-
-				e.computeBorderWeight(); // precompute the border weight of this edge
-
-				edges.push_back(&e);
-			}
-		}
-	}
-
-	int edgeCount = edges.size();
-
-	if(edgeCount < 4)
-	{
-		ROS_DEBUG_STREAM("too few edges to do motion only BA");
-		return false;
-	}
-
-	ROS_DEBUG_STREAM("found " << edgeCount << " valid points for MOBA");
-
-	//reserve the space for all chi2 of edges
-	error2_vec.resize(edgeCount);
-
-	//run the motion only bundle adjustment
-	for(size_t iter = 0; iter < (size_t)MOBA_MAX_ITERATIONS; iter++)
-	{
-
-		b.setZero();
-		A.setZero();
-		double new_chi2(0.0);
-
-		int index = 0;
-
-		// compute residual
-		for(auto it=edges.begin(); it!=edges.end(); ++it)
-		{
-			Matrix26d J;
-			Eigen::Vector3d xyz_f(currentGuess * (*it)->getPoint()->getWorldCoordinate());
-			Frame::jacobian_xyz2uv(xyz_f, J);
-			Eigen::Vector2d e = (*it)->getMetricPixel() - Point::toMetricPixel(xyz_f);
-
-
-			SQUARED_ERROR = e.squaredNorm();
-			double weight = this->getHuberWeight(sqrt(SQUARED_ERROR)) * (*it)->getBorderWeight() / std::pow((*it)->getPoint()->getDepthVariance(), 2);
-
-			ROS_DEBUG_STREAM("edge error2: " << SQUARED_ERROR);
-
-			A.noalias() += J.transpose()*J*weight;
-			b.noalias() -= J.transpose()*e*weight;
-			new_chi2 += SQUARED_ERROR * weight;
-
-			index++;
-		}
-
-		// solve linear system
-		const Sophus::Vector6d dT(A.ldlt().solve(b));
-
-		// check if error increased
-		if((iter > 0 && new_chi2 > chi2) || (bool) std::isnan((double)dT[0]))
-		{
-			ROS_DEBUG_STREAM("it " << iter << "\t FAILURE \t new_chi2 = " << new_chi2);
-			break;
-		}
-
-		// update the model
-		currentGuess = Sophus::SE3d::exp(dT)*currentGuess;
-		chi2 = new_chi2;
-
-		ROS_DEBUG_STREAM("optimized trans: " << currentGuess.translation());
-
-		ROS_DEBUG_STREAM("it " << iter << "\t Success \t new_chi2 = " << new_chi2 << "\t norm(dT) = " << dT.norm());
-
-		// stop when converged
-		if(dT.norm() <= EPS_MOBA)
-			break;
-	}
-
-	ROS_DEBUG_STREAM("optimized trans: " << currentGuess.translation());
-
-	f.setPose_inv(currentGuess); // set the new optimized pose
-
-
-	//remove outliers
-	int index = 0;
-	for(auto it=edges.begin(); it!=edges.end(); ++it)
-	{
-		if(error2_vec[index] > MAXIMUM_REPROJECTION_ERROR) // if the error after robust moba is too high we call this point an outlier and remove it so it cannot yank the estimate next time
-		{
-			ROS_DEBUG_STREAM("removing feature with reprojection error: " << error2_vec[index]);
-
-			(*it)->obsolete = true; // set this feature to obsolete so it is nolonger tracked and deleted later
-		}
-
-		index++;
-	}
-
-	// evaluate all moba candidates for whether they are outliers or inliers
-	for(auto& e : f.features)
-	{
-		if(e.getPoint()->moba_candidate && e.getPoint()->isImmature())
-		{
-			double squared_error = (e.getMetricPixel() - Point::toMetricPixel((currentGuess * e.getPoint()->getWorldCoordinate()))).squaredNorm();
-
-			if(squared_error <= MAXIMUM_CANDIDATE_REPROJECTION_ERROR)
-			{
-				ROS_DEBUG_STREAM("allow candidate into moba problem with reprojection error: " << squared_error);
-
-				// set this feature to mature because it is an inlier with the current motion estimate
-				e.getPoint()->setImmature(false);
-			}
-			else
-			{
-				ROS_DEBUG_STREAM("removing candidate with reprojection error: " << squared_error);
-				e.obsolete = true; // flag the feature for deletion because it is likely an outlier
-			}
-		}
-	}
-
-
-	return true;
-}
 
 /*
  * get more features after updating the pose
  */
 void VIO::replenishFeatures(Frame& f) {
-	if(ANALYZE_RUNTIME){
-		this->startTimer();
-	}
+
 	//add more features if needed
 	cv::Mat img;
 	if (FAST_BLUR_SIGMA != 0.0) {
@@ -524,16 +286,6 @@ void VIO::replenishFeatures(Frame& f) {
 	}
 }
 
-std::vector<cv::Point2f> VIO::getPixels2fInOrder(Frame& f) {
-	std::vector<cv::Point2f> pixels;
-
-	for (auto e : f.features) {
-		pixels.push_back(e.px);
-	}
-
-	return pixels;
-}
-
 
 void VIO::publishInsight(Frame& f)
 {
@@ -567,21 +319,21 @@ void VIO::publishInsight(Frame& f)
 	cinfo.height = img.rows;
 	cinfo.width = img.cols;
 
-	cinfo.K.at(0) = f.K.at<float>(0);
-	cinfo.K.at(1) = f.K.at<float>(1);
-	cinfo.K.at(2) = f.K.at<float>(2);
-	cinfo.K.at(3) = f.K.at<float>(3);
-	cinfo.K.at(4) = f.K.at<float>(4);
-	cinfo.K.at(5) = f.K.at<float>(5);
-	cinfo.K.at(6) = f.K.at<float>(6);
-	cinfo.K.at(7) = f.K.at<float>(7);
-	cinfo.K.at(8) = f.K.at<float>(8);
+	cinfo.K.at(0) = f.K(0);
+	cinfo.K.at(1) = f.K(1);
+	cinfo.K.at(2) = f.K(2);
+	cinfo.K.at(3) = f.K(3);
+	cinfo.K.at(4) = f.K(4);
+	cinfo.K.at(5) = f.K(5);
+	cinfo.K.at(6) = f.K(6);
+	cinfo.K.at(7) = f.K(7);
+	cinfo.K.at(8) = f.K(8);
 
 	//TODO make it the actual projection mat
-	cinfo.P.at(0) = f.K.at<float>(0);
-	cinfo.P.at(2) = f.K.at<float>(2);
-	cinfo.P.at(5) = f.K.at<float>(4);
-	cinfo.P.at(6) = f.K.at<float>(5);
+	cinfo.P.at(0) = f.K(0);
+	cinfo.P.at(2) = f.K(2);
+	cinfo.P.at(5) = f.K(4);
+	cinfo.P.at(6) = f.K(5);
 	cinfo.P.at(10) = 1.0;
 
 	//TODO add distortion coeffs

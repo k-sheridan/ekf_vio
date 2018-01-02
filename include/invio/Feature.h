@@ -48,6 +48,8 @@ public:
 
 	Eigen::Vector2d getMetricPixel();
 
+	double getDepth();
+
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FEATURE_H_ */

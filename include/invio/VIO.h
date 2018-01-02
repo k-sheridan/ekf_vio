@@ -38,7 +38,6 @@
 
 #include "../invio/Feature.h"
 #include "../invio/Frame.h"
-#include <sophus/types.hpp>
 #include "../invio/vioParams.h"
 #include <TightlyCoupledEKF.h>
 
@@ -49,55 +48,30 @@ public:
 	bool initialized; // has the program been initialized
 	bool tracking_lost; // do we still have tracking
 
-	ros::Time timer_start;
-
 	std::deque<Frame> frame_buffer; // stores all frames and pose estimates at this frames
 
 	tf::TransformListener tf_listener;
 
-	DepthSolver depth_solver;
-
-	PoseEKF pose_ekf;
+	TightlyCoupledEKF tc_ekf;
 
 	tf::Transform b2c, c2b, c2imu, c2stereo;
 
 	ros::Publisher insight_pub, insight_cinfo_pub, odom_pub, points_pub;
-
-	typedef Eigen::Matrix<double,2,6> Matrix26d;
 
 	VIO();
 	virtual ~VIO();
 
 	void camera_callback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::CameraInfoConstPtr& cam);
 
-	//std::vector<cv::Point2d> getPixelsInOrder(Frame& f);
-
-	std::vector<cv::Point2f> getPixels2fInOrder(Frame& f);
-
-	//std::vector<cv::Point3d> getObjectsInOrder(Frame& f);
-
 	void addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t);
 
 	void removeExcessFrames(std::deque<Frame>& buffer);
-
-	void flowFeatures(Frame& last_f, Frame& new_f);
-
-	double getHuberWeight(double error);
-
-	bool MOBA(Frame& f, double& perPixelError, bool useImmature);
-
-	bool optimizePose(Frame& f, double& ppe);
 
 	void replenishFeatures(Frame& f);
 
 	void publishInsight(Frame& f);
 
-	void publishOdometry(Frame& last_f, Frame& new_f);
-
 	void publishPoints(Frame& f);
-
-	void startTimer(){this->timer_start = ros::Time::now();}
-	void stopTimer(std::string prefix){ROS_INFO_STREAM(prefix <<": "<<(ros::Time::now() - this->timer_start).toSec() * 1000 << "ms");}
 
 	void parseROSParams();
 };
