@@ -58,23 +58,20 @@ catkin_package(
 add_library(vioParams include/invio/vioParams.h)
 set_target_properties(vioParams PROPERTIES LINKER_LANGUAGE CXX)
 
-#add_library(vioPoint include/invio/Point.cpp)
-#target_link_libraries(vioPoint ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams)
-
 add_library(vioFeature include/invio/Feature.cpp)
 target_link_libraries(vioFeature ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams)
 
 add_library(vioFrame include/invio/Frame.cpp)
 target_link_libraries(vioFrame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature)
 
-add_library(vioEKF include/invio/TightlyCoupledEKF.cpp)
-target_link_libraries(vioEKF ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams)
+add_library(vio_tc_ekf include/invio/TightlyCoupledEKF.cpp)
+target_link_libraries(vio_tc_ekf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams)
 
-#add_library(depthSolver include/invio/DepthSolver.cpp)
-#target_link_libraries(depthSolver ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioPoint vioFrame)
+#add_library(klt_tracker include/invio/KLTTracker.cpp)
+#target_link_libraries(klt_tracker ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioPoint vioFrame)
 
 add_library(full_vio include/invio/VIO.h include/invio/VIO.cpp)
-target_link_libraries(full_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioFrame vioEKF)
+target_link_libraries(full_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioFrame vio_tc_ekf klt_tracker)
 
 add_executable(invio_node src/invio_node.cpp)
 target_link_libraries(invio_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)

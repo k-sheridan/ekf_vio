@@ -36,10 +36,11 @@
 
 #include <sophus/se3.hpp>
 
-#include "../invio/Feature.h"
-#include "../invio/Frame.h"
-#include "../invio/vioParams.h"
+#include <Feature.h>
+#include <Frame.h>
+#include <vioParams.h>
 #include <TightlyCoupledEKF.h>
+#include <KLTTracker.h>
 
 class VIO {
 public:
@@ -53,6 +54,8 @@ public:
 	tf::TransformListener tf_listener;
 
 	TightlyCoupledEKF tc_ekf;
+
+	KLTTracker tracker;
 
 	tf::Transform b2c, c2b, c2imu, c2stereo;
 

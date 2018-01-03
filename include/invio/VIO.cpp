@@ -83,8 +83,7 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 	if (this->frame_buffer.size() == 0) // if this is the first frame that we are receiving
 	{
 		ROS_DEBUG("adding the first frame");
-		f.setPose(
-				Frame::tf2sophus(b2c)); // set the initial position to 0 (this is world to camera)
+		//f.setPose(Frame::tf2sophus(b2c)); // set the initial position to 0 (this is world to camera)
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
@@ -95,18 +94,16 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
 		//set the predicted pose of the current frame
-		this->frame_buffer.front().setPose(this->frame_buffer.at(1).getPose()); // temp assume zero velocity
+
 
 		// attempt to flow features into the next frame if there are features
-		this->flowFeatures(this->frame_buffer.at(1), this->frame_buffer.front());
+
 
 		// make the final determination whether or not we are initialized
 		if(!this->initialized)
 		{
-			if(this->frame_buffer.front().features.size() >= START_FEATURE_COUNT)
+			if(this->tc_ekf.features.size() >= START_FEATURE_COUNT)
 			{
-				// set all current valid features to mature
-				this->frame_buffer.front().setAllPointsMature();
 				this->initialized = true; // ready to run motion estimation
 			}
 			else
@@ -118,23 +115,8 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 
 		if(this->initialized) // run moba and depth update if initialized
 		{
-			// attempt to compute our new camera pose from flowed features and their respective depth/position
-			double ppe = 0;
-			bool moba_passed = this->optimizePose(this->frame_buffer.front(), ppe);
 
-			if(moba_passed)
-			{
-				// extract the odometry from invio and publish it
-				this->publishOdometry(this->frame_buffer.at(1), this->frame_buffer.front());
-			}
-			else
-			{
-				// moba did not pass so tracking is lost
-				this->tracking_lost = true;
-			}
 
-			// solve for the depth of the a chunk of points
-			this->depth_solver.updatePointDepths(this->frame_buffer.front());
 
 		}
 
@@ -186,14 +168,14 @@ void VIO::replenishFeatures(Frame& f) {
 		img = f.img;
 	}
 
-	ROS_DEBUG_STREAM("current 2d feature count: " << f.features.size());
+	ROS_DEBUG_STREAM("current 2d feature count: " << tc_ekf.features.size());
 
-	if (f.features.size() < (size_t)NUM_FEATURES) {
+	if (tc_ekf.features.size() < (size_t)NUM_FEATURES) {
 		std::vector<cv::KeyPoint> fast_kp;
 
 		cv::FAST(img, fast_kp, FAST_THRESHOLD, true);
 
-		int needed = NUM_FEATURES - f.features.size();
+		int needed = NUM_FEATURES - tc_ekf.features.size();
 
 		ROS_DEBUG_STREAM("need " << needed << "more features");
 
@@ -207,7 +189,7 @@ void VIO::replenishFeatures(Frame& f) {
 
 		//image which is used to check if a close feature already exists
 		cv::Mat checkImg = cv::Mat::zeros(img.size(), CV_8U);
-		for (auto& e : f.features) {
+		for (auto& e : tc_ekf.features) {
 			cv::circle(checkImg, e.px, MIN_NEW_FEATURE_DIST, cv::Scalar(255), -1);
 		}
 
