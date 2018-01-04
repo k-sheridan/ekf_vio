@@ -96,6 +96,8 @@
 #define D_MAX_POINT_Z 10
 #define D_MIN_POINT_Z 0.02
 
+#define D_MAX_PYRAMID_LEVEL 2
+
 //END VISUAL ODOM
 
 #define D_MAX_VARIANCE_SIZE 40
@@ -215,6 +217,8 @@ double MAX_POINT_Z;
 double MIN_POINT_Z;
 
 double MAX_RANGE_PER_DEPTH;
+
+int MAX_PYRAMID_LEVEL;
 
 //END VISUAL ODOM
 

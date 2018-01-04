@@ -21,6 +21,8 @@ KLTTracker::~KLTTracker()
 /*
  * the main klt tracker function
  * iteratively determines the new sub-pixel accurate feature positions in the new frame and estimates its covariance matrix
+ *
+ * the initial version of this code is not vectorized by me and ideally gets auto-vectorized by the compiler
  */
 void KLTTracker::findNewFeaturePositions(const Frame& lf, const Frame& cf, const std::vector<Eigen::Vector2f>& previous_feature_positions,
 		const std::list<Feature>& estimated_new_feature_positions, std::vector<Eigen::Vector2f>& measured_positions,
