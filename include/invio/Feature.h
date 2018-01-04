@@ -28,8 +28,8 @@
 #include <tf/tf.h>
 #include <tf/tfMessage.h>
 
-#include "../invio/Frame.h"
-#include "../invio/vioParams.h"
+#include <Frame.h>
+#include <vioParams.h>
 
 #include <Eigen/Core>
 
@@ -38,17 +38,22 @@ class Frame; // need to tell the feature that there is something called frame
 class Feature {
 private:
 
-	Eigen::Vector3d mu;
+	Eigen::Vector3d mu; // [u, v, d] (u and v are in homogenous coord)
 
 public:
 
 	Feature();
-	Feature();
 	virtual ~Feature();
 
-	Eigen::Vector2d getMetricPixel();
+	Eigen::Vector2d getNormalizedPixel();
 
 	double getDepth();
+
+	cv::Point2f getPixel(Frame& f);
+
+	static inline Eigen::Vector2d pixel2Metric(Frame& f, cv::Point2f px){
+		return Eigen::Vector2d((px.x - f.K(2)) / f.K(0), (px.y - f.K(5)) / f.K(4));
+	}
 
 };
 

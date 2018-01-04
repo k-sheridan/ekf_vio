@@ -8,7 +8,6 @@
 #ifndef PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_
 #define PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_
 
-#include "../invio/vioParams.h"
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/features2d.hpp>
@@ -20,22 +19,30 @@
 
 #include <Eigen/Core>
 
+#include <vioParams.h>
+#include <ros/ros.h>
+
 class Frame {
 
 public:
 
 	Eigen::Matrix<double, 3, 3> K;
+
+	// for now the image must be undistorted for simplicity
+	Eigen::Matrix<double, 1, 5> D; // opencv distortion coefficients
+
 	cv::Mat img;
 	ros::Time t;
 
 	double undistorted_width, undistorted_height; // used for border weight computation.
 
 	Frame();
-	Frame(cv::Mat _img, cv::Mat_<float> _k, ros::Time _t);
+	Frame(int inv_scale, cv::Mat _img, boost::array<double, 9> k, std::vector<double> d , ros::Time _t);
 
 	virtual ~Frame();
 
 	bool isPixelInBox(cv::Point2f px);
+
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FRAME_H_ */

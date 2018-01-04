@@ -66,7 +66,7 @@ public:
 
 	void camera_callback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::CameraInfoConstPtr& cam);
 
-	void addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t);
+	void addFrame(Frame f);
 
 	void removeExcessFrames(std::deque<Frame>& buffer);
 
@@ -75,6 +75,8 @@ public:
 	void publishInsight(Frame& f);
 
 	void publishPoints(Frame& f);
+
+	void publishOdometry(Frame& last_f, Frame& new_f);
 
 	void parseROSParams();
 };

@@ -66,19 +66,15 @@ void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
 
 	cv::Mat temp = cv_bridge::toCvShare(img, img->encoding)->image.clone();
 
-	cv::Mat scaled_img;
-	cv::resize(temp, scaled_img, cv::Size(temp.cols / INVERSE_IMAGE_SCALE, temp.rows / INVERSE_IMAGE_SCALE));
+	Frame f = Frame(INVERSE_IMAGE_SCALE, temp.clone(), cam->K, cam->D, img->header.stamp);
 
-	this->addFrame(scaled_img.clone(),
-			(1.0 / INVERSE_IMAGE_SCALE) * (cv::Mat_<float>(3, 3) << cam->K.at(0), cam->K.at(1), cam->K.at(2), cam->K.at(3), cam->K.at(4), cam->K.at(5), cam->K.at(6), cam->K.at(7), cam->K.at(8)),
-			img->header.stamp);
+	this->addFrame(f);
 
 	ROS_INFO_STREAM("frame dt in ms: " << (ros::Time::now() - start).toSec() * 1000.0);
 }
 
-void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
+void VIO::addFrame(Frame f) {
 
-	Frame f = Frame(img, k, t);
 
 	if (this->frame_buffer.size() == 0) // if this is the first frame that we are receiving
 	{
@@ -137,8 +133,6 @@ void VIO::addFrame(cv::Mat img, cv::Mat_<float> k, ros::Time t) {
 	//publish the mature 3d points
 	this->publishPoints(this->frame_buffer.front());
 
-	ROS_DEBUG_STREAM("map size: " << this->map.size());
-
 	ROS_ERROR_COND(this->tracking_lost, "lost tracking!");
 
 	//finally remove excess frames from the buffer
@@ -171,6 +165,9 @@ void VIO::replenishFeatures(Frame& f) {
 	ROS_DEBUG_STREAM("current 2d feature count: " << tc_ekf.features.size());
 
 	if (tc_ekf.features.size() < (size_t)NUM_FEATURES) {
+
+		std::vector<Eigen::Vector2d> new_features;
+
 		std::vector<cv::KeyPoint> fast_kp;
 
 		cv::FAST(img, fast_kp, FAST_THRESHOLD, true);
@@ -190,7 +187,7 @@ void VIO::replenishFeatures(Frame& f) {
 		//image which is used to check if a close feature already exists
 		cv::Mat checkImg = cv::Mat::zeros(img.size(), CV_8U);
 		for (auto& e : tc_ekf.features) {
-			cv::circle(checkImg, e.px, MIN_NEW_FEATURE_DIST, cv::Scalar(255), -1);
+			cv::circle(checkImg, e.getPixel(f), MIN_NEW_FEATURE_DIST, cv::Scalar(255), -1);
 		}
 
 		for (int i = 0; i < needed && (size_t)i < fast_kp.size(); i++) {
@@ -233,39 +230,15 @@ void VIO::replenishFeatures(Frame& f) {
 
 			ROS_DEBUG_STREAM("adding feature " << fast_kp.at(i).pt);
 
-			Feature new_ft;
 
-			new_ft.px = fast_kp.at(i).pt;
-			new_ft.setParentFrame(&f);
-
-			f.features.push_back(new_ft);
-
-			// important - we need to push a point onto the map
-			// pushes this feature onto the observation buffer's front
-			this->map.push_back(Point(&(f.features.back()))); // the point needs to be linked to the feature's memory location in the frame's feature buffer
-
-			f.features.back().setPoint(&(this->map.back())); // set the features point to the points pos in the map -- they are now linked with their pointers
-
-			f.features.back().getPoint()->setupMapAndPointLocation(
-					(--this->map.end()), &(this->map)); // tell the point where it is in memory via an iterator and where the map is so it can delet itself later
-
-
-			//set up point's depth and initial variance
-			f.features.back().getPoint()->setDepth(f.getAverageFeatureDepth());
-
-			f.features.back().getPoint()->last_update_pose_depth = f.features.back().getPoint()->getDepth();
-
-			f.features.back().getPoint()->setDepthVariance(DEFAULT_POINT_DEPTH_VARIANCE);
-
-			//important set the point to guessed so the range of measurements is accurate
-			f.features.back().getPoint()->guessed = true;
-
+			new_features.push_back(Feature::pixel2Metric(f, fast_kp.at(i).pt));
 
 		}
+
+		//add the new features to the current state
+		tc_ekf.addNewFeatures(new_features);
 	}
-	if(ANALYZE_RUNTIME){
-		this->stopTimer("feature extraction");
-	}
+
 }
 
 
@@ -275,22 +248,10 @@ void VIO::publishInsight(Frame& f)
 
 	cv::cvtColor(f.img, img, CV_GRAY2BGR);
 
-	for(auto& e : frame_buffer.front().features)
+	for(auto& e : tc_ekf.features)
 	{
-		if(!e.obsolete)
-		{
-			if(e.getPoint()->isImmature())
-			{
-				cv::drawMarker(img, e.px, cv::Scalar(255, 255, 0), cv::MARKER_CROSS, 5, 2);
-			}
-			else
-			{
-				e.computeBorderWeight();
-
-				//ROS_INFO_STREAM(e.getBorderWeight());
-				cv::drawMarker(img, e.px, cv::Scalar(0, e.getBorderWeight() * 255, 0), cv::MARKER_SQUARE, 20, 2);
-			}
-		}
+		//ROS_INFO_STREAM(e.getBorderWeight());
+		cv::drawMarker(img, e.getPixel(f), cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 20, 2);
 	}
 
 	sensor_msgs::CameraInfo cinfo;
@@ -338,9 +299,9 @@ void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 	nav_msgs::Odometry msg;
 	static tf::TransformBroadcaster br;
 
-	tf::Transform currentPose = (c2b * Frame::sophus2tf(new_f.getPose()));
+	//tf::Transform currentPose = (c2b * Frame::sophus2tf(new_f.getPose()));
 
-	br.sendTransform(tf::StampedTransform(Frame::sophus2tf(new_f.getPose()), new_f.t, WORLD_FRAME, ODOM_FRAME));
+	//br.sendTransform(tf::StampedTransform(Frame::sophus2tf(new_f.getPose()), new_f.t, WORLD_FRAME, ODOM_FRAME));
 
 	/*tf::Transform delta = (c2b * Frame::sophus2tf(last_f.getPose())).inverse() * currentPose;
 
@@ -388,9 +349,6 @@ void VIO::publishOdometry(Frame& last_f, Frame& new_f)
 void VIO::publishPoints(Frame& f)
 {
 
-	if(ANALYZE_RUNTIME){
-		this->startTimer();
-	}
 	sensor_msgs::PointCloud msg;
 
 	sensor_msgs::ChannelFloat32 ch;
@@ -400,6 +358,7 @@ void VIO::publishPoints(Frame& f)
 	msg.header.stamp = f.t;
 	msg.header.frame_id = ODOM_FRAME;
 
+/*
 	for(auto e : f.features)
 	{
 		if(!e.obsolete)
@@ -424,10 +383,8 @@ void VIO::publishPoints(Frame& f)
 	msg.channels.push_back(ch);
 
 	this->points_pub.publish(msg);
+*/
 
-	if(ANALYZE_RUNTIME){
-		this->stopTimer("point publish");
-	}
 }
 
 void VIO::parseROSParams()

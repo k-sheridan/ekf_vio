@@ -22,7 +22,11 @@ public:
 
 	std::list<Feature> features;
 
+	//must always be kept in sync with the feature vector
 	Eigen::MatrixXd Sigma; // stores the current uncertainty and correlations for the state (including feature positions)
+
+
+	void addNewFeatures(std::vector<Eigen::Vector2d> new_homogenous_features);
 };
 
 #endif /* INVIO_INCLUDE_INVIO_TIGHTLYCOUPLEDEKF_H_ */
