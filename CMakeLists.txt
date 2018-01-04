@@ -82,3 +82,6 @@ target_link_libraries(invio_jacobian_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES
 
 add_executable(invio_general_test test/test_general.cpp)
 target_link_libraries(invio_general_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
+
+add_executable(invio_klt_test test/klt_test.cpp)
+target_link_libraries(invio_klt_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
