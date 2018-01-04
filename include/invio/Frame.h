@@ -26,15 +26,13 @@ class Frame {
 
 public:
 
-	Eigen::Matrix<double, 3, 3> K;
+	Eigen::Matrix<float, 3, 3> K;
 
 	// for now the image must be undistorted for simplicity
-	Eigen::Matrix<double, 1, 5> D; // opencv distortion coefficients
+	Eigen::Matrix<float, 1, 5> D; // opencv distortion coefficients
 
 	cv::Mat img;
 	ros::Time t;
-
-	double undistorted_width, undistorted_height; // used for border weight computation.
 
 	Frame();
 	Frame(int inv_scale, cv::Mat _img, boost::array<double, 9> k, std::vector<double> d , ros::Time _t);

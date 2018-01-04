@@ -15,11 +15,11 @@ Feature::~Feature() {
 	// TODO Auto-generated destructor stub
 }
 
-Eigen::Vector2d Feature::getNormalizedPixel(){
-	return Eigen::Vector2d(this->mu(0), this->mu(1));
+Eigen::Vector2f Feature::getNormalizedPixel(){
+	return Eigen::Vector2f(this->mu(0), this->mu(1));
 }
 
-double Feature::getDepth(){
+float Feature::getDepth(){
 	return mu(2);
 }
 

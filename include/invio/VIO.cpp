@@ -166,7 +166,7 @@ void VIO::replenishFeatures(Frame& f) {
 
 	if (tc_ekf.features.size() < (size_t)NUM_FEATURES) {
 
-		std::vector<Eigen::Vector2d> new_features;
+		std::vector<Eigen::Vector2f> new_features;
 
 		std::vector<cv::KeyPoint> fast_kp;
 

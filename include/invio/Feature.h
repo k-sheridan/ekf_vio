@@ -38,21 +38,21 @@ class Frame; // need to tell the feature that there is something called frame
 class Feature {
 private:
 
-	Eigen::Vector3d mu; // [u, v, d] (u and v are in homogenous coord)
+	Eigen::Vector3f mu; // [u, v, d] (u and v are in homogenous coord)
 
 public:
 
 	Feature();
 	virtual ~Feature();
 
-	Eigen::Vector2d getNormalizedPixel();
+	Eigen::Vector2f getNormalizedPixel();
 
-	double getDepth();
+	float getDepth();
 
 	cv::Point2f getPixel(Frame& f);
 
-	static inline Eigen::Vector2d pixel2Metric(Frame& f, cv::Point2f px){
-		return Eigen::Vector2d((px.x - f.K(2)) / f.K(0), (px.y - f.K(5)) / f.K(4));
+	static inline Eigen::Vector2f pixel2Metric(Frame& f, cv::Point2f px){
+		return Eigen::Vector2f((px.x - f.K(2)) / f.K(0), (px.y - f.K(5)) / f.K(4));
 	}
 
 };

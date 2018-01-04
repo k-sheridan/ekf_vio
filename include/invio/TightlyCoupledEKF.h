@@ -18,15 +18,15 @@ public:
 	TightlyCoupledEKF();
 	virtual ~TightlyCoupledEKF();
 
-	Eigen::Matrix<double, BASE_STATE_SIZE, 1> base_mu; // this is the part of the state which always remains. It contains position, vel, orientation etc.
+	Eigen::Matrix<float, BASE_STATE_SIZE, 1> base_mu; // this is the part of the state which always remains. It contains position, vel, orientation etc.
 
 	std::list<Feature> features;
 
 	//must always be kept in sync with the feature vector
-	Eigen::MatrixXd Sigma; // stores the current uncertainty and correlations for the state (including feature positions)
+	Eigen::MatrixXf Sigma; // stores the current uncertainty and correlations for the state (including feature positions)
 
 
-	void addNewFeatures(std::vector<Eigen::Vector2d> new_homogenous_features);
+	void addNewFeatures(std::vector<Eigen::Vector2f> new_homogenous_features);
 };
 
 #endif /* INVIO_INCLUDE_INVIO_TIGHTLYCOUPLEDEKF_H_ */
