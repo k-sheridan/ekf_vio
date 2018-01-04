@@ -69,7 +69,7 @@ add_library(vio_tc_ekf include/invio/TightlyCoupledEKF.cpp)
 target_link_libraries(vio_tc_ekf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams)
 
 add_library(klt_tracker include/invio/KLTTracker.cpp)
-target_link_libraries(klt_tracker ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioFrame)
+target_link_libraries(klt_tracker ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vio_tc_ekf vioParams vioFeature vioFrame)
 
 add_library(full_vio include/invio/VIO.h include/invio/VIO.cpp)
 target_link_libraries(full_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioFrame vio_tc_ekf klt_tracker)
