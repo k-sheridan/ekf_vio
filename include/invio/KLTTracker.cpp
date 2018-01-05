@@ -30,3 +30,13 @@ void KLTTracker::findNewFeaturePositions(const Frame& lf, const Frame& cf, const
 {
 
 }
+
+/*
+ * uses the built in opencv klt tracker and estimates the uncertainty of the results
+ */
+void KLTTracker::findNewFeaturePositionsOpenCV(const Frame& lf, const Frame& cf, const std::vector<Eigen::Vector2f>& previous_feature_positions,
+				const std::list<Feature>& estimated_new_feature_positions, std::vector<Eigen::Vector2f>& measured_positions,
+				std::vector<Eigen::Matrix2f>& estimated_uncertainty, std::vector<bool>& passed)
+{
+
+}
