@@ -49,10 +49,14 @@ public:
 
 	float getDepth();
 
-	cv::Point2f getPixel(Frame& f);
+	cv::Point2f getPixel(const Frame& f);
 
-	static inline Eigen::Vector2f pixel2Metric(Frame& f, cv::Point2f px){
+	static inline Eigen::Vector2f pixel2Metric(const Frame& f, const cv::Point2f px){
 		return Eigen::Vector2f((px.x - f.K(2)) / f.K(0), (px.y - f.K(5)) / f.K(4));
+	}
+
+	static inline cv::Point2f metric2Pixel(const Frame& f, const Eigen::Vector2f pos){
+		return cv::Point2f(pos.x()*f.K(0) + f.K(2), pos.y()*f.K(4) + f.K(5));
 	}
 
 };

@@ -92,6 +92,8 @@ public:
 	void findNewFeaturePositionsOpenCV(const Frame& lf, const Frame& cf, const std::vector<Eigen::Vector2f>& previous_feature_positions,
 				const std::list<Feature>& estimated_new_feature_positions, std::vector<Eigen::Vector2f>& measured_positions,
 				std::vector<Eigen::Matrix2f>& estimated_uncertainty, std::vector<bool>& passed);
+
+	Eigen::Matrix2f estimateUncertainty(const Frame& cf, cv::Point2f mu);
 };
 
 #endif /* INVIO_INCLUDE_INVIO_KLTTRACKER_H_ */

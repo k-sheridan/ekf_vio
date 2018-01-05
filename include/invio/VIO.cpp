@@ -435,6 +435,8 @@ void VIO::parseROSParams()
 	ros::param::param<bool>("~use_imu", USE_IMU, D_USE_IMU);
 	ros::param::param<int>("~min_variance_box_size", MIN_VARIANCE_SIZE, D_MIN_VARIANCE_SIZE);
 	ros::param::param<int>("~max_variance_box_size", MAX_VARIANCE_SIZE, D_MAX_VARIANCE_SIZE);
+	ros::param::param<int>("~max_pyramids", MAX_PYRAMID_LEVEL, D_MAX_PYRAMID_LEVEL);
+	ros::param::param<int>("~klt_window_size", WINDOW_SIZE, D_WINDOW_SIZE);
 
 
 }
