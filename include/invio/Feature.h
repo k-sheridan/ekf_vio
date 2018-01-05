@@ -40,6 +40,11 @@ private:
 
 	Eigen::Vector3f mu; // [u, v, d] (u and v are in homogenous coord)
 
+	Eigen::Vector2f last_result_from_klt_tracker; // used to store the previous reference feature position
+	// it is important that this estimate is as close to the actual feature position in the frame as possible. otherwise drift will be significant
+
+	bool delete_flag;
+
 public:
 
 	Feature();
@@ -58,6 +63,17 @@ public:
 	static inline cv::Point2f metric2Pixel(const Frame& f, const Eigen::Vector2f pos){
 		return cv::Point2f(pos.x()*f.K(0) + f.K(2), pos.y()*f.K(4) + f.K(5));
 	}
+
+	Eigen::Vector2f getLastResultFromKLTTracker(){
+		return this->last_result_from_klt_tracker;
+	}
+
+	void setLastResultFromKLTTracker(Eigen::Vector2f in){
+		this->last_result_from_klt_tracker = in;
+	}
+
+	bool flaggedForDeletion(){return this->delete_flag;}
+	void setDeleteFlag(bool in){this->delete_flag = in;}
 
 };
 

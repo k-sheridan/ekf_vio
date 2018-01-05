@@ -32,7 +32,8 @@ int main(int argc, char **argv)
 	KLTTracker::Pyramid pyr = KLTTracker::Pyramid(2, img1);
 
 
-	//while(ros::ok()){}
+
+
 
 	return 0;
 }

@@ -72,6 +72,8 @@ public:
 
 	void replenishFeatures(Frame& f);
 
+	void updateStateWithNewImage(Frame& lf, Frame& cf);
+
 	void publishInsight(Frame& f);
 
 	void publishPoints(Frame& f);

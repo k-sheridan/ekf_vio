@@ -20,13 +20,17 @@ public:
 
 	Eigen::Matrix<float, BASE_STATE_SIZE, 1> base_mu; // this is the part of the state which always remains. It contains position, vel, orientation etc.
 
-	std::list<Feature> features;
+	std::list<Feature> features; // stores the current best guess about the state of the features
 
 	//must always be kept in sync with the feature vector
 	Eigen::MatrixXf Sigma; // stores the current uncertainty and correlations for the state (including feature positions)
 
 
 	void addNewFeatures(std::vector<Eigen::Vector2f> new_homogenous_features);
+
+	std::vector<Eigen::Vector2f> previousFeaturePositionVector();
+
+	void updateWithFeaturePositions(std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass);
 };
 
 #endif /* INVIO_INCLUDE_INVIO_TIGHTLYCOUPLEDEKF_H_ */
