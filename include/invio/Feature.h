@@ -48,6 +48,7 @@ private:
 public:
 
 	Feature();
+	Feature(Eigen::Vector2f homogenous, float depth);
 	virtual ~Feature();
 
 	Eigen::Vector2f getNormalizedPixel();

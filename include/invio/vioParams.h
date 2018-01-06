@@ -78,9 +78,9 @@
 
 // default point depth used for initialization in meters
 #define D_DEFAULT_POINT_DEPTH 0.5
-#define D_DEFAULT_POINT_DEPTH_VARIANCE 1000
+#define D_DEFAULT_POINT_DEPTH_VARIANCE 100
 
-#define D_DEFAULT_POINT_HOMOGENOUS_VARIANCE 0.5
+#define D_DEFAULT_POINT_HOMOGENOUS_VARIANCE 0.05
 
 // epsilon for convergence in structure bundle adjustment and motion
 #define D_EPS_SBA 0.0000000001
@@ -108,11 +108,6 @@
 #define D_ODOM_TOPIC "invio/odom"
 #define D_POINTS_TOPIC "invio/points"
 #define D_ODOM_FRAME "invio_odom"
-
-
-// this topic will serve as a last resort for realignment
-#define D_POINTCLOUD_TOPIC "guidance/points2"
-#define D_POINTCLOUD_FRAME "guidance"
 
 //#define CAMERA_TOPIC "/guidance/left/image_rect"
 //#define CAMERA_FRAME "guidance"

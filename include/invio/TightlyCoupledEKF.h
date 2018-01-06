@@ -13,6 +13,10 @@
 
 #include <Feature.h>
 
+#include <Eigen/Core>
+#include <Eigen/Sparse>
+#include <Eigen/LU>
+
 class TightlyCoupledEKF {
 public:
 	TightlyCoupledEKF();
@@ -31,6 +35,9 @@ public:
 	std::vector<Eigen::Vector2f> previousFeaturePositionVector();
 
 	void updateWithFeaturePositions(std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass);
+
+	Eigen::SparseMatrix<float> formFeatureMeasurementMap(std::vector<bool> measured);
+
 };
 
 #endif /* INVIO_INCLUDE_INVIO_TIGHTLYCOUPLEDEKF_H_ */

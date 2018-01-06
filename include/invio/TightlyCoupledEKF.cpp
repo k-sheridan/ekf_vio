@@ -8,7 +8,10 @@
 #include <TightlyCoupledEKF.h>
 
 TightlyCoupledEKF::TightlyCoupledEKF() {
-	// TODO Auto-generated constructor stub
+
+	this->Sigma.resize(BASE_STATE_SIZE, BASE_STATE_SIZE);
+
+	// TODO setup initial variances and values of the base state
 
 }
 
@@ -19,7 +22,26 @@ TightlyCoupledEKF::~TightlyCoupledEKF() {
 void TightlyCoupledEKF::addNewFeatures(std::vector<Eigen::Vector2f> new_homogenous_features){
 	if(!new_homogenous_features.size()){return;}
 
+	//resize the covariance matrix without changing other values
+	int new_size = BASE_STATE_SIZE + this->features.size() * 3 + new_homogenous_features.size() * 3; // each feature has 3 degrees of freedom
+	this->Sigma.conservativeResize(new_size, new_size);
+
+	//TODO compute the average depth in the scene
+	float average_scene_depth = DEFAULT_POINT_DEPTH;
+
 	// add all new features to the state and adjust the current Sigma
+	int starting_index = BASE_STATE_SIZE + this->features.size() * 3;
+	for(auto e : new_homogenous_features){
+		this->features.push_back(Feature(e, average_scene_depth)); // add a point with an estimated depth
+
+		//initialize this point's uncertainties
+		this->Sigma(starting_index, starting_index) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
+		starting_index++;
+		this->Sigma(starting_index, starting_index) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
+		starting_index++;
+		this->Sigma(starting_index, starting_index) = DEFAULT_POINT_DEPTH_VARIANCE; // high uncertainty for the depth of the feature
+		starting_index++;
+	}
 }
 
 std::vector<Eigen::Vector2f> TightlyCoupledEKF::previousFeaturePositionVector(){
@@ -34,7 +56,27 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 {
 	ROS_ASSERT(measured_positions.size() == estimated_covariance.size() == pass.size() == this->features.size()); // make sure that there are enough features
 
-	//TODO actually update the state
+	ROS_ASSERT(this->Sigma.rows() == this->Sigma.cols() == this->features.size());
 
+	//TODO actually update the whole state
+	int i = 0; // track the index
+	for(auto& e : this->features){
+
+
+
+		//increment
+		i++;
+	}
+
+
+}
+
+/*
+ * form the mapping between our measurement of feature positions (homogenous) and the state
+ * the measured vector is used to tell this function which features were not observed in this measurement
+ */
+Eigen::SparseMatrix<float> TightlyCoupledEKF::formFeatureMeasurementMap(std::vector<bool> measured){
+
+	ROS_ASSERT(measured.size() == this->features.size()); // sanity check
 
 }
