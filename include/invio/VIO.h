@@ -10,7 +10,9 @@
 
 #include <ros/ros.h>
 
-#include <opencv2/highgui/highgui.hpp>
+#include <cmath>
+
+#include <opencv2/highgui.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/features2d.hpp>
 #include "opencv2/core/core.hpp"
@@ -41,6 +43,8 @@
 #include <vioParams.h>
 #include <TightlyCoupledEKF.h>
 #include <KLTTracker.h>
+
+#include <Eigen/Eigenvalues>
 
 class VIO {
 public:
@@ -81,6 +85,8 @@ public:
 	void publishOdometry(Frame& cf);
 
 	void parseROSParams();
+
+	cv::RotatedRect getErrorEllipse(double chisquare_val, cv::Point2f mean, Eigen::Matrix2f covmat);
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIO_H_ */

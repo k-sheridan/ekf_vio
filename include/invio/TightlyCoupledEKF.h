@@ -38,6 +38,11 @@ public:
 
 	Eigen::SparseMatrix<float> formFeatureMeasurementMap(std::vector<bool> measured);
 
+	Eigen::Matrix2f getFeatureHomogenousCovariance(int index);
+	float getFeatureDepthVariance(int index);
+
+	Eigen::Matrix2f getMetric2PixelMap(Eigen::Matrix3f& K);
+
 };
 
 #endif /* INVIO_INCLUDE_INVIO_TIGHTLYCOUPLEDEKF_H_ */

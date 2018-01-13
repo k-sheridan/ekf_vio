@@ -69,7 +69,7 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 		{
 			if(!e.flaggedForDeletion())
 			{
-				ROS_DEBUG_STREAM(measured_positions.at(i));
+				//ROS_DEBUG_STREAM(measured_positions.at(i));
 				e.setLastResultFromKLTTracker(measured_positions.at(i)); // fix
 				e.setNormalizedPixel(measured_positions.at(i));
 			}
@@ -96,3 +96,20 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::formFeatureMeasurementMap(std::vec
 	ROS_ASSERT(measured.size() == this->features.size()); // sanity check
 
 }
+
+Eigen::Matrix2f TightlyCoupledEKF::getFeatureHomogenousCovariance(int index){
+	int start = BASE_STATE_SIZE + index * 3;
+	return this->Sigma.block<2, 2>(start, start);
+}
+
+float TightlyCoupledEKF::getFeatureDepthVariance(int index){
+	int start = BASE_STATE_SIZE + index * 3 + 2;
+	return this->Sigma(start, start);
+}
+
+Eigen::Matrix2f TightlyCoupledEKF::getMetric2PixelMap(Eigen::Matrix3f& K){
+	Eigen::Matrix2f J;
+	J << K(0, 0), 0, 0, K(1, 1);
+	return J;
+}
+

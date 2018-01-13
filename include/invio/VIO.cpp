@@ -245,7 +245,7 @@ void VIO::replenishFeatures(Frame& f) {
 			cv::circle(checkImg, fast_kp.at(i).pt, MIN_NEW_FEATURE_DIST, cv::Scalar(255), -1);
 
 
-			ROS_DEBUG_STREAM("adding feature " << fast_kp.at(i).pt);
+			//ROS_DEBUG_STREAM("adding feature " << fast_kp.at(i).pt);
 
 
 			new_features.push_back(Feature::pixel2Metric(f, fast_kp.at(i).pt));
@@ -258,6 +258,47 @@ void VIO::replenishFeatures(Frame& f) {
 
 }
 
+/*
+ * covariance and mean must be in pixels
+ */
+cv::RotatedRect getErrorEllipse(double chisquare_val, cv::Point2f mean, Eigen::Matrix2f eig_covmat){
+
+	//Get the eigenvalues and eigenvectors
+	Eigen::EigenSolver<Eigen::Matrix2f> es;
+	es.compute(eig_covmat, true);
+
+	Eigen::EigenSolver<Eigen::Matrix2f>::EigenvectorsType eig_vecs = es.eigenvectors();
+	Eigen::EigenSolver<Eigen::Matrix2f>::EigenvalueType eig_vals = es.eigenvalues();
+
+	double angle;
+
+	if(eig_vals(0).real() > eig_vals(1).real())
+	{
+		//Calculate the angle between the largest eigenvector and the x-axis
+		angle = atan2(eig_vecs(1,0).real(), eig_vecs(0,0).real());
+	}
+	else
+	{
+		//Calculate the angle between the largest eigenvector and the x-axis
+		angle = atan2(eig_vecs(1,1).real(), eig_vecs(0,1).real());
+	}
+
+	//Shift the angle to the [0, 2pi] interval instead of [-pi, pi]
+	if(angle < 0)
+		angle += 6.28318530718;
+
+	//Conver to degrees instead of radians
+	angle = 180*angle/3.14159265359;
+
+	//Calculate the size of the minor and major axes
+	double halfmajoraxissize=chisquare_val*sqrt(eig_vals(0).real());
+	double halfminoraxissize=chisquare_val*sqrt(eig_vals(1).real());
+
+	//Return the oriented ellipse
+	//The -angle is used because OpenCV defines the angle clockwise instead of anti-clockwise
+	return cv::RotatedRect(mean, cv::Size2f(halfmajoraxissize, halfminoraxissize), -angle);
+
+}
 
 void VIO::publishInsight(Frame& f)
 {
@@ -265,10 +306,17 @@ void VIO::publishInsight(Frame& f)
 
 	cv::cvtColor(f.img, img, CV_GRAY2BGR);
 
+	int i = 0; // track the feature count
 	for(auto& e : tc_ekf.features)
 	{
-		ROS_DEBUG_STREAM(e.getPixel(f));
-		cv::drawMarker(img, e.getPixel(f), cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 20, 2);
+		if(!e.flaggedForDeletion())
+		{
+			//ROS_DEBUG_STREAM(e.getPixel(f));
+			cv::drawMarker(img, e.getPixel(f), cv::Scalar(0, 255, 0), cv::MARKER_CROSS, 5, 2);
+
+		}
+		// next feature
+		i++;
 	}
 
 	sensor_msgs::CameraInfo cinfo;
@@ -375,7 +423,7 @@ void VIO::publishPoints(Frame& f)
 	msg.header.stamp = f.t;
 	msg.header.frame_id = ODOM_FRAME;
 
-/*
+	/*
 	for(auto e : f.features)
 	{
 		if(!e.obsolete)
@@ -400,7 +448,7 @@ void VIO::publishPoints(Frame& f)
 	msg.channels.push_back(ch);
 
 	this->points_pub.publish(msg);
-*/
+	 */
 
 }
 
