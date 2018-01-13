@@ -70,7 +70,7 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 			if(!e.flaggedForDeletion())
 			{
 				ROS_DEBUG_STREAM(measured_positions.at(i));
-				e.setLastResultFromKLTTracker(e.getNormalizedPixel());
+				e.setLastResultFromKLTTracker(measured_positions.at(i)); // fix
 				e.setNormalizedPixel(measured_positions.at(i));
 			}
 		}
