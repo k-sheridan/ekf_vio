@@ -46,23 +46,39 @@ void TightlyCoupledEKF::addNewFeatures(std::vector<Eigen::Vector2f> new_homogeno
 
 std::vector<Eigen::Vector2f> TightlyCoupledEKF::previousFeaturePositionVector(){
 	std::vector<Eigen::Vector2f> output;
-	output.reserve(this->features.size());
+	//output.reserve(this->features.size());
 	for(auto e : this->features){
 		output.push_back(e.getLastResultFromKLTTracker());
 	}
+
+	return output;
 }
 
 void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass)
 {
-	ROS_ASSERT(measured_positions.size() == estimated_covariance.size() == pass.size() == this->features.size()); // make sure that there are enough features
+	ROS_DEBUG_STREAM(measured_positions.size() <<" , "<< estimated_covariance.size() <<" , "<< pass.size() <<" , "<< this->features.size());
+	ROS_ASSERT(measured_positions.size() == estimated_covariance.size() && pass.size() == this->features.size() && estimated_covariance.size() == pass.size()); // make sure that there are enough features
 
-	ROS_ASSERT(this->Sigma.rows() == this->Sigma.cols() == this->features.size());
+	//ROS_ASSERT(this->Sigma.rows() == this->Sigma.cols() && this->Sigma.cols() == BASE_STATE_SIZE + this->features.size());
 
 	//TODO actually update the whole state
 	int i = 0; // track the index
 	for(auto& e : this->features){
 
-
+		if(pass.at(i))
+		{
+			if(!e.flaggedForDeletion())
+			{
+				ROS_DEBUG_STREAM(measured_positions.at(i));
+				e.setLastResultFromKLTTracker(e.getNormalizedPixel());
+				e.setNormalizedPixel(measured_positions.at(i));
+			}
+		}
+		else
+		{
+			ROS_DEBUG("fail");
+			e.setDeleteFlag(true);
+		}
 
 		//increment
 		i++;

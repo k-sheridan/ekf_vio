@@ -1,7 +1,5 @@
 <launch>
 
-	<param name="use_sim_time" value="true" />
-
 	<param name="robot_description" command="cat $(find invio)/urdf/sensorRig1_description.urdf" />
 
 	<node pkg="robot_state_publisher" type="robot_state_publisher" name="m7_state_pub" >

@@ -21,10 +21,22 @@ Frame::Frame(int inv_scale, cv::Mat _img, boost::array<double, 9> k, std::vector
 
 	this->t = _t;
 
-	this->K << k.at(0), k.at(1), k.at(2), k.at(3), k.at(4), k.at(5), k.at(6), k.at(7), k.at(8);
-	this->K = (double)(1/inv_scale) * this->K;
+	this->K.setZero();
 
-	this->D << d.at(0), d.at(1), d.at(2), d.at(3), d.at(4);
+	this->K(0, 0) = k.at(0)/inv_scale;
+	this->K(0, 2) = k.at(2)/inv_scale;
+	this->K(1, 1) = k.at(4)/inv_scale;
+	this->K(1, 2) = k.at(5)/inv_scale;
+	this->K(2, 2) = 1.0;
+
+	ROS_DEBUG_STREAM("K: " << this->K);
+
+	//this->D.setZero();
+	this->D(0) = d.at(0);
+	this->D(1) = d.at(1);
+	this->D(2) = d.at(2);
+	this->D(3) = d.at(3);
+	this->D(4) = d.at(4);
 
 }
 

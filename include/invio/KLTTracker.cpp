@@ -46,6 +46,8 @@ void KLTTracker::findNewFeaturePositionsOpenCV(const Frame& lf, const Frame& cf,
 	std::vector<uchar> status; // status vector for each point
 	cv::Mat error; // error vector for each point
 
+
+	ROS_DEBUG_STREAM(previous_feature_positions.size() << " , " << estimated_new_feature_positions.size());
 	ROS_ASSERT(previous_feature_positions.size() == estimated_new_feature_positions.size());
 	//load the vectors
 	for(auto e : previous_feature_positions){

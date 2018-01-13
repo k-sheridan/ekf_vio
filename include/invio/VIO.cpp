@@ -68,13 +68,14 @@ void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
 
 	Frame f = Frame(INVERSE_IMAGE_SCALE, temp.clone(), cam->K, cam->D, img->header.stamp);
 
+	ROS_DEBUG_STREAM("start");
+
 	this->addFrame(f);
 
 	ROS_INFO_STREAM("frame dt in ms: " << (ros::Time::now() - start).toSec() * 1000.0);
 }
 
 void VIO::addFrame(Frame f) {
-
 
 	if (this->frame_buffer.size() == 0) // if this is the first frame that we are receiving
 	{
@@ -93,7 +94,7 @@ void VIO::addFrame(Frame f) {
 
 
 		// attempt to flow features into the next frame if there are features
-
+		this->updateStateWithNewImage(this->frame_buffer.at(1), this->frame_buffer.front());
 
 		// make the final determination whether or not we are initialized
 		if(!this->initialized)
@@ -130,6 +131,9 @@ void VIO::addFrame(Frame f) {
 		}
 	}
 
+	// publish odometry
+	this->publishOdometry(this->frame_buffer.front());
+
 	//publish the mature 3d points
 	this->publishPoints(this->frame_buffer.front());
 
@@ -158,7 +162,7 @@ void VIO::updateStateWithNewImage(Frame& lf, Frame& cf){
 	//run the klt tracker
 	this->tracker.findNewFeaturePositions(lf, cf, this->tc_ekf.previousFeaturePositionVector(), this->tc_ekf.features, new_positions, covariance_estimate, pass);
 
-
+	this->tc_ekf.updateWithFeaturePositions(new_positions, covariance_estimate, pass);
 
 }
 
@@ -263,7 +267,7 @@ void VIO::publishInsight(Frame& f)
 
 	for(auto& e : tc_ekf.features)
 	{
-		//ROS_INFO_STREAM(e.getBorderWeight());
+		ROS_DEBUG_STREAM(e.getPixel(f));
 		cv::drawMarker(img, e.getPixel(f), cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 20, 2);
 	}
 
@@ -307,14 +311,14 @@ void VIO::publishInsight(Frame& f)
 	ROS_DEBUG("end publish");
 }
 
-void VIO::publishOdometry(Frame& last_f, Frame& new_f)
+void VIO::publishOdometry(Frame& cf)
 {
 	nav_msgs::Odometry msg;
 	static tf::TransformBroadcaster br;
 
-	//tf::Transform currentPose = (c2b * Frame::sophus2tf(new_f.getPose()));
+	tf::Transform currentPose = (c2b);
 
-	//br.sendTransform(tf::StampedTransform(Frame::sophus2tf(new_f.getPose()), new_f.t, WORLD_FRAME, ODOM_FRAME));
+	br.sendTransform(tf::StampedTransform(currentPose, cf.t, WORLD_FRAME, ODOM_FRAME));
 
 	/*tf::Transform delta = (c2b * Frame::sophus2tf(last_f.getPose())).inverse() * currentPose;
 

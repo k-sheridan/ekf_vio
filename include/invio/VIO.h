@@ -78,7 +78,7 @@ public:
 
 	void publishPoints(Frame& f);
 
-	void publishOdometry(Frame& last_f, Frame& new_f);
+	void publishOdometry(Frame& cf);
 
 	void parseROSParams();
 };

@@ -76,6 +76,15 @@ public:
 	bool flaggedForDeletion(){return this->delete_flag;}
 	void setDeleteFlag(bool in){this->delete_flag = in;}
 
+	void setNormalizedPixel(Eigen::Vector2f in){
+		this->mu(0) = in(0);
+		this->mu(1) = in(1);
+	}
+
+	void setDepth(float in){
+		this->mu(2) = in;
+	}
+
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FEATURE_H_ */
