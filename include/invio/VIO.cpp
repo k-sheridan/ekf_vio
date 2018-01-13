@@ -314,6 +314,7 @@ void VIO::publishInsight(Frame& f)
 			//ROS_DEBUG_STREAM(e.getPixel(f));
 			cv::drawMarker(img, e.getPixel(f), cv::Scalar(0, 255, 0), cv::MARKER_CROSS, 5, 2);
 
+			ROS_DEBUG_STREAM("plotting covariance in pixels: " << this->tc_ekf.getMetric2PixelMap(f.K)*this->tc_ekf.getFeatureHomogenousCovariance(i)*this->tc_ekf.getMetric2PixelMap(f.K).transpose());
 		}
 		// next feature
 		i++;

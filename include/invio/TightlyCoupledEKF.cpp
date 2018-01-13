@@ -12,7 +12,7 @@ TightlyCoupledEKF::TightlyCoupledEKF() {
 	this->Sigma.resize(BASE_STATE_SIZE, BASE_STATE_SIZE);
 
 	// TODO setup initial variances and values of the base state
-
+	this->Sigma.setOnes();
 }
 
 TightlyCoupledEKF::~TightlyCoupledEKF() {
@@ -25,6 +25,18 @@ void TightlyCoupledEKF::addNewFeatures(std::vector<Eigen::Vector2f> new_homogeno
 	//resize the covariance matrix without changing other values
 	int new_size = BASE_STATE_SIZE + this->features.size() * 3 + new_homogenous_features.size() * 3; // each feature has 3 degrees of freedom
 	this->Sigma.conservativeResize(new_size, new_size);
+
+	// set the new rows and columns zero
+	// this ensures that the base state never has an initial correlation to these new features
+	// instead the correlations should be introduced naturally through the process
+	this->Sigma.block(Sigma.rows() - new_homogenous_features.size()*3, 0, new_homogenous_features.size()*3, Sigma.cols()).setZero();
+	this->Sigma.block(0, Sigma.cols() - new_homogenous_features.size()*3, Sigma.rows() - new_homogenous_features.size()*3, new_homogenous_features.size()*3).setZero();
+
+	//check the zeroing process
+	//ROS_ASSERT(this->Sigma(BASE_STATE_SIZE-1, 0) == 1);
+	//ROS_ASSERT(this->Sigma(0, BASE_STATE_SIZE-1) == 1);
+	//ROS_ASSERT(this->Sigma(BASE_STATE_SIZE-1, BASE_STATE_SIZE-1) == 1);
+	//ROS_ASSERT(this->Sigma(BASE_STATE_SIZE-1, this->Sigma.cols()-1) == 0);
 
 	//TODO compute the average depth in the scene
 	float average_scene_depth = DEFAULT_POINT_DEPTH;
@@ -107,9 +119,11 @@ float TightlyCoupledEKF::getFeatureDepthVariance(int index){
 	return this->Sigma(start, start);
 }
 
-Eigen::Matrix2f TightlyCoupledEKF::getMetric2PixelMap(Eigen::Matrix3f& K){
-	Eigen::Matrix2f J;
-	J << K(0, 0), 0, 0, K(1, 1);
+Eigen::SparseMatrix<float> TightlyCoupledEKF::getMetric2PixelMap(Eigen::Matrix3f& K){
+	Eigen::SparseMatrix<float> J(2, 2);
+	//J.setIdentity();
+	J.insert(0, 0) = K(0, 0);
+	J.insert(1, 1) = K(1, 1);
 	return J;
 }
 

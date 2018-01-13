@@ -41,7 +41,7 @@ public:
 	Eigen::Matrix2f getFeatureHomogenousCovariance(int index);
 	float getFeatureDepthVariance(int index);
 
-	Eigen::Matrix2f getMetric2PixelMap(Eigen::Matrix3f& K);
+	Eigen::SparseMatrix<float> getMetric2PixelMap(Eigen::Matrix3f& K);
 
 };
 
