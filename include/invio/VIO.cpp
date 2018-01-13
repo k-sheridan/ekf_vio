@@ -261,7 +261,7 @@ void VIO::replenishFeatures(Frame& f) {
 /*
  * covariance and mean must be in pixels
  */
-cv::RotatedRect getErrorEllipse(double chisquare_val, cv::Point2f mean, Eigen::Matrix2f eig_covmat){
+cv::RotatedRect VIO::getErrorEllipse(double chisquare_val, cv::Point2f mean, Eigen::Matrix2f eig_covmat){
 
 	//Get the eigenvalues and eigenvectors
 	Eigen::EigenSolver<Eigen::Matrix2f> es;
@@ -271,28 +271,42 @@ cv::RotatedRect getErrorEllipse(double chisquare_val, cv::Point2f mean, Eigen::M
 	Eigen::EigenSolver<Eigen::Matrix2f>::EigenvalueType eig_vals = es.eigenvalues();
 
 	double angle;
+	double halfmajoraxissize;
+	double halfminoraxissize;
 
 	if(eig_vals(0).real() > eig_vals(1).real())
 	{
 		//Calculate the angle between the largest eigenvector and the x-axis
 		angle = atan2(eig_vecs(1,0).real(), eig_vecs(0,0).real());
+
+		//Shift the angle to the [0, 2pi] interval instead of [-pi, pi]
+		if(angle < 0)
+			angle += 6.28318530718;
+
+		//Conver to degrees instead of radians
+		angle = 180*angle/3.14159265359;
+
+		//Calculate the size of the minor and major axes
+		halfmajoraxissize=chisquare_val*sqrt(eig_vals(0).real());
+		halfminoraxissize=chisquare_val*sqrt(eig_vals(1).real());
 	}
 	else
 	{
 		//Calculate the angle between the largest eigenvector and the x-axis
 		angle = atan2(eig_vecs(1,1).real(), eig_vecs(0,1).real());
+
+		//Shift the angle to the [0, 2pi] interval instead of [-pi, pi]
+		if(angle < 0)
+			angle += 6.28318530718;
+
+		//Conver to degrees instead of radians
+		angle = 180*angle/3.14159265359;
+
+		//Calculate the size of the minor and major axes
+		halfmajoraxissize=chisquare_val*sqrt(eig_vals(1).real());
+		halfminoraxissize=chisquare_val*sqrt(eig_vals(0).real());
 	}
 
-	//Shift the angle to the [0, 2pi] interval instead of [-pi, pi]
-	if(angle < 0)
-		angle += 6.28318530718;
-
-	//Conver to degrees instead of radians
-	angle = 180*angle/3.14159265359;
-
-	//Calculate the size of the minor and major axes
-	double halfmajoraxissize=chisquare_val*sqrt(eig_vals(0).real());
-	double halfminoraxissize=chisquare_val*sqrt(eig_vals(1).real());
 
 	//Return the oriented ellipse
 	//The -angle is used because OpenCV defines the angle clockwise instead of anti-clockwise
@@ -312,9 +326,13 @@ void VIO::publishInsight(Frame& f)
 		if(!e.flaggedForDeletion())
 		{
 			//ROS_DEBUG_STREAM(e.getPixel(f));
-			cv::drawMarker(img, e.getPixel(f), cv::Scalar(0, 255, 0), cv::MARKER_CROSS, 5, 2);
+			//cv::drawMarker(img, e.getPixel(f), cv::Scalar(0, 255, 0), cv::MARKER_CROSS, 5, 2);
 
-			ROS_DEBUG_STREAM("plotting covariance in pixels: " << this->tc_ekf.getMetric2PixelMap(f.K)*this->tc_ekf.getFeatureHomogenousCovariance(i)*this->tc_ekf.getMetric2PixelMap(f.K).transpose());
+			//ROS_DEBUG_STREAM("plotting covariance in pixels: " << this->tc_ekf.getMetric2PixelMap(f.K)*this->tc_ekf.getFeatureHomogenousCovariance(i)*this->tc_ekf.getMetric2PixelMap(f.K).transpose());
+			Eigen::SparseMatrix<float> J = this->tc_ekf.getMetric2PixelMap(f.K);
+
+			cv::RotatedRect rr = this->getErrorEllipse(0.95, e.getPixel(f), J*this->tc_ekf.getFeatureHomogenousCovariance(i)*J.transpose());
+			cv::ellipse(img, rr, cv::Scalar(255, 255, 0), 1);
 		}
 		// next feature
 		i++;

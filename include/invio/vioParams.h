@@ -80,7 +80,7 @@
 #define D_DEFAULT_POINT_DEPTH 0.5
 #define D_DEFAULT_POINT_DEPTH_VARIANCE 100
 
-#define D_DEFAULT_POINT_HOMOGENOUS_VARIANCE 0.05
+#define D_DEFAULT_POINT_HOMOGENOUS_VARIANCE 0.0005 // in meters!
 
 // epsilon for convergence in structure bundle adjustment and motion
 #define D_EPS_SBA 0.0000000001

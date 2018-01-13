@@ -40,10 +40,6 @@ Frame::Frame(int inv_scale, cv::Mat _img, boost::array<double, 9> k, std::vector
 
 }
 
-Frame::~Frame() {
-	// TODO Auto-generated destructor stub
-}
-
 
 bool Frame::isPixelInBox(cv::Point2f px)
 {

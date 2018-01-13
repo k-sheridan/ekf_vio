@@ -37,8 +37,6 @@ public:
 	Frame();
 	Frame(int inv_scale, cv::Mat _img, boost::array<double, 9> k, std::vector<double> d , ros::Time _t);
 
-	virtual ~Frame();
-
 	bool isPixelInBox(cv::Point2f px);
 
 };
