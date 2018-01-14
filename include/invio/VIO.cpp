@@ -162,7 +162,7 @@ void VIO::updateStateWithNewImage(Frame& lf, Frame& cf){
 	//run the klt tracker
 	this->tracker.findNewFeaturePositions(lf, cf, this->tc_ekf.previousFeaturePositionVector(), this->tc_ekf.features, new_positions, covariance_estimate, pass);
 
-	this->tc_ekf.updateWithFeaturePositions(new_positions, covariance_estimate, pass);
+	this->tc_ekf.updateWithFeaturePositions(cf, new_positions, covariance_estimate, pass);
 
 }
 
@@ -267,8 +267,15 @@ cv::RotatedRect VIO::getErrorEllipse(double chisquare_val, cv::Point2f mean, Eig
 	Eigen::EigenSolver<Eigen::Matrix2f> es;
 	es.compute(eig_covmat, true);
 
-	Eigen::EigenSolver<Eigen::Matrix2f>::EigenvectorsType eig_vecs = es.eigenvectors();
 	Eigen::EigenSolver<Eigen::Matrix2f>::EigenvalueType eig_vals = es.eigenvalues();
+
+	if(es.info() != Eigen::ComputationInfo::Success)
+	{
+		ROS_DEBUG("eigen vals and or vecs not computed");
+		return cv::RotatedRect(mean, cv::Size2f(eig_vals(0).real(), eig_vals(1).real()), 0);
+	}
+
+	Eigen::EigenSolver<Eigen::Matrix2f>::EigenvectorsType eig_vecs = es.eigenvectors();
 
 	double angle;
 	double halfmajoraxissize;
@@ -308,6 +315,9 @@ cv::RotatedRect VIO::getErrorEllipse(double chisquare_val, cv::Point2f mean, Eig
 	}
 
 
+	halfmajoraxissize = std::max(halfmajoraxissize, 0.0);
+	halfminoraxissize = std::max(halfminoraxissize, 0.0);
+
 	//Return the oriented ellipse
 	//The -angle is used because OpenCV defines the angle clockwise instead of anti-clockwise
 	return cv::RotatedRect(mean, cv::Size2f(halfmajoraxissize, halfminoraxissize), -angle);
@@ -326,12 +336,12 @@ void VIO::publishInsight(Frame& f)
 		if(!e.flaggedForDeletion())
 		{
 			//ROS_DEBUG_STREAM(e.getPixel(f));
-			//cv::drawMarker(img, e.getPixel(f), cv::Scalar(0, 255, 0), cv::MARKER_CROSS, 5, 2);
+			cv::drawMarker(img, e.getPixel(f), cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 22, 1);
 
 			//ROS_DEBUG_STREAM("plotting covariance in pixels: " << this->tc_ekf.getMetric2PixelMap(f.K)*this->tc_ekf.getFeatureHomogenousCovariance(i)*this->tc_ekf.getMetric2PixelMap(f.K).transpose());
 			Eigen::SparseMatrix<float> J = this->tc_ekf.getMetric2PixelMap(f.K);
 
-			cv::RotatedRect rr = this->getErrorEllipse(0.95, e.getPixel(f), J*this->tc_ekf.getFeatureHomogenousCovariance(i)*J.transpose());
+			cv::RotatedRect rr = this->getErrorEllipse(0.95, e.getPixel(f), this->tc_ekf.getFeatureHomogenousCovariance(i));
 			cv::ellipse(img, rr, cv::Scalar(255, 255, 0), 1);
 		}
 		// next feature

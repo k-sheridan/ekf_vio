@@ -21,6 +21,7 @@
 #include "opencv2/video.hpp"
 
 #include <Eigen/Core>
+#include <Eigen/LU>
 
 class KLTTracker
 {

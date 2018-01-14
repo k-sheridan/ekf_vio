@@ -34,14 +34,17 @@ public:
 
 	std::vector<Eigen::Vector2f> previousFeaturePositionVector();
 
-	void updateWithFeaturePositions(std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass);
+	void updateWithFeaturePositions(Frame& cf, std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass);
 
 	Eigen::SparseMatrix<float> formFeatureMeasurementMap(std::vector<bool> measured);
 
 	Eigen::Matrix2f getFeatureHomogenousCovariance(int index);
 	float getFeatureDepthVariance(int index);
 
+	void setFeatureHomogenousCovariance(int index, Eigen::Matrix2f cov);
+
 	Eigen::SparseMatrix<float> getMetric2PixelMap(Eigen::Matrix3f& K);
+	Eigen::SparseMatrix<float> getPixel2MetricMap(Eigen::Matrix3f& K);
 
 };
 

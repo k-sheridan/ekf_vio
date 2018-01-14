@@ -66,7 +66,7 @@ std::vector<Eigen::Vector2f> TightlyCoupledEKF::previousFeaturePositionVector(){
 	return output;
 }
 
-void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass)
+void TightlyCoupledEKF::updateWithFeaturePositions(Frame& cf, std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass)
 {
 	ROS_DEBUG_STREAM(measured_positions.size() <<" , "<< estimated_covariance.size() <<" , "<< pass.size() <<" , "<< this->features.size());
 	ROS_ASSERT(measured_positions.size() == estimated_covariance.size() && pass.size() == this->features.size() && estimated_covariance.size() == pass.size()); // make sure that there are enough features
@@ -84,11 +84,15 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 				//ROS_DEBUG_STREAM(measured_positions.at(i));
 				e.setLastResultFromKLTTracker(measured_positions.at(i)); // fix
 				e.setNormalizedPixel(measured_positions.at(i));
+
+				Eigen::SparseMatrix<float> J = this->getPixel2MetricMap(cf.K);
+				//this->setFeatureHomogenousCovariance(i, J*estimated_covariance.at(i)*J.transpose());
+				this->setFeatureHomogenousCovariance(i, estimated_covariance.at(i));
 			}
 		}
 		else
 		{
-			ROS_DEBUG("fail");
+			//ROS_DEBUG("fail");
 			e.setDeleteFlag(true);
 		}
 
@@ -114,6 +118,12 @@ Eigen::Matrix2f TightlyCoupledEKF::getFeatureHomogenousCovariance(int index){
 	return this->Sigma.block<2, 2>(start, start);
 }
 
+void TightlyCoupledEKF::setFeatureHomogenousCovariance(int index, Eigen::Matrix2f cov)
+{
+	int start = BASE_STATE_SIZE + index * 3;
+	this->Sigma.block<2, 2>(start, start) = cov;
+}
+
 float TightlyCoupledEKF::getFeatureDepthVariance(int index){
 	int start = BASE_STATE_SIZE + index * 3 + 2;
 	return this->Sigma(start, start);
@@ -124,6 +134,14 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::getMetric2PixelMap(Eigen::Matrix3f
 	//J.setIdentity();
 	J.insert(0, 0) = K(0, 0);
 	J.insert(1, 1) = K(1, 1);
+	return J;
+}
+
+Eigen::SparseMatrix<float> TightlyCoupledEKF::getPixel2MetricMap(Eigen::Matrix3f& K){
+	Eigen::SparseMatrix<float> J(2, 2);
+	//J.setIdentity();
+	J.insert(0, 0) = 1.0f/K(0, 0);
+	J.insert(1, 1) = 1.0f/K(1, 1);
 	return J;
 }
 
