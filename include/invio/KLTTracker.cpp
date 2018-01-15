@@ -96,10 +96,12 @@ Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& lf, cv::Point2f mu_
 
 	//TODO check if feature is too close to the boundaries
 
-	cv::getRectSubPix(lf.img, cv::Size(WINDOW_SIZE, WINDOW_SIZE), mu_ref, ref, CV_32F); // subpixel reference patch
+	float window_size = 5;
 
-	float window_area = WINDOW_SIZE*WINDOW_SIZE;
-	float k = 0.95;
+	cv::getRectSubPix(lf.img, cv::Size(window_size, window_size), mu_ref, ref, CV_32F); // subpixel reference patch
+
+	float window_area = window_size*window_size;
+	float k = 0.01;
 
 	float sum_rd=0;
 	float sum_rd_xx=0;
@@ -107,26 +109,28 @@ Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& lf, cv::Point2f mu_
 	float sum_rd_xy=0; // = yx
 
 	//compute the gaussian with a 5x5 sample
-	for(float du = -2; du <= 2; du++)
+	for(float du = -20; du <= 20; du+=10)
 	{
-		for(float dv = -2; dv <= 2; dv++)
+		for(float dv = -20; dv <= 20; dv+=10)
 		{
 			cv::Point2f sample_mu = mu + cv::Point2f(du, dv);
 
 			//compute the subpixel image patch for this sample
 			cv::Mat sample;
 
-			cv::getRectSubPix(cf.img, cv::Size(WINDOW_SIZE, WINDOW_SIZE), sample_mu, sample, CV_32F); // subpixel test patch
+			cv::getRectSubPix(cf.img, cv::Size(window_size, window_size), sample_mu, sample, CV_32F); // subpixel test patch
 
 			//compute the ssd for this patch
 			float ssd = 0;
-			for(int i = 0; i < WINDOW_SIZE; i++){
-				for(int j = 0; j < WINDOW_SIZE; j++){
+			for(int i = 0; i < window_size; i++){
+				for(int j = 0; j < window_size; j++){
 					ssd += pow(ref.at<float>(i, j) - sample.at<float>(i, j), 2);
 				}
 			}
 
 			ssd /= window_area; // normalize
+
+			//ROS_DEBUG_STREAM("ssd: " << ssd);
 
 			float rd = exp(-k*ssd);
 
@@ -139,12 +143,14 @@ Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& lf, cv::Point2f mu_
 
 	//finally construct the covariance matrix
 
+	//ROS_DEBUG_STREAM("sum_rd: " << sum_rd);
+
 	A(0, 0) = sum_rd_xx/sum_rd;
 	A(1, 1) = sum_rd_yy/sum_rd;
 	A(0, 1) = sum_rd_xy/sum_rd;
 	A(1, 0) = A(0, 1);
 
-	ROS_DEBUG_STREAM("cov: " << A);
+	//ROS_DEBUG_STREAM("cov: " << A);
 
 	return A;
 }
