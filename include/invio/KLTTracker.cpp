@@ -85,11 +85,18 @@ void KLTTracker::findNewFeaturePositionsOpenCV(const Frame& lf, const Frame& cf,
 
 }
 
+
+Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& lf, cv::Point2f mu_ref, const Frame& cf, cv::Point2f mu)
+{
+	Eigen::Matrix2f A;
+	A << 20, 0, 0, 20;
+	return A;
+}
+
 /*
- * sum the 2x2 image hessian matrices over around the feature and invert it
- * this approximates the uncertainty in the feature position
+ * samples a small region around the feature with its reference to estimate the covariance matrix
  */
-Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& lf, cv::Point2f mu_ref, const Frame& cf, cv::Point2f mu){
+Eigen::Matrix2f KLTTracker::estimateUncertaintySampleBased(const Frame& lf, cv::Point2f mu_ref, const Frame& cf, cv::Point2f mu){
 	Eigen::Matrix2f A;
 
 	cv::Mat ref;
@@ -109,9 +116,9 @@ Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& lf, cv::Point2f mu_
 	float sum_rd_xy=0; // = yx
 
 	//compute the gaussian with a 5x5 sample
-	for(float du = -20; du <= 20; du+=10)
+	for(float du = -10; du <= 10; du+=5)
 	{
-		for(float dv = -20; dv <= 20; dv+=10)
+		for(float dv = -10; dv <= 10; dv+=5)
 		{
 			cv::Point2f sample_mu = mu + cv::Point2f(du, dv);
 

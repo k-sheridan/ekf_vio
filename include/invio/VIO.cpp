@@ -315,8 +315,8 @@ cv::RotatedRect VIO::getErrorEllipse(double chisquare_val, cv::Point2f mean, Eig
 	}
 
 
-	halfmajoraxissize = std::max(halfmajoraxissize, 0.0);
-	halfminoraxissize = std::max(halfminoraxissize, 0.0);
+	halfmajoraxissize = std::max(halfmajoraxissize, 0.1);
+	halfminoraxissize = std::max(halfminoraxissize, 0.1);
 
 	//Return the oriented ellipse
 	//The -angle is used because OpenCV defines the angle clockwise instead of anti-clockwise
@@ -341,8 +341,8 @@ void VIO::publishInsight(Frame& f)
 			//ROS_DEBUG_STREAM("plotting covariance in pixels: " << this->tc_ekf.getMetric2PixelMap(f.K)*this->tc_ekf.getFeatureHomogenousCovariance(i)*this->tc_ekf.getMetric2PixelMap(f.K).transpose());
 			Eigen::SparseMatrix<float> J = this->tc_ekf.getMetric2PixelMap(f.K);
 
-			cv::RotatedRect rr = this->getErrorEllipse(0.99, e.getPixel(f), this->tc_ekf.getFeatureHomogenousCovariance(i));
-			cv::ellipse(img, rr, cv::Scalar(255, 255, 0), 1);
+			//cv::RotatedRect rr = this->getErrorEllipse(0.99, e.getPixel(f), this->tc_ekf.getFeatureHomogenousCovariance(i));
+			//cv::ellipse(img, rr, cv::Scalar(255, 255, 0), 1);
 		}
 		// next feature
 		i++;
