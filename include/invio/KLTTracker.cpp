@@ -94,7 +94,9 @@ void KLTTracker::findNewFeaturePositionsOpenCV(const Frame& lf, const Frame& cf,
 
 }
 
-
+/*
+ * estimates the uncertainty of the feature position in pixel units
+ */
 Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& lf, cv::Point2f mu_ref, const Frame& cf, cv::Point2f mu)
 {
 	Eigen::Matrix2f A;

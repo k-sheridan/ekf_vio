@@ -69,6 +69,9 @@ public:
 		return this->last_result_from_klt_tracker;
 	}
 
+	/*
+	 * this should be given in meters
+	 */
 	void setLastResultFromKLTTracker(Eigen::Vector2f in){
 		this->last_result_from_klt_tracker = in;
 	}

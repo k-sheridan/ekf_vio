@@ -104,29 +104,47 @@ std::vector<Eigen::Vector2f> TightlyCoupledEKF::previousFeaturePositionVector(){
 	return output;
 }
 
+/*
+ * expects all measurements and uncertainties in metric coordinates
+ */
 void TightlyCoupledEKF::updateWithFeaturePositions(Frame& cf, std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass)
 {
 	ROS_DEBUG_STREAM(measured_positions.size() <<" , "<< estimated_covariance.size() <<" , "<< pass.size() <<" , "<< this->features.size());
 	ROS_ASSERT(measured_positions.size() == estimated_covariance.size() && pass.size() == this->features.size() && estimated_covariance.size() == pass.size()); // make sure that there are enough features
 
-	//ROS_ASSERT(this->Sigma.rows() == this->Sigma.cols() && this->Sigma.cols() == BASE_STATE_SIZE + this->features.size());
+	if(!pass.size()){
+		ROS_ERROR("no measurements to update state with!");
+	}
 
-	//TODO actually update the whole state
-	int i = 0; // track the index
+	Eigen::SparseMatrix<float> H = this->formFeatureMeasurementMap(pass); // create the mapping between the state and measurement dynamically
+
+
+	Eigen::SparseMatrix<float> R(H.rows(), H.rows()); // this will store the measurement uncertainty
+	Eigen::VectorXf z(H.rows()); // this stores the measured metric feature positions
+	Eigen::VectorXf mu(BASE_STATE_SIZE + this->features.size() * 3); // due to the dynamic nature of this ekf we need to create this mu vector
+
+	//update the whole state
+	int i = 0; // track the index of the input
+	int j = 0; // track the index of the new vector and matrix
 	for(auto& e : this->features){
 
 		if(pass.at(i))
 		{
-			if(!e.flaggedForDeletion())
-			{
-				//ROS_DEBUG_STREAM(measured_positions.at(i));
-				e.setLastResultFromKLTTracker(measured_positions.at(i)); // fix
-				e.setNormalizedPixel(measured_positions.at(i));
+			//ROS_DEBUG_STREAM(measured_positions.at(i));
+			e.setLastResultFromKLTTracker(measured_positions.at(i)); // used for klt tracking
 
-				Eigen::SparseMatrix<float> J = this->getPixel2MetricMap(cf.K);
-				//this->setFeatureHomogenousCovariance(i, J*estimated_covariance.at(i)*J.transpose());
-				this->setFeatureHomogenousCovariance(i, estimated_covariance.at(i));
-			}
+			z(j) = measured_positions[i].x();
+			R.insert(j, j) = estimated_covariance[i](0, 0);
+			j++;
+
+			z(j) = measured_positions[i].y();
+			R.insert(j, j) = estimated_covariance[i](1, 1);
+			R.insert(j-1, j) = estimated_covariance[i](0, 1);
+			R.insert(j, j-1) = estimated_covariance[i](1, 0);
+			j++;
+
+			// at this point the covariance and measurement should be loaded in the right place
+
 		}
 		else
 		{
@@ -137,6 +155,22 @@ void TightlyCoupledEKF::updateWithFeaturePositions(Frame& cf, std::vector<Eigen:
 		//increment
 		i++;
 	}
+
+	//finally update using this procedure (ensures no issues due to rounding errors)
+	//y = z - H*mu
+	//S = R + H*Sigma*H'
+	// using x*A=b ==> A'*x_T=b'
+	//K = Sigma*H'*inv(S) ==> K*S = Sigma*H' ==> S'*K' = (Sigma*H')' ==> K' = inv(S') * (Sigma*H')' ==> K' = inv(S') * (Sigma'*H)
+	//mu = mu + K*y
+	// I_KH = I - K*H
+	//Sigma = I_KH*Sigma*I_KH' + K*R*K'
+
+	Eigen::VectorXf y = z;
+	y -= H*mu;
+
+	Eigen::MatrixXf S;
+	S.noalias() = H*Sigma*H.transpose();
+	S += R;
 
 
 }
