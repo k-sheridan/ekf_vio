@@ -72,7 +72,7 @@ void KLTTracker::findNewFeaturePositionsOpenCV(const Frame& lf, const Frame& cf,
 	for(int i = 0; i < new_fts.size(); i++){
 		if(status.at(i) == 1 && !(new_fts[i].x < KILL_PAD || new_fts[i].y < KILL_PAD || cf.img.cols - new_fts[i].x < KILL_PAD || cf.img.rows - new_fts[i].y < KILL_PAD)){
 			passed[i] = (true);
-			estimated_uncertainty[i] = (this->estimateUncertainty(cf, new_fts.at(i)));
+			estimated_uncertainty[i] = (this->estimateUncertainty(lf, prev_fts.at(i), cf, new_fts.at(i)));
 			measured_positions[i] = Feature::pixel2Metric(cf, new_fts.at(i));
 		}
 		else
@@ -89,74 +89,62 @@ void KLTTracker::findNewFeaturePositionsOpenCV(const Frame& lf, const Frame& cf,
  * sum the 2x2 image hessian matrices over around the feature and invert it
  * this approximates the uncertainty in the feature position
  */
-Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& cf, cv::Point2f mu){
+Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& lf, cv::Point2f mu_ref, const Frame& cf, cv::Point2f mu){
 	Eigen::Matrix2f A;
 
-	int mu_u = round(mu.x);
-	int mu_v = round(mu.y);
+	cv::Mat ref;
 
-	int half_length = (WINDOW_SIZE - 1)/2 + 1; // need one extra pixel for initial gradient calculation
+	//TODO check if feature is too close to the boundaries
 
-	int lower_u_bound = std::max(mu_u - half_length, 2); // 1 should be min so that the gradient kernel will work
-	int lower_v_bound = std::max(mu_v - half_length, 2);
-	int upper_u_bound = std::min(mu_u + half_length, cf.img.cols-3);
-	int upper_v_bound = std::min(mu_v + half_length, cf.img.rows-3);
+	cv::getRectSubPix(lf.img, cv::Size(WINDOW_SIZE, WINDOW_SIZE), mu_ref, ref, CV_32F); // subpixel reference patch
 
-	//ROS_DEBUG_STREAM("u: " << mu_u << " v: " << mu_v);
-	//ROS_DEBUG_STREAM("image size: " << cf.img.size);
-	//ROS_DEBUG_STREAM(lower_u_bound <<" , "<< upper_u_bound<<" , "<<lower_v_bound<<" , "<<upper_v_bound);
-	//ROS_ASSERT(lower_u_bound < upper_u_bound && lower_v_bound < upper_v_bound);
+	float window_area = WINDOW_SIZE*WINDOW_SIZE;
+	float k = 0.95;
 
-	int length = WINDOW_SIZE + 2;
+	float sum_rd=0;
+	float sum_rd_xx=0;
+	float sum_rd_yy=0;
+	float sum_rd_xy=0; // = yx
 
-	float gradx[length][length];
-	float grady[length][length];
-
-	int i = 0;
-	for(int u = lower_u_bound; u <= upper_u_bound; u++)
+	//compute the gaussian with a 5x5 sample
+	for(float du = -2; du <= 2; du++)
 	{
-		int j = 0;
-		for(int v = lower_v_bound; v <= upper_v_bound; v++)
+		for(float dv = -2; dv <= 2; dv++)
 		{
-			//ROS_ASSERT(i < length);
-			//ROS_ASSERT(j < length);
+			cv::Point2f sample_mu = mu + cv::Point2f(du, dv);
 
-			gradx[i][j] =  0.5f * (cf.img.at<uchar>(u+1, v)-cf.img.at<uchar>(u-1, v)); // gradu
-			grady[i][j] =  0.5f * (cf.img.at<uchar>(u, v+1)-cf.img.at<uchar>(u, v-1)); // gradv
+			//compute the subpixel image patch for this sample
+			cv::Mat sample;
 
-			j++;
-		}
-		i++;
-	}
+			cv::getRectSubPix(cf.img, cv::Size(WINDOW_SIZE, WINDOW_SIZE), sample_mu, sample, CV_32F); // subpixel test patch
 
-	//use a smaller window for final hessian calc
-	int upper_bound = length - 2;
+			//compute the ssd for this patch
+			float ssd = 0;
+			for(int i = 0; i < WINDOW_SIZE; i++){
+				for(int j = 0; j < WINDOW_SIZE; j++){
+					ssd += pow(ref.at<float>(i, j) - sample.at<float>(i, j), 2);
+				}
+			}
 
-	float hxx = 0;
-	float hxy = 0;
-	float hyy = 0;
+			ssd /= window_area; // normalize
 
-	// compute and add the hessians
-	for(int i = 1; i <= upper_bound; i++)
-	{
-		for(int j = 1; j <= upper_bound; j++)
-		{
+			float rd = exp(-k*ssd);
 
-			float hx_temp = 0.5f * (gradx[i+1][j]-gradx[i-1][j]);
-			float hy_temp = 0.5f * (grady[i][j+1]-grady[i][j-1]);
-
-			hxx += hx_temp * hx_temp;
-			hyy += hy_temp * hy_temp;
-			hxy += hx_temp * hy_temp;
-
+			sum_rd += rd;
+			sum_rd_xx += rd*du*du;
+			sum_rd_yy += rd*dv*dv;
+			sum_rd_xy += rd*du*dv;
 		}
 	}
 
-	A << hxx, hxy, hxy, hyy;
+	//finally construct the covariance matrix
 
-	A *= 1.0/((float)(length-2)*255.0);
+	A(0, 0) = sum_rd_xx/sum_rd;
+	A(1, 1) = sum_rd_yy/sum_rd;
+	A(0, 1) = sum_rd_xy/sum_rd;
+	A(1, 0) = A(0, 1);
 
-	ROS_DEBUG_STREAM("A: " << A.inverse());
+	ROS_DEBUG_STREAM("cov: " << A);
 
-	return A.inverse();
+	return A;
 }

@@ -94,7 +94,7 @@ public:
 				const std::list<Feature>& estimated_new_feature_positions, std::vector<Eigen::Vector2f>& measured_positions,
 				std::vector<Eigen::Matrix2f>& estimated_uncertainty, std::vector<bool>& passed);
 
-	Eigen::Matrix2f estimateUncertainty(const Frame& cf, cv::Point2f mu);
+	Eigen::Matrix2f estimateUncertainty(const Frame& lf, cv::Point2f mu_ref, const Frame& cf, cv::Point2f mu);
 };
 
 #endif /* INVIO_INCLUDE_INVIO_KLTTRACKER_H_ */

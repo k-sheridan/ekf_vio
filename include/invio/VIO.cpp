@@ -271,8 +271,8 @@ cv::RotatedRect VIO::getErrorEllipse(double chisquare_val, cv::Point2f mean, Eig
 
 	if(es.info() != Eigen::ComputationInfo::Success)
 	{
-		ROS_DEBUG("eigen vals and or vecs not computed");
-		return cv::RotatedRect(mean, cv::Size2f(eig_vals(0).real(), eig_vals(1).real()), 0);
+		ROS_DEBUG_STREAM("eigen vals and or vecs not computed: " << eig_covmat);
+		return cv::RotatedRect(mean, cv::Size2f(10, 10), 0);
 	}
 
 	Eigen::EigenSolver<Eigen::Matrix2f>::EigenvectorsType eig_vecs = es.eigenvectors();
