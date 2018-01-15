@@ -341,8 +341,9 @@ void VIO::publishInsight(Frame& f)
 			//ROS_DEBUG_STREAM("plotting covariance in pixels: " << this->tc_ekf.getMetric2PixelMap(f.K)*this->tc_ekf.getFeatureHomogenousCovariance(i)*this->tc_ekf.getMetric2PixelMap(f.K).transpose());
 			Eigen::SparseMatrix<float> J = this->tc_ekf.getMetric2PixelMap(f.K);
 
-			//cv::RotatedRect rr = this->getErrorEllipse(0.99, e.getPixel(f), this->tc_ekf.getFeatureHomogenousCovariance(i));
-			//cv::ellipse(img, rr, cv::Scalar(255, 255, 0), 1);
+			cv::RotatedRect rr = this->getErrorEllipse(0.99, e.getPixel(f), J*this->tc_ekf.getFeatureHomogenousCovariance(i)*J);
+			//ROS_DEBUG_STREAM(rr.size);
+			cv::ellipse(img, rr, cv::Scalar(255, 255, 0), 1);
 		}
 		// next feature
 		i++;

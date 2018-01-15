@@ -29,10 +29,15 @@ public:
 	//must always be kept in sync with the feature vector
 	Eigen::MatrixXf Sigma; // stores the current uncertainty and correlations for the state (including feature positions)
 
+	ros::Time t; // store the current time of the state
+
+	void initializeBaseState();
 
 	void addNewFeatures(std::vector<Eigen::Vector2f> new_homogenous_features);
 
 	std::vector<Eigen::Vector2f> previousFeaturePositionVector();
+
+	void process(double dt);
 
 	void updateWithFeaturePositions(Frame& cf, std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass);
 

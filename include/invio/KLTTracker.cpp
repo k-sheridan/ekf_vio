@@ -73,6 +73,15 @@ void KLTTracker::findNewFeaturePositionsOpenCV(const Frame& lf, const Frame& cf,
 		if(status.at(i) == 1 && !(new_fts[i].x < KILL_PAD || new_fts[i].y < KILL_PAD || cf.img.cols - new_fts[i].x < KILL_PAD || cf.img.rows - new_fts[i].y < KILL_PAD)){
 			passed[i] = (true);
 			estimated_uncertainty[i] = (this->estimateUncertainty(lf, prev_fts.at(i), cf, new_fts.at(i)));
+
+			// convert the uncertainty measurement to metric
+			float scale = pow(1.0/cf.K(0, 0), 2);
+			estimated_uncertainty[i](0, 0) *= scale;
+			estimated_uncertainty[i](0, 1) *= scale;
+			scale = pow(1.0/cf.K(1, 1), 2);
+			estimated_uncertainty[i](1, 1) *= scale;
+			estimated_uncertainty[i](1, 0) *= scale;
+
 			measured_positions[i] = Feature::pixel2Metric(cf, new_fts.at(i));
 		}
 		else

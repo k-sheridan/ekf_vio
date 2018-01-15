@@ -11,12 +11,50 @@ TightlyCoupledEKF::TightlyCoupledEKF() {
 
 	this->Sigma.resize(BASE_STATE_SIZE, BASE_STATE_SIZE);
 
-	// TODO setup initial variances and values of the base state
-	this->Sigma.setOnes();
+	//set the time to unknown, it is based of the stamp of the first message recieved
+	this->t = ros::Time(0);
+
+	//setup initial variances and values of the base state
+	this->initializeBaseState();
+
 }
 
 TightlyCoupledEKF::~TightlyCoupledEKF() {
 	// TODO Auto-generated destructor stub
+}
+
+void TightlyCoupledEKF::initializeBaseState()
+{
+	this->base_mu.setZero();
+	this->Sigma.block<BASE_STATE_SIZE, BASE_STATE_SIZE>(0, 0).setZero(); //wipe the base state sigmas
+
+	this->Sigma(0, 0) = 0;
+	this->Sigma(1, 1) = 0;
+	this->Sigma(2, 2) = 0;
+	this->Sigma(3, 3) = 0;
+	this->Sigma(4, 4) = 0;
+	this->Sigma(5, 5) = 0;
+	this->Sigma(6, 6) = 0;
+
+	this->base_mu(3) = 1.0; // no rotation
+
+	this->Sigma(7, 7) = 100000;
+	this->Sigma(8, 8) = 100000;
+	this->Sigma(9, 9) = 100000;
+	this->Sigma(10, 10) = 100000;
+	this->Sigma(11, 11) = 100000;
+	this->Sigma(12, 12) = 100000;
+	this->Sigma(13, 13) = 100000;
+	this->Sigma(14, 14) = 100000;
+	this->Sigma(15, 15) = 100000;
+
+	this->Sigma(15, 15) = 0.5; // somewhat certain about the biases
+	this->Sigma(16, 16) = 0.5;
+	this->Sigma(17, 17) = 0.5;
+	this->Sigma(18, 18) = 0.5;
+	this->Sigma(19, 19) = 0.5;
+	this->Sigma(20, 20) = 0.5;
+
 }
 
 void TightlyCoupledEKF::addNewFeatures(std::vector<Eigen::Vector2f> new_homogenous_features){
@@ -111,6 +149,27 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::formFeatureMeasurementMap(std::vec
 
 	ROS_ASSERT(measured.size() == this->features.size()); // sanity check
 
+	std::vector<int> indexes;
+	for(int i = 0; i < measured.size(); i++){
+		if(measured.at(i)){
+			indexes.push_back(i*3+BASE_STATE_SIZE); //this is the index of each measured feature's u in the state
+		}
+	}
+
+	// the mapping from the state to the feature measurement vector
+	Eigen::SparseMatrix<float> H((indexes.size()*2), (BASE_STATE_SIZE + this->features.size() * 3));
+
+	int index = BASE_STATE_SIZE; // index of the first feature
+
+	int measurement_index = 0;
+	for(auto e : indexes){
+		H.insert(measurement_index, e) = 1.0;
+		measurement_index++;
+		H.insert(measurement_index, e+1) = 1.0;
+		measurement_index++;
+	}
+
+	return H;
 }
 
 Eigen::Matrix2f TightlyCoupledEKF::getFeatureHomogenousCovariance(int index){
