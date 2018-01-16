@@ -118,6 +118,7 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 
 	Eigen::SparseMatrix<float> H = this->formFeatureMeasurementMap(pass); // create the mapping between the state and measurement dynamically
 
+	ROS_DEBUG_STREAM("H rows: " << H.rows() << " H cols: " << H.cols());
 
 	Eigen::SparseMatrix<float> R(H.rows(), H.rows()); // this will store the measurement uncertainty
 	Eigen::VectorXf z(H.rows()); // this stores the measured metric feature positions
@@ -125,6 +126,8 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 
 	//reserve the R matrix memory
 	R.reserve(H.rows() * 2);
+
+	ROS_DEBUG("start loading vectors");
 
 	//setup the base_mu
 	for(int i = 0; i < base_mu.size(); i++){mu(i) = base_mu(i);}
@@ -170,6 +173,8 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 		i++;
 	}
 
+	ROS_DEBUG("start update");
+
 	//finally update using this procedure (ensures no issues due to rounding errors)
 	//y = z - H*mu
 	//S = R + H*Sigma*H'
@@ -182,9 +187,13 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	Eigen::VectorXf y = z;
 	y.noalias() -= H*mu;
 
+	ROS_DEBUG("computed residual");
+
 	Eigen::MatrixXf S_dense(H.rows(), H.rows());
 	S_dense = H * Sigma * H.transpose();
 	S_dense += R;
+
+	ROS_DEBUG("created S");
 
 	//ROS_DEBUG_STREAM("S_dense: " << S_dense);
 
@@ -194,6 +203,7 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	// sparsify S
 	Eigen::SparseMatrix<float> S_sparse = S_dense.sparseView();
 
+	ROS_DEBUG("sparsified S");
 	//ROS_DEBUG_STREAM("Sparsified: " << S_sparse);
 
 	//Eigen::LDLT<Eigen::MatrixXf> solver;
@@ -206,17 +216,24 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	K = solver.solve((Sigma * H.transpose()).transpose()).transpose();
 
 
+	ROS_DEBUG_STREAM("solved for K");
 	//ROS_DEBUG_STREAM("K: " << K);
 
 	//sparse identity
 	//Eigen::SparseMatrix<float> I(Sigma.rows(), Sigma.rows());
 	//I.setIdentity();
 
-	Eigen::MatrixXf I_KH = Eigen::MatrixXf::Identity(Sigma.rows(), Sigma.cols()) - K*H;
+	Eigen::MatrixXf I_KH = Eigen::MatrixXf::Identity(Sigma.rows(), Sigma.cols());
+	I_KH -= K*H;
 
-	this->Sigma = I_KH*Sigma*I_KH + K*R*K.transpose(); // update the covariance matrix
+	this->Sigma = I_KH * Sigma.selfadjointView<Eigen::Upper>() * I_KH; // update the covariance matrix
+	this->Sigma += K*R*K.transpose();
+
+	ROS_DEBUG("updated sigma");
 
 	mu += K*y; // shift the mu with the kalman gain and residual
+
+	ROS_DEBUG("updated mu");
 
 	//go through and update the state
 	for(int i = 0; i < base_mu.size(); i++){base_mu(i) = mu(i);}
@@ -228,6 +245,8 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 		e.setDepth(mu(mu_index));
 		mu_index++;
 	}
+
+	ROS_DEBUG("set mu");
 
 }
 

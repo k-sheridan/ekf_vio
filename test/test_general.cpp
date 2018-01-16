@@ -75,6 +75,63 @@ int main(int argc, char **argv)
 	ROS_INFO_STREAM("cov after: " << tc_ekf.Sigma);
 
 
+	ROS_INFO_STREAM("test: " << tc_ekf.Sigma * tc_ekf.Sigma.selfadjointView<Eigen::Upper>() * tc_ekf.Sigma);
+
+
+	ROS_INFO("test update function timing");
+
+	ROS_INFO("small start");
+	tc_ekf.updateWithFeaturePositions(features, covs, measured);
+	ROS_INFO("small stop");
+
+	tc_ekf = TightlyCoupledEKF();
+
+	for(int i = 0; i < 100; i++){
+		features.push_back(Eigen::Vector2f(0.1, 0.1));
+		covs.push_back(cov);
+		measured.push_back(true);
+	}
+
+	tc_ekf.addNewFeatures(features);
+
+	ROS_INFO("medium start");
+	tc_ekf.updateWithFeaturePositions(features, covs, measured);
+	ROS_INFO("medium stop");
+
+	tc_ekf = TightlyCoupledEKF();
+
+	for(int i = 0; i < 400; i++){
+		features.push_back(Eigen::Vector2f(0.1, 0.1));
+		covs.push_back(cov);
+		measured.push_back(false);
+	}
+
+	tc_ekf.addNewFeatures(features);
+
+	ROS_INFO("large with false start");
+	tc_ekf.updateWithFeaturePositions(features, covs, measured);
+	ROS_INFO("large with false stop");
+
+	tc_ekf = TightlyCoupledEKF();
+
+	for(int i = 0; i < measured.size(); i++){
+		measured.at(i) = true;
+	}
+
+	tc_ekf.addNewFeatures(features);
+
+	ROS_INFO("large full start");
+	tc_ekf.updateWithFeaturePositions(features, covs, measured);
+	ROS_INFO("large full stop");
+
+
+
+	Eigen::MatrixXf test_mat(1500, 1500);
+	test_mat.setOnes();
+	ROS_DEBUG("test sparsification large");
+	Eigen::SparseMatrix<float> sparse_test = test_mat.sparseView();
+	ROS_DEBUG("done sparsification");
+
 
 	return 0;
 }

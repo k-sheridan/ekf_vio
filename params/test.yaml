@@ -1,5 +1,5 @@
 min_new_feature_dist: 30
-num_features: 400
+num_features: 100
 fast_threshold: 45
 
 depth_translation_ratio: 0.01
