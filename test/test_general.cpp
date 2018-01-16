@@ -15,6 +15,8 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "general_test"); // initializes ros
 
+	ros::NodeHandle nh;
+
 	parseROSParams();
 
 	Eigen::MatrixXf A;
@@ -79,10 +81,13 @@ int main(int argc, char **argv)
 
 
 	ROS_INFO("test update function timing");
+	ros::Time t_start;
 
+	t_start = ros::Time::now();
 	ROS_INFO("small start");
 	tc_ekf.updateWithFeaturePositions(features, covs, measured);
 	ROS_INFO("small stop");
+	ROS_INFO_STREAM("dt: " << (ros::Time::now() - t_start).toSec() * 1000);
 
 	tc_ekf = TightlyCoupledEKF();
 
@@ -94,9 +99,11 @@ int main(int argc, char **argv)
 
 	tc_ekf.addNewFeatures(features);
 
+	t_start = ros::Time::now();
 	ROS_INFO("medium start");
 	tc_ekf.updateWithFeaturePositions(features, covs, measured);
 	ROS_INFO("medium stop");
+	ROS_INFO_STREAM("dt: " << (ros::Time::now() - t_start).toSec() * 1000);
 
 	tc_ekf = TightlyCoupledEKF();
 
@@ -108,9 +115,11 @@ int main(int argc, char **argv)
 
 	tc_ekf.addNewFeatures(features);
 
+	t_start = ros::Time::now();
 	ROS_INFO("large with false start");
 	tc_ekf.updateWithFeaturePositions(features, covs, measured);
 	ROS_INFO("large with false stop");
+	ROS_INFO_STREAM("dt: " << (ros::Time::now() - t_start).toSec() * 1000);
 
 	tc_ekf = TightlyCoupledEKF();
 
@@ -120,17 +129,21 @@ int main(int argc, char **argv)
 
 	tc_ekf.addNewFeatures(features);
 
+	t_start = ros::Time::now();
 	ROS_INFO("large full start");
 	tc_ekf.updateWithFeaturePositions(features, covs, measured);
 	ROS_INFO("large full stop");
+	ROS_INFO_STREAM("dt: " << (ros::Time::now() - t_start).toSec() * 1000);
 
 
 
 	Eigen::MatrixXf test_mat(1500, 1500);
-	test_mat.setOnes();
-	ROS_DEBUG("test sparsification large");
+	test_mat.setIdentity();
+	t_start = ros::Time::now();
+	ROS_DEBUG("test sparsification large ones");
 	Eigen::SparseMatrix<float> sparse_test = test_mat.sparseView();
 	ROS_DEBUG("done sparsification");
+	ROS_INFO_STREAM("dt: " << (ros::Time::now() - t_start).toSec() * 1000);
 
 
 	return 0;

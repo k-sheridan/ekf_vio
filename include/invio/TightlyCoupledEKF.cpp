@@ -219,19 +219,18 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	ROS_DEBUG_STREAM("solved for K");
 	//ROS_DEBUG_STREAM("K: " << K);
 
-	//sparse identity
-	//Eigen::SparseMatrix<float> I(Sigma.rows(), Sigma.rows());
-	//I.setIdentity();
+	Eigen::SparseMatrix<float> K_sparse = K.sparseView();
 
-	Eigen::MatrixXf I_KH = Eigen::MatrixXf::Identity(Sigma.rows(), Sigma.cols());
-	I_KH -= K*H;
+	Eigen::SparseMatrix<float> I_KH(Sigma.rows(), Sigma.rows());
+	I_KH.setIdentity();
+	I_KH -= K_sparse*H;
 
-	this->Sigma = I_KH * Sigma.selfadjointView<Eigen::Upper>() * I_KH; // update the covariance matrix
-	this->Sigma += K*R*K.transpose();
+	this->Sigma = I_KH * Sigma * I_KH; // update the covariance matrix
+	this->Sigma.noalias() += K*R*K.transpose();
 
 	ROS_DEBUG("updated sigma");
 
-	mu += K*y; // shift the mu with the kalman gain and residual
+	mu += K_sparse*y; // shift the mu with the kalman gain and residual
 
 	ROS_DEBUG("updated mu");
 
