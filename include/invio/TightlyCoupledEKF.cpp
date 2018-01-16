@@ -123,7 +123,14 @@ void TightlyCoupledEKF::updateWithFeaturePositions(Frame& cf, std::vector<Eigen:
 	Eigen::VectorXf z(H.rows()); // this stores the measured metric feature positions
 	Eigen::VectorXf mu(BASE_STATE_SIZE + this->features.size() * 3); // due to the dynamic nature of this ekf we need to create this mu vector
 
+	//reserve the R matrix memory
+	R.reserve(H.rows() * 2);
+
+	//setup the base_mu
+	for(int i = 0; i < base_mu.size(); i++){mu(i) = base_mu(i);}
+
 	//update the whole state
+	int mu_index = BASE_STATE_SIZE;
 	int i = 0; // track the index of the input
 	int j = 0; // track the index of the new vector and matrix
 	for(auto& e : this->features){
@@ -132,7 +139,6 @@ void TightlyCoupledEKF::updateWithFeaturePositions(Frame& cf, std::vector<Eigen:
 		{
 			//ROS_DEBUG_STREAM(measured_positions.at(i));
 			e.setLastResultFromKLTTracker(measured_positions.at(i)); // used for klt tracking
-
 			z(j) = measured_positions[i].x();
 			R.insert(j, j) = estimated_covariance[i](0, 0);
 			j++;
@@ -152,6 +158,14 @@ void TightlyCoupledEKF::updateWithFeaturePositions(Frame& cf, std::vector<Eigen:
 			e.setDeleteFlag(true);
 		}
 
+		Eigen::Vector2f h = e.getNormalizedPixel();
+		mu(mu_index) = h.x();
+		mu_index++;
+		mu(mu_index) = h.y();
+		mu_index++;
+		mu(mu_index) = e.getDepth();
+		mu_index++;
+
 		//increment
 		i++;
 	}
@@ -160,18 +174,60 @@ void TightlyCoupledEKF::updateWithFeaturePositions(Frame& cf, std::vector<Eigen:
 	//y = z - H*mu
 	//S = R + H*Sigma*H'
 	// using x*A=b ==> A'*x_T=b'
-	//K = Sigma*H'*inv(S) ==> K*S = Sigma*H' ==> S'*K' = (Sigma*H')' ==> K' = inv(S') * (Sigma*H')' ==> K' = inv(S') * (Sigma'*H)
+	//K = Sigma*H'*inv(S) ==> K*S = Sigma*H' ==> S'*K' = (Sigma*H')' ==> K' = inv(S') * (Sigma*H')'
 	//mu = mu + K*y
 	// I_KH = I - K*H
 	//Sigma = I_KH*Sigma*I_KH' + K*R*K'
 
 	Eigen::VectorXf y = z;
-	y -= H*mu;
+	y.noalias() -= H*mu;
 
-	Eigen::MatrixXf S;
-	S.noalias() = H*Sigma*H.transpose();
-	S += R;
+	Eigen::MatrixXf S_dense(H.rows(), H.rows());
+	S_dense = H * Sigma * H.transpose();
+	S_dense += R;
 
+	//ROS_DEBUG_STREAM("S_dense: " << S_dense);
+
+	// now we must solve for K
+	Eigen::MatrixXf K(Sigma.rows(), H.rows());
+
+	// sparsify S
+	Eigen::SparseMatrix<float> S_sparse = S_dense.sparseView();
+
+	//ROS_DEBUG_STREAM("Sparsified: " << S_sparse);
+
+	//Eigen::LDLT<Eigen::MatrixXf> solver;
+	//solver.compute(S_dense.transpose());
+	//K = solver.solve((Sigma * H.transpose()).transpose()).transpose();
+
+	Eigen::SimplicialLDLT<Eigen::SparseMatrix<float>> solver;
+	solver.compute(S_sparse.transpose());
+	ROS_ERROR_COND(solver.info() == Eigen::NumericalIssue, "there was a problem decomposing S... maybe it was not positive semi definite");
+	K = solver.solve((Sigma * H.transpose()).transpose()).transpose();
+
+
+	//ROS_DEBUG_STREAM("K: " << K);
+
+	//sparse identity
+	//Eigen::SparseMatrix<float> I(Sigma.rows(), Sigma.rows());
+	//I.setIdentity();
+
+	Eigen::MatrixXf I_KH = Eigen::MatrixXf::Identity(Sigma.rows(), Sigma.cols()) - K*H;
+
+	this->Sigma = I_KH*Sigma*I_KH + K*R*K.transpose(); // update the covariance matrix
+
+	mu += K*y; // shift the mu with the kalman gain and residual
+
+	//go through and update the state
+	for(int i = 0; i < base_mu.size(); i++){base_mu(i) = mu(i);}
+
+	mu_index = BASE_STATE_SIZE;
+	for(auto& e : features){
+		e.setNormalizedPixel(Eigen::Vector2f(mu(mu_index), mu(mu_index+1)));
+		mu_index += 2;
+		e.setDepth(mu(mu_index));
+		mu_index++;
+	}
 
 }
 
@@ -192,6 +248,8 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::formFeatureMeasurementMap(std::vec
 
 	// the mapping from the state to the feature measurement vector
 	Eigen::SparseMatrix<float> H((indexes.size()*2), (BASE_STATE_SIZE + this->features.size() * 3));
+
+	H.reserve(indexes.size() * 2); // reserve memory for the elements
 
 	int index = BASE_STATE_SIZE; // index of the first feature
 

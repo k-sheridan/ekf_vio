@@ -56,12 +56,11 @@ VIO::VIO() {
 	ros::spin();
 }
 
-VIO::~VIO() {
-	// TODO Auto-generated destructor stub
-}
-
 void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
 		const sensor_msgs::CameraInfoConstPtr& cam) {
+	static int dt_count = 1;
+	static double dt_sum = 0;
+
 	ros::Time start = ros::Time::now();
 
 	cv::Mat temp = cv_bridge::toCvShare(img, img->encoding)->image.clone();
@@ -72,7 +71,11 @@ void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
 
 	this->addFrame(f);
 
-	ROS_INFO_STREAM("frame dt in ms: " << (ros::Time::now() - start).toSec() * 1000.0);
+	double current_dt = (ros::Time::now() - start).toSec() * 1000.0;
+	dt_sum += current_dt;
+
+	ROS_INFO_STREAM("average dt: " << dt_sum/dt_count << " this dt: " << current_dt);
+	dt_count++;
 }
 
 void VIO::addFrame(Frame f) {

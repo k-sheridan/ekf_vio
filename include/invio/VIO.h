@@ -66,7 +66,6 @@ public:
 	ros::Publisher insight_pub, insight_cinfo_pub, odom_pub, points_pub;
 
 	VIO();
-	virtual ~VIO();
 
 	void camera_callback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::CameraInfoConstPtr& cam);
 

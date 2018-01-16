@@ -16,6 +16,8 @@
 #include <Eigen/Core>
 #include <Eigen/Sparse>
 #include <Eigen/LU>
+#include <Eigen/SparseCholesky>
+#include <Eigen/Cholesky>
 
 class TightlyCoupledEKF {
 public:
