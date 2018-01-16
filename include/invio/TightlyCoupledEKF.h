@@ -41,7 +41,7 @@ public:
 
 	void process(double dt);
 
-	void updateWithFeaturePositions(Frame& cf, std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass);
+	void updateWithFeaturePositions(std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass);
 
 	Eigen::SparseMatrix<float> formFeatureMeasurementMap(std::vector<bool> measured);
 

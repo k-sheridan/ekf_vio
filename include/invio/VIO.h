@@ -83,8 +83,6 @@ public:
 
 	void publishOdometry(Frame& cf);
 
-	void parseROSParams();
-
 	cv::RotatedRect getErrorEllipse(double chisquare_val, cv::Point2f mean, Eigen::Matrix2f covmat);
 };
 
