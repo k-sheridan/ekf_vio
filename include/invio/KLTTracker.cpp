@@ -69,10 +69,10 @@ void KLTTracker::findNewFeaturePositionsOpenCV(const Frame& lf, const Frame& cf,
 	estimated_uncertainty.resize(new_fts.size());
 	measured_positions.resize(new_fts.size());
 
-	for(int i = 0; i < new_fts.size(); i++){
+	for(size_t i = 0; i < new_fts.size(); i++){
 		if(status.at(i) == 1 && !(new_fts[i].x < KILL_PAD || new_fts[i].y < KILL_PAD || cf.img.cols - new_fts[i].x < KILL_PAD || cf.img.rows - new_fts[i].y < KILL_PAD)){
 			passed[i] = (true);
-			estimated_uncertainty[i] = (this->estimateUncertainty(lf, prev_fts.at(i), cf, new_fts.at(i)));
+			estimated_uncertainty[i] = (this->estimateUncertainty(cf, new_fts.at(i)));
 
 			// convert the uncertainty measurement to metric
 			float scale = pow(1.0/cf.K(0, 0), 2);
@@ -97,8 +97,9 @@ void KLTTracker::findNewFeaturePositionsOpenCV(const Frame& lf, const Frame& cf,
 /*
  * estimates the uncertainty of the feature position in pixel units
  */
-Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& lf, cv::Point2f mu_ref, const Frame& cf, cv::Point2f mu)
+Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& cf, cv::Point2f mu)
 {
+	ROS_ASSERT(cf.img.rows || mu.x);
 	Eigen::Matrix2f A;
 	A << 20, 0, 0, 20;
 	return A;

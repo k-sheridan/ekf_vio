@@ -22,7 +22,6 @@
 class TightlyCoupledEKF {
 public:
 	TightlyCoupledEKF();
-	virtual ~TightlyCoupledEKF();
 
 	Eigen::Matrix<float, BASE_STATE_SIZE, 1> base_mu; // this is the part of the state which always remains. It contains position, vel, orientation etc.
 

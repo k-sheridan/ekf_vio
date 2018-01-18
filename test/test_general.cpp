@@ -145,7 +145,6 @@ int main(int argc, char **argv)
 	ROS_DEBUG("done sparsification");
 	ROS_INFO_STREAM("dt: " << (ros::Time::now() - t_start).toSec() * 1000);
 
-
 	return 0;
 }
 

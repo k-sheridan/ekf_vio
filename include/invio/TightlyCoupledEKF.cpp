@@ -19,9 +19,6 @@ TightlyCoupledEKF::TightlyCoupledEKF() {
 
 }
 
-TightlyCoupledEKF::~TightlyCoupledEKF() {
-	// TODO Auto-generated destructor stub
-}
 
 void TightlyCoupledEKF::initializeBaseState()
 {
@@ -258,7 +255,7 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::formFeatureMeasurementMap(std::vec
 	ROS_ASSERT(measured.size() == this->features.size()); // sanity check
 
 	std::vector<int> indexes;
-	for(int i = 0; i < measured.size(); i++){
+	for(size_t i = 0; i < measured.size(); i++){
 		if(measured.at(i)){
 			indexes.push_back(i*3+BASE_STATE_SIZE); //this is the index of each measured feature's u in the state
 		}
@@ -269,7 +266,7 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::formFeatureMeasurementMap(std::vec
 
 	H.reserve(indexes.size() * 2); // reserve memory for the elements
 
-	int index = BASE_STATE_SIZE; // index of the first feature
+	//int index = BASE_STATE_SIZE; // index of the first feature
 
 	int measurement_index = 0;
 	for(auto e : indexes){
