@@ -8,7 +8,7 @@
 
 #include <ros/ros.h>
 
-#include "vioParams.h"
+//#include "vioParams.h"
 #include "../include/invio/VIO.h"
 
 int main(int argc, char **argv)
@@ -17,7 +17,7 @@ int main(int argc, char **argv)
 
 	ros::NodeHandle nh;
 
-	parseROSParams();
+	//parseROSParams();
 
 	Eigen::MatrixXf A;
 
@@ -123,7 +123,7 @@ int main(int argc, char **argv)
 
 	tc_ekf = TightlyCoupledEKF();
 
-	for(int i = 0; i < measured.size(); i++){
+	for(size_t i = 0; i < measured.size(); i++){
 		measured.at(i) = true;
 	}
 

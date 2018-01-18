@@ -102,7 +102,8 @@ void VIO::addFrame(Frame f) {
 		// make the final determination whether or not we are initialized
 		if(!this->initialized)
 		{
-			if(this->tc_ekf.features.size() >= START_FEATURE_COUNT)
+			ROS_ASSERT(START_FEATURE_COUNT >= 0);
+			if(this->tc_ekf.features.size() >= (unsigned)START_FEATURE_COUNT)
 			{
 				this->initialized = true; // ready to run motion estimation
 			}
