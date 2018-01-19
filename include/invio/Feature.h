@@ -29,7 +29,7 @@
 #include <tf/tfMessage.h>
 
 #include <Frame.h>
-#include <vioParams.h>
+#include <Params.h>
 
 #include <Eigen/Core>
 

@@ -16,7 +16,55 @@ VIO::VIO() {
 
 	ros::NodeHandle nh; // we all know what this is
 
-	parseROSParams();
+	//parseROSParams();
+	ros::param::param<bool>("~publish_insight", PUBLISH_INSIGHT, D_PUBLISH_INSIGHT);
+	ros::param::param<std::string>("~insight_topic", INSIGHT_TOPIC, D_INSIGHT_TOPIC);
+	ros::param::param<std::string>("~insight_camera_info_topic", INSIGHT_CINFO_TOPIC, D_INSIGHT_CINFO_TOPIC);
+	ros::param::param<int>("~fast_threshold", FAST_THRESHOLD, D_FAST_THRESHOLD);
+	ros::param::param<double>("~fast_blur_sigma", FAST_BLUR_SIGMA, D_FAST_BLUR_SIGMA);
+	ros::param::param<double>("~inverse_image_scale", INVERSE_IMAGE_SCALE, D_INVERSE_IMAGE_SCALE);
+	ros::param::param<bool>("~analyze_runtime", ANALYZE_RUNTIME, D_ANALYZE_RUNTIME);
+	ros::param::param<int>("~kill_pad", KILL_PAD, D_KILL_PAD);
+	ros::param::param<double>("~border_weight_exponent", BORDER_WEIGHT_EXPONENT, D_BORDER_WEIGHT_EXPONENT);
+	ros::param::param<double>("~min_klt_eigen_val", KLT_MIN_EIGEN, D_KLT_MIN_EIGEN);
+	ros::param::param<double>("~min_new_feature_dist", MIN_NEW_FEATURE_DIST, D_MIN_NEW_FEATURE_DIST);
+	ros::param::param<int>("~num_features", NUM_FEATURES, D_NUM_FEATURES);
+	ros::param::param<int>("~start_feature_count", START_FEATURE_COUNT, D_START_FEATURE_COUNT);
+	ros::param::param<int>("~dangerous_mature_feature_count", DANGEROUS_MATURE_FEATURE_COUNT_LEVEL, D_DANGEROUS_MATURE_FEATURE_COUNT_LEVEL);
+	ros::param::param<int>("~minimum_trackable_features", MINIMUM_TRACKABLE_FEATURES, D_MINIMUM_TRACKABLE_FEATURES);
+	ros::param::param<int>("~frame_buffer_size", FRAME_BUFFER_SIZE, D_FRAME_BUFFER_SIZE);
+	ros::param::param<int>("~minimum_keyframe_count_for_optimization", MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION, D_MINIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION);
+	ros::param::param<int>("~maximum_keyframe_count_for_optimization", MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION, D_MAXIMUM_KEYFRAME_COUNT_FOR_OPTIMIZATION);
+	ros::param::param<double>("~depth_translation_ratio", MIN_T2D, D_MIN_T2D);
+	ros::param::param<double>("~max_depth_updates_per_frame", MAX_DEPTH_UPDATES_PER_FRAME, D_MAX_DEPTH_UPDATES_PER_FRAME);
+	ros::param::param<double>("~maximum_reprojection_error", MAXIMUM_REPROJECTION_ERROR, D_MAXIMUM_REPROJECTION_ERROR);
+	ros::param::param<double>("~moba_candidate_variance", MOBA_CANDIDATE_VARIANCE, D_MOBA_CANDIDATE_VARIANCE);
+	ros::param::param<double>("~maximum_candidate_reprojection_error", MAXIMUM_CANDIDATE_REPROJECTION_ERROR, D_MAXIMUM_CANDIDATE_REPROJECTION_ERROR);
+	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
+	ros::param::param<double>("~default_point_depth_variance", DEFAULT_POINT_DEPTH_VARIANCE, D_DEFAULT_POINT_DEPTH_VARIANCE);
+	ros::param::param<double>("~default_point_homogenous_variance", DEFAULT_POINT_HOMOGENOUS_VARIANCE, D_DEFAULT_POINT_HOMOGENOUS_VARIANCE);
+	ros::param::param<double>("~eps_moba", EPS_MOBA, D_EPS_MOBA);
+	ros::param::param<double>("~eps_sba", EPS_SBA, D_EPS_SBA);
+	ros::param::param<double>("~huber_width", HUBER_WIDTH, D_HUBER_WIDTH);
+	ros::param::param<double>("~minumum_depth_determinant", MINIMUM_DEPTH_DETERMINANT, D_MINIMUM_DEPTH_DETERMINANT);
+	ros::param::param<int>("~moba_max_iterations", MOBA_MAX_ITERATIONS, D_MOBA_MAX_ITERATIONS);
+	ros::param::param<int>("~sba_max_iterations", SBA_MAX_ITERATIONS, D_SBA_MAX_ITERATIONS);
+	ros::param::param<double>("~max_point_z", MAX_POINT_Z, D_MAX_POINT_Z);
+	ros::param::param<double>("~min_point_z", MIN_POINT_Z, D_MIN_POINT_Z);
+	ros::param::param<std::string>("~odom_topic", ODOM_TOPIC, D_ODOM_TOPIC);
+	ros::param::param<std::string>("~odom_frame", ODOM_FRAME, D_ODOM_FRAME);
+	ros::param::param<std::string>("~point_topic", POINTS_TOPIC, D_POINTS_TOPIC);
+	ros::param::param<std::string>("~camera_topic", CAMERA_TOPIC, D_CAMERA_TOPIC);
+	ros::param::param<std::string>("~base_frame", BASE_FRAME, D_BASE_FRAME);
+	ros::param::param<std::string>("~world_frame", WORLD_FRAME, D_WORLD_FRAME);
+	ros::param::param<std::string>("~camera_frame", CAMERA_FRAME, D_CAMERA_FRAME);
+	ros::param::param<std::string>("~imu_topic", IMU_TOPIC, D_IMU_TOPIC);
+	ros::param::param<std::string>("~imu_frame", IMU_FRAME, D_IMU_FRAME);
+	ros::param::param<bool>("~use_imu", USE_IMU, D_USE_IMU);
+	ros::param::param<int>("~min_variance_box_size", MIN_VARIANCE_SIZE, D_MIN_VARIANCE_SIZE);
+	ros::param::param<int>("~max_variance_box_size", MAX_VARIANCE_SIZE, D_MAX_VARIANCE_SIZE);
+	ros::param::param<int>("~max_pyramids", MAX_PYRAMID_LEVEL, D_MAX_PYRAMID_LEVEL);
+	ros::param::param<int>("~klt_window_size", WINDOW_SIZE, D_WINDOW_SIZE);
 
 	image_transport::ImageTransport it(nh);
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
@@ -485,4 +533,6 @@ void VIO::publishPoints(Frame& f)
 	 */
 
 }
+
+
 

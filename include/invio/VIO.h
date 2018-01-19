@@ -40,7 +40,7 @@
 
 #include <Feature.h>
 #include <Frame.h>
-#include <vioParams.h>
+#include <Params.h>
 #include <TightlyCoupledEKF.h>
 #include <KLTTracker.h>
 

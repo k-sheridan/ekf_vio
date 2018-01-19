@@ -19,7 +19,7 @@
 
 #include <Eigen/Core>
 
-#include <vioParams.h>
+#include <Params.h>
 #include <ros/ros.h>
 
 class Frame {

@@ -8,10 +8,9 @@
 #ifndef INVIO_INCLUDE_INVIO_KLTTRACKER_H_
 #define INVIO_INCLUDE_INVIO_KLTTRACKER_H_
 
+#include <Params.h>
 #include <Frame.h>
 #include <Feature.h>
-#include <vioParams.h>
-
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/calib3d.hpp>
 #include <opencv2/features2d.hpp>

@@ -55,7 +55,7 @@ catkin_package(
 )
 
 
-add_library(vioParams include/invio/vioParams.h)
+add_library(vioParams include/invio/Params.cpp)
 set_target_properties(vioParams PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(vioParams ${catkin_LIBRARIES})
 
