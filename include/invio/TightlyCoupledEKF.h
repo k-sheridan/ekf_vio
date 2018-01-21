@@ -14,6 +14,7 @@
 #include <Feature.h>
 
 #include <Eigen/Core>
+#include <Eigen/Geometry>
 #include <Eigen/Sparse>
 #include <Eigen/LU>
 #include <Eigen/SparseCholesky>
@@ -39,6 +40,12 @@ public:
 	std::vector<Eigen::Vector2f> previousFeaturePositionVector();
 
 	void process(double dt);
+
+	Eigen::Matrix<float, BASE_STATE_SIZE, 1> convolveBaseState(Eigen::Matrix<float, BASE_STATE_SIZE, 1>& last, float dt);
+
+	Eigen::Vector3f convolveFeature(Eigen::Matrix<float, BASE_STATE_SIZE, 1>& base_state, Eigen::Vector3f& feature_state, float dt);
+
+	Eigen::SparseMatrix<float> numericallyLinearizeProcess(Eigen::Matrix<float, BASE_STATE_SIZE, 1>& base_mu, std::list<Feature>& features, float dt);
 
 	void updateWithFeaturePositions(std::vector<Eigen::Vector2f> measured_positions, std::vector<Eigen::Matrix2f> estimated_covariance, std::vector<bool> pass);
 
