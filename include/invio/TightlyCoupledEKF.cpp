@@ -91,6 +91,45 @@ void TightlyCoupledEKF::addNewFeatures(std::vector<Eigen::Vector2f> new_homogeno
 	}
 }
 
+Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen::Matrix<float, BASE_STATE_SIZE, 1>& base_mu, std::list<Feature>& features, float dt){
+	int dim = BASE_STATE_SIZE + features.size() * 3;
+	Eigen::SparseMatrix<float> F(dim, dim);
+
+	#define QZ_INDEX 6
+	#define AZ_INDEX 15
+	#define DELTA_SHIFT 5e-4
+
+	//TODO reserve each column
+
+	Eigen::Matrix<float, BASE_STATE_SIZE, 1> test_mu = base_mu;
+
+
+	// this is the least sparse part of the matrix
+	for(int j = 0; j < BASE_STATE_SIZE; j++){
+		if(j <= QZ_INDEX){ // pos and quat have no correlation to feature poritions
+
+			test_mu(j) += DELTA_SHIFT; // shift the mu to the high test point
+			Eigen::Matrix<float, BASE_STATE_SIZE, 1> derivatives = this->convolveBaseState(test_mu, dt); // temporarily store the high test point
+			test_mu(j) -= 2*DELTA_SHIFT; // test_mu with negative shift
+			derivatives -= this->convolveBaseState(test_mu, dt); // calculate the difference
+			test_mu(j) += DELTA_SHIFT; // bring the test mu back to base mu
+			derivatives /= 2*DELTA_SHIFT; // /d{var}
+
+			// write the derivatives to the base state rows
+			for(int i = 0; i < BASE_STATE_SIZE; i++){
+				F.insert(i, j) = derivatives(i);
+			}
+		}
+		else if(j <= AZ_INDEX){ // these columns correspond to the velocities and accelerations
+			//
+		}
+		else{ // biases have no correlation to feature positions
+			F.insert(j, j) = 1; // biases do not change during the process
+		}
+	}
+}
+
+
 Eigen::Matrix<float, BASE_STATE_SIZE, 1> TightlyCoupledEKF::convolveBaseState(Eigen::Matrix<float, BASE_STATE_SIZE, 1>& last, float dt){
 	Eigen::Vector3f pos, vel, accel, omega;
 	Eigen::Quaternionf quat;
@@ -168,9 +207,9 @@ Eigen::Vector3f TightlyCoupledEKF::convolveFeature(Eigen::Matrix<float, BASE_STA
 	static float last_omegaz = 0;
 	static Eigen::Quaternionf dq_inv = Eigen::Quaternionf::Identity();
 
-	Eigen::Vector3f pos, vel, accel;
+	Eigen::Vector3f vel, accel;
 
-	pos = Eigen::Vector3f(base_state(0), base_state(1), base_state(2));
+	//pos = Eigen::Vector3f(base_state(0), base_state(1), base_state(2));
 	vel = Eigen::Vector3f(base_state(7), base_state(8), base_state(9));
 	accel = Eigen::Vector3f(base_state(13), base_state(14), base_state(15));
 
