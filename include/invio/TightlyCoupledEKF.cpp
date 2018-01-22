@@ -121,7 +121,44 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 			}
 		}
 		else if(j <= AZ_INDEX){ // these columns correspond to the velocities and accelerations
-			//
+			//first compute the base state part
+			test_mu(j) += DELTA_SHIFT; // shift the mu to the high test point
+			Eigen::Matrix<float, BASE_STATE_SIZE, 1> base_derivatives = this->convolveBaseState(test_mu, dt); // temporarily store the high test point
+			test_mu(j) -= 2*DELTA_SHIFT; // test_mu with negative shift
+			base_derivatives -= this->convolveBaseState(test_mu, dt); // calculate the difference
+			derivatives /= 2*DELTA_SHIFT; // /d{var}
+
+			// write the derivatives to the base state rows
+			for(int i = 0; i < BASE_STATE_SIZE; i++){
+				F.insert(i, j) = base_derivatives(i);
+			}
+
+
+			//compute the feature derivatives as efficiently as possible
+			Eigen::Matrix<float, features,size()*3, 1> feature_derivatives;
+
+			test_mu(j) += 2*DELTA_SHIFT; // put the test mu at the higher test point 
+
+			int i = BASE_STATE_SIZE;
+			for(auto e : features){
+				feature_derivatives.block<3, 1>(i, 1) = this->convolveFeature(test_mu, e.getMu(), dt);
+			}
+
+			test_mu(j) -= 2*DELTA_SHIFT; // test_mu with negative shift
+			i = BASE_STATE_SIZE;
+			for(auto e : features){
+				feature_derivatives.block<3, 1>(i, 1) -= this->convolveFeature(test_mu, e.getMu(), dt);
+			}
+
+			feature_derivatives /= (2*DELTA_SHIFT); // /d{var}
+
+			//set the feature derivatives 
+			int i = BASE_STATE_SIZE;
+			for(int index = 0; index < feature_derivatives.size(); index++){
+				F.insert(i, j) = feature_derivatives.at(index);
+			}
+
+
 		}
 		else{ // biases have no correlation to feature positions
 			F.insert(j, j) = 1; // biases do not change during the process
