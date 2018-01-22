@@ -187,6 +187,19 @@ int main(int argc, char **argv)
 
 	ROS_INFO_STREAM("base_mu after: " << tc_ekf.convolveBaseState(tc_ekf.base_mu, 0.1) << "\nfeature 1 after: " << tc_ekf.convolveFeature(tc_ekf.base_mu, tc_ekf.features.front().getMu(), 0.1));
 
+
+	tc_ekf.base_mu(12) = 0;
+	tc_ekf.base_mu(11) = -3.1415;
+	tc_ekf.base_mu(9) = 1;
+	tc_ekf.base_mu(7) = 1;
+	tc_ekf.features.front().getMu()(0) = 0;
+	tc_ekf.features.front().getMu()(1) = 0;
+
+	ROS_INFO_STREAM("base mu before: " << tc_ekf.base_mu);
+	ROS_INFO_STREAM("feature 1 before: " << tc_ekf.features.front().getMu());
+
+	ROS_INFO_STREAM("base_mu after: " << tc_ekf.convolveBaseState(tc_ekf.base_mu, 0.5) << "\nfeature 1 after: " << tc_ekf.convolveFeature(tc_ekf.base_mu, tc_ekf.features.front().getMu(), 0.5));
+
 	return 0;
 }
 
