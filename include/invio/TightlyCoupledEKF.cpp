@@ -35,15 +35,15 @@ void TightlyCoupledEKF::initializeBaseState()
 
 	this->base_mu(3) = 1.0; // no rotation
 
-	this->Sigma(7, 7) = 100000;
-	this->Sigma(8, 8) = 100000;
-	this->Sigma(9, 9) = 100000;
-	this->Sigma(10, 10) = 100000;
-	this->Sigma(11, 11) = 100000;
-	this->Sigma(12, 12) = 100000;
-	this->Sigma(13, 13) = 100000;
-	this->Sigma(14, 14) = 100000;
-	this->Sigma(15, 15) = 100000;
+	this->Sigma(7, 7) = 30;
+	this->Sigma(8, 8) = 30;
+	this->Sigma(9, 9) = 30;
+	this->Sigma(10, 10) = 30;
+	this->Sigma(11, 11) = 30;
+	this->Sigma(12, 12) = 30;
+	this->Sigma(13, 13) = 30;
+	this->Sigma(14, 14) = 30;
+	this->Sigma(15, 15) = 30;
 
 	this->Sigma(15, 15) = 0.5; // somewhat certain about the biases
 	this->Sigma(16, 16) = 0.5;
@@ -128,7 +128,7 @@ Eigen::Matrix<float, BASE_STATE_SIZE, 1> TightlyCoupledEKF::convolveBaseState(Ei
 	quat *= dq;
 
 	// form the mu_out;
-	Eigen::Matrix<float, BASE_STATE_SIZE, 1> mu_out = last;
+	Eigen::Matrix<float, BASE_STATE_SIZE, 1> mu_out;
 
 	mu_out(0) = pos.x();
 	mu_out(1) = pos.y();
@@ -141,10 +141,20 @@ Eigen::Matrix<float, BASE_STATE_SIZE, 1> TightlyCoupledEKF::convolveBaseState(Ei
 	mu_out(8) = vel.y();
 	mu_out(9) = vel.z();
 	//omega is the same
+	mu_out(10) = last(10);
+	mu_out(11) = last(11);
+	mu_out(12) = last(12);
+
 	mu_out(13) = accel.x();
 	mu_out(14) = accel.y();
 	mu_out(15) = accel.z();
 	// biases are the same
+	mu_out(16) = last(16);
+	mu_out(17) = last(17);
+	mu_out(18) = last(18);
+	mu_out(19) = last(19);
+	mu_out(20) = last(20);
+	mu_out(21) = last(21);
 
 	return mu_out;
 
@@ -153,11 +163,15 @@ Eigen::Matrix<float, BASE_STATE_SIZE, 1> TightlyCoupledEKF::convolveBaseState(Ei
 Eigen::Vector3f TightlyCoupledEKF::convolveFeature(Eigen::Matrix<float, BASE_STATE_SIZE, 1>& base_state, Eigen::Vector3f& feature_state, float dt)
 {
 
-	Eigen::Vector3f pos, vel, accel, omega;
+	static float last_omegax = 0;
+	static float last_omegay = 0;
+	static float last_omegaz = 0;
+	static Eigen::Quaternionf dq_inv = Eigen::Quaternionf::Identity();
+
+	Eigen::Vector3f pos, vel, accel;
 
 	pos = Eigen::Vector3f(base_state(0), base_state(1), base_state(2));
 	vel = Eigen::Vector3f(base_state(7), base_state(8), base_state(9));
-	omega = Eigen::Vector3f(base_state(10), base_state(11), base_state(12));
 	accel = Eigen::Vector3f(base_state(13), base_state(14), base_state(15));
 
 	//convert feature to position in camera's coordinate frame
@@ -167,21 +181,29 @@ Eigen::Vector3f TightlyCoupledEKF::convolveFeature(Eigen::Matrix<float, BASE_STA
 
 	Eigen::Vector3f translation = dt*vel + 0.5*dt*dt*accel;
 
-	float omega_norm = omega.norm();
+	if(last_omegax != base_state(10) || last_omegay != base_state(11) || last_omegaz != base_state(12))
+	{
+		Eigen::Vector3f omega = Eigen::Vector3f(base_state(10), base_state(11), base_state(12));
 
-	Eigen::Quaternionf dq_inv;
+		float omega_norm = omega.norm();
 
-	if(omega_norm < 1e-10){
-		//small angle approximation
-		dq_inv = Eigen::Quaternionf(1.0, -omega.x()*dt, -omega.y()*dt, -omega.z()*dt);
-		dq_inv.normalize();
-	}
-	else{
-		float theta = dt*omega_norm;
-		Eigen::Vector3f omega_hat = omega / omega_norm;
-		float st2 = sin(theta/2);
+		if(omega_norm < 1e-10){
+			//small angle approximation
+			dq_inv = Eigen::Quaternionf(1.0, -omega.x()*dt, -omega.y()*dt, -omega.z()*dt);
+			dq_inv.normalize();
+		}
+		else{
+			float theta = dt*omega_norm;
+			Eigen::Vector3f omega_hat = omega / omega_norm;
+			float st2 = sin(theta/2);
 
-		dq_inv = Eigen::Quaternionf(cos(theta/2), -omega_hat.x() * st2, -omega_hat.y() * st2, -omega_hat.z() * st2);
+			dq_inv = Eigen::Quaternionf(cos(theta/2), -omega_hat.x() * st2, -omega_hat.y() * st2, -omega_hat.z() * st2);
+		}
+
+		last_omegax = base_state(10);
+		last_omegay = base_state(11);
+		last_omegaz = base_state(12);
+
 	}
 
 	// this transforms the point into the next camera frame

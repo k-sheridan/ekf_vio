@@ -88,6 +88,8 @@ public:
 		this->mu(2) = in;
 	}
 
+	Eigen::Vector3f& getMu(){return this->mu;}
+
 };
 
 #endif /* PAUVSI_VIO_INCLUDE_PAUVSI_VIO_FEATURE_H_ */

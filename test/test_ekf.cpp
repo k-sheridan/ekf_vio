@@ -8,7 +8,7 @@
 
 #include <ros/ros.h>
 
-//#include "vioParams.h"
+#include "Params.h"
 #include "../include/invio/VIO.h"
 
 int main(int argc, char **argv)
@@ -17,6 +17,8 @@ int main(int argc, char **argv)
 
 	ros::NodeHandle nh;
 
+
+	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
 	//parseROSParams();
 
 	Eigen::MatrixXf A;
@@ -144,6 +146,46 @@ int main(int argc, char **argv)
 	Eigen::SparseMatrix<float> sparse_test = test_mat.sparseView();
 	ROS_DEBUG("done sparsification");
 	ROS_INFO_STREAM("dt: " << (ros::Time::now() - t_start).toSec() * 1000);
+
+
+	//test process
+
+	tc_ekf = TightlyCoupledEKF();
+
+	features.clear();
+	features.push_back(Eigen::Vector2f(0.1, 0.1));
+	features.push_back(Eigen::Vector2f(-0.1, -0.1));
+	features.push_back(Eigen::Vector2f(0.1, -0.1));
+
+	tc_ekf.addNewFeatures(features);
+
+	ROS_INFO_STREAM("base mu before: " << tc_ekf.base_mu);
+	ROS_INFO_STREAM("feature 1 before: " << tc_ekf.features.front().getMu());
+
+	ROS_INFO_STREAM("base_mu after: " << tc_ekf.convolveBaseState(tc_ekf.base_mu, 0.1) << "\nfeature 1 after: " << tc_ekf.convolveFeature(tc_ekf.base_mu, tc_ekf.features.front().getMu(), 0.1));
+
+	tc_ekf.base_mu(9) = 1;
+
+	ROS_INFO_STREAM("base mu before: " << tc_ekf.base_mu);
+	ROS_INFO_STREAM("feature 1 before: " << tc_ekf.features.front().getMu());
+
+	ROS_INFO_STREAM("base_mu after: " << tc_ekf.convolveBaseState(tc_ekf.base_mu, 0.1) << "\nfeature 1 after: " << tc_ekf.convolveFeature(tc_ekf.base_mu, tc_ekf.features.front().getMu(), 0.1));
+
+
+	tc_ekf.base_mu(10) = 3.14;
+
+	ROS_INFO_STREAM("base mu before: " << tc_ekf.base_mu);
+	ROS_INFO_STREAM("feature 1 before: " << tc_ekf.features.front().getMu());
+
+	ROS_INFO_STREAM("base_mu after: " << tc_ekf.convolveBaseState(tc_ekf.base_mu, 0.1) << "\nfeature 1 after: " << tc_ekf.convolveFeature(tc_ekf.base_mu, tc_ekf.features.front().getMu(), 0.1));
+
+	tc_ekf.base_mu(10) = 0;
+	tc_ekf.base_mu(12) = 3.14;
+
+	ROS_INFO_STREAM("base mu before: " << tc_ekf.base_mu);
+	ROS_INFO_STREAM("feature 1 before: " << tc_ekf.features.front().getMu());
+
+	ROS_INFO_STREAM("base_mu after: " << tc_ekf.convolveBaseState(tc_ekf.base_mu, 0.1) << "\nfeature 1 after: " << tc_ekf.convolveFeature(tc_ekf.base_mu, tc_ekf.features.front().getMu(), 0.1));
 
 	return 0;
 }
