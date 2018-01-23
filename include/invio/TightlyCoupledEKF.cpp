@@ -126,7 +126,7 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 			Eigen::Matrix<float, BASE_STATE_SIZE, 1> base_derivatives = this->convolveBaseState(test_mu, dt); // temporarily store the high test point
 			test_mu(j) -= 2*DELTA_SHIFT; // test_mu with negative shift
 			base_derivatives -= this->convolveBaseState(test_mu, dt); // calculate the difference
-			derivatives /= 2*DELTA_SHIFT; // /d{var}
+			base_derivatives /= 2*DELTA_SHIFT; // /d{var}
 
 			// write the derivatives to the base state rows
 			for(int i = 0; i < BASE_STATE_SIZE; i++){
@@ -135,29 +135,29 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 
 
 			//compute the feature derivatives as efficiently as possible
-			Eigen::Matrix<float, features,size()*3, 1> feature_derivatives;
+			Eigen::MatrixXf feature_derivatives(features.size()*3, 1);
 
 			test_mu(j) += 2*DELTA_SHIFT; // put the test mu at the higher test point 
 
 			int i = BASE_STATE_SIZE;
 			for(auto e : features){
-				feature_derivatives.block<3, 1>(i, 1) = this->convolveFeature(test_mu, e.getMu(), dt);
+				feature_derivatives.block<3, 1>(i, 0) = this->convolveFeature(test_mu, e.getMu(), dt);
 			}
 
 			test_mu(j) -= 2*DELTA_SHIFT; // test_mu with negative shift
 			i = BASE_STATE_SIZE;
 			for(auto e : features){
-				feature_derivatives.block<3, 1>(i, 1) -= this->convolveFeature(test_mu, e.getMu(), dt);
+				feature_derivatives.block<3, 1>(i, 0) -= this->convolveFeature(test_mu, e.getMu(), dt);
 			}
 
 			feature_derivatives /= (2*DELTA_SHIFT); // /d{var}
 
-			//test_mu(j) += DELTA_SHIFT; // bring the test mu back to base mu
+			test_mu(j) += DELTA_SHIFT; // bring the test mu back to base mu
 
 			//set the feature derivatives 
-			int i = BASE_STATE_SIZE;
-			for(int index = 0; index < feature_derivatives.size(); index++){
-				F.insert(i, j) = feature_derivatives.at(index);
+			i = BASE_STATE_SIZE;
+			for(int index = 0; index < feature_derivatives.rows(); index++){
+				F.insert(i, j) = feature_derivatives(index, 0);
 			}
 
 
@@ -176,12 +176,12 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 
 		Eigen::Vector3f feature_test_mu = e.getMu();
 
-		for(int i = 0; column < upper_index; column++; i++){
+		for(int i = 0; column < upper_index; column++){
 			//compute this columns 3 derivatives
 			feature_test_mu(i) += DELTA_SHIFT;
-			Eigen::Vector3f derivative = convolveFeature(base_state, feature_test_mu, dt);
+			Eigen::Vector3f derivative = convolveFeature(test_mu, feature_test_mu, dt);
 			feature_test_mu(i) -= 2*DELTA_SHIFT;
-			derivative -= convolveFeature(base_state, feature_test_mu, dt);
+			derivative -= convolveFeature(test_mu, feature_test_mu, dt);
 			derivative /= 2*DELTA_SHIFT;
 
 			F.insert(root_index, column) = derivative(0);
@@ -190,8 +190,13 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 			root_index++;
 			F.insert(root_index, column) = derivative(2);
 			root_index++;
+
+			i++;
 		}
 	}
+
+	F.finalize();
+	return F;
 }
 
 
