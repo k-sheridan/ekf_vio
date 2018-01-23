@@ -152,6 +152,8 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 
 			feature_derivatives /= (2*DELTA_SHIFT); // /d{var}
 
+			//test_mu(j) += DELTA_SHIFT; // bring the test mu back to base mu
+
 			//set the feature derivatives 
 			int i = BASE_STATE_SIZE;
 			for(int index = 0; index < feature_derivatives.size(); index++){
@@ -162,6 +164,32 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 		}
 		else{ // biases have no correlation to feature positions
 			F.insert(j, j) = 1; // biases do not change during the process
+		}
+	}
+
+	//compute each of the sub-jacobians for the feature
+	int root_index = BASE_STATE_SIZE;
+	for(auto e : features){
+
+		int column = root_index;
+		int upper_index = root_index + 3;
+
+		Eigen::Vector3f feature_test_mu = e.getMu();
+
+		for(int i = 0; column < upper_index; column++; i++){
+			//compute this columns 3 derivatives
+			feature_test_mu(i) += DELTA_SHIFT;
+			Eigen::Vector3f derivative = convolveFeature(base_state, feature_test_mu, dt);
+			feature_test_mu(i) -= 2*DELTA_SHIFT;
+			derivative -= convolveFeature(base_state, feature_test_mu, dt);
+			derivative /= 2*DELTA_SHIFT;
+
+			F.insert(root_index, column) = derivative(0);
+			root_index++;
+			F.insert(root_index, column) = derivative(1);
+			root_index++;
+			F.insert(root_index, column) = derivative(2);
+			root_index++;
 		}
 	}
 }
