@@ -95,9 +95,9 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 	int dim = BASE_STATE_SIZE + features.size() * 3;
 	Eigen::SparseMatrix<float> F(dim, dim);
 
-	#define QZ_INDEX 6
-	#define AZ_INDEX 15
-	#define DELTA_SHIFT 5e-4
+#define QZ_INDEX 6
+#define AZ_INDEX 15
+#define DELTA_SHIFT 1e-3
 
 	//TODO reserve each column
 
@@ -112,13 +112,15 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 			Eigen::Matrix<float, BASE_STATE_SIZE, 1> derivatives = this->convolveBaseState(test_mu, dt); // temporarily store the high test point
 			test_mu(j) -= 2*DELTA_SHIFT; // test_mu with negative shift
 			derivatives -= this->convolveBaseState(test_mu, dt); // calculate the difference
-			test_mu(j) += DELTA_SHIFT; // bring the test mu back to base mu
+			test_mu(j) = base_mu(j); // bring the test mu back to base mu
 			derivatives /= 2*DELTA_SHIFT; // /d{var}
 
 			// write the derivatives to the base state rows
 			for(int i = 0; i < BASE_STATE_SIZE; i++){
 				F.insert(i, j) = derivatives(i);
 			}
+			//ROS_DEBUG_STREAM("test_mu: " << test_mu.transpose());
+			//ROS_DEBUG_STREAM("set derivative: " << derivatives.transpose());
 		}
 		else if(j <= AZ_INDEX){ // these columns correspond to the velocities and accelerations
 			//first compute the base state part
@@ -126,6 +128,7 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 			Eigen::Matrix<float, BASE_STATE_SIZE, 1> base_derivatives = this->convolveBaseState(test_mu, dt); // temporarily store the high test point
 			test_mu(j) -= 2*DELTA_SHIFT; // test_mu with negative shift
 			base_derivatives -= this->convolveBaseState(test_mu, dt); // calculate the difference
+			test_mu(j) = base_mu(j); // bring the test mu back to base mu
 			base_derivatives /= 2*DELTA_SHIFT; // /d{var}
 
 			// write the derivatives to the base state rows
@@ -133,66 +136,106 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 				F.insert(i, j) = base_derivatives(i);
 			}
 
+			//ROS_DEBUG_STREAM("set base derivative: " << base_derivatives.transpose());
 
 			//compute the feature derivatives as efficiently as possible
-			Eigen::MatrixXf feature_derivatives(features.size()*3, 1);
+			int row = 0;
+			Eigen::VectorXf feature_derivatives(features.size()*3);
 
-			test_mu(j) += 2*DELTA_SHIFT; // put the test mu at the higher test point 
+			test_mu(j) += DELTA_SHIFT; // shift the mu to the high test point
 
-			int i = BASE_STATE_SIZE;
 			for(auto e : features){
-				feature_derivatives.block<3, 1>(i, 0) = this->convolveFeature(test_mu, e.getMu(), dt);
+				feature_derivatives.segment(row, 3) = this->convolveFeature(test_mu, e.getMu(), dt);
+				row += 3;
 			}
 
+			row = 0;
 			test_mu(j) -= 2*DELTA_SHIFT; // test_mu with negative shift
-			i = BASE_STATE_SIZE;
+
 			for(auto e : features){
-				feature_derivatives.block<3, 1>(i, 0) -= this->convolveFeature(test_mu, e.getMu(), dt);
+				feature_derivatives.segment(row, 3) -= this->convolveFeature(test_mu, e.getMu(), dt);
+				row += 3;
 			}
 
-			feature_derivatives /= (2*DELTA_SHIFT); // /d{var}
+			test_mu(j) = base_mu(j); // bring the test mu back to base mu
+			feature_derivatives /= 2*DELTA_SHIFT; // /d{var}
 
-			test_mu(j) += DELTA_SHIFT; // bring the test mu back to base mu
+			//ROS_DEBUG_STREAM("column: " << feature_derivatives.transpose());
 
-			//set the feature derivatives 
-			i = BASE_STATE_SIZE;
-			for(int index = 0; index < feature_derivatives.rows(); index++){
-				F.insert(i, j) = feature_derivatives(index, 0);
+			// set this column
+			int matrix_row = BASE_STATE_SIZE;
+			for(int i = 0; i < feature_derivatives.rows(); i++)
+			{
+				F.insert(matrix_row, j) = feature_derivatives(i);
+				matrix_row++;
 			}
-
-
 		}
 		else{ // biases have no correlation to feature positions
 			F.insert(j, j) = 1; // biases do not change during the process
 		}
 	}
 
+	//ROS_DEBUG("computing sub matrices");
+
+	int col = BASE_STATE_SIZE;
+
 	//compute each of the sub-jacobians for the feature
-	int root_index = BASE_STATE_SIZE;
-	for(auto e : features){
+	for(auto& e : features){
+		Eigen::Vector3f& base_feature_pos = e.getMu();
+		Eigen::Vector3f test_feature_pos = base_feature_pos;
+		Eigen::Vector3f derivative;
 
-		int column = root_index;
-		int upper_index = root_index + 3;
+		//col 1
+		test_feature_pos(0) += DELTA_SHIFT;
+		derivative = this->convolveFeature(base_mu, test_feature_pos, dt);
+		test_feature_pos(0) -= 2*DELTA_SHIFT;
+		derivative -= this->convolveFeature(base_mu, test_feature_pos, dt);
+		test_feature_pos(0) = base_feature_pos(0);
 
-		Eigen::Vector3f feature_test_mu = e.getMu();
+		derivative /= 2*DELTA_SHIFT;
 
-		for(int i = 0; column < upper_index; column++){
-			//compute this columns 3 derivatives
-			feature_test_mu(i) += DELTA_SHIFT;
-			Eigen::Vector3f derivative = convolveFeature(test_mu, feature_test_mu, dt);
-			feature_test_mu(i) -= 2*DELTA_SHIFT;
-			derivative -= convolveFeature(test_mu, feature_test_mu, dt);
-			derivative /= 2*DELTA_SHIFT;
+		//set col 1
+		int row = col;
+		F.insert(row, col) = derivative(0);
+		F.insert(row+1, col) = derivative(1);
+		F.insert(row+2, col) = derivative(2);
 
-			F.insert(root_index, column) = derivative(0);
-			root_index++;
-			F.insert(root_index, column) = derivative(1);
-			root_index++;
-			F.insert(root_index, column) = derivative(2);
-			root_index++;
+		col++;
 
-			i++;
-		}
+		//col 2
+		test_feature_pos(1) += DELTA_SHIFT;
+		derivative = this->convolveFeature(base_mu, test_feature_pos, dt);
+		test_feature_pos(1) -= 2*DELTA_SHIFT;
+		derivative -= this->convolveFeature(base_mu, test_feature_pos, dt);
+		test_feature_pos(1) = base_feature_pos(1);
+
+		derivative /= 2*DELTA_SHIFT;
+
+		//set col 2
+		//int row = col;
+		F.insert(row, col) = derivative(0);
+		F.insert(row+1, col) = derivative(1);
+		F.insert(row+2, col) = derivative(2);
+
+		col++;
+
+		//col 3
+		test_feature_pos(2) += DELTA_SHIFT;
+		derivative = this->convolveFeature(base_mu, test_feature_pos, dt);
+		test_feature_pos(2) -= 2*DELTA_SHIFT;
+		derivative -= this->convolveFeature(base_mu, test_feature_pos, dt);
+		test_feature_pos(2) = base_feature_pos(2);
+
+		derivative /= 2*DELTA_SHIFT;
+
+		//set col 3
+		//int row = col;
+		F.insert(row, col) = derivative(0);
+		F.insert(row+1, col) = derivative(1);
+		F.insert(row+2, col) = derivative(2);
+
+		col++;
+
 	}
 
 	F.finalize();
@@ -285,13 +328,18 @@ Eigen::Vector3f TightlyCoupledEKF::convolveFeature(Eigen::Matrix<float, BASE_STA
 
 	//convert feature to position in camera's coordinate frame
 	Eigen::Vector3f feature_pos = feature_state;
+
+	//ROS_DEBUG_STREAM("feature pos to convolve: " << feature_pos);
+
 	feature_pos(0) = feature_pos(0)*feature_pos(2);
 	feature_pos(1) = feature_pos(1)*feature_pos(2);
+
 
 	Eigen::Vector3f translation = dt*vel + 0.5*dt*dt*accel;
 
 	if(last_omegax != base_state(10) || last_omegay != base_state(11) || last_omegaz != base_state(12))
 	{
+		//ROS_DEBUG("omega has changed");
 		Eigen::Vector3f omega = Eigen::Vector3f(base_state(10), base_state(11), base_state(12));
 
 		float omega_norm = omega.norm();
@@ -322,6 +370,8 @@ Eigen::Vector3f TightlyCoupledEKF::convolveFeature(Eigen::Matrix<float, BASE_STA
 	//bring the point back to homogenous coordinates
 	feature_pos(0) /= feature_pos(2);
 	feature_pos(1) /= feature_pos(2);
+
+	//ROS_DEBUG_STREAM("convolved feature: " << feature_pos);
 
 	return feature_pos;
 }
