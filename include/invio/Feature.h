@@ -88,6 +88,8 @@ public:
 		this->mu(2) = in;
 	}
 
+	void setMu(Eigen::Vector3f in){this->mu = in;}
+
 	Eigen::Vector3f& getMu(){return this->mu;}
 
 };

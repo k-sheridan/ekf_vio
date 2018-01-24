@@ -91,6 +91,72 @@ void TightlyCoupledEKF::addNewFeatures(std::vector<Eigen::Vector2f> new_homogeno
 	}
 }
 
+void TightlyCoupledEKF::process(double dt){
+	Eigen::SparseMatrix<float> F = this->numericallyLinearizeProcess(this->base_mu, this->features, dt); // compute the jacobian of the process numerically
+
+	// process and update the feature vector because it depends on the base mu
+	for(auto& e : this->features){
+		e.setMu(this->convolveFeature(this->base_mu, e, dt));
+	}
+
+	// process the base mu
+	this->base_mu = this->convolveBaseState(this->base_mu, dt);
+
+	// update the Sigma
+	this->Sigma = F * this->Sigma * F.transpose() + this->generateProcessNoise(dt);
+}
+
+Eigen::SparseMatrix<float> TightlyCoupledEKF::generateProcessNoise(float dt){
+	int dim = BASE_STATE_SIZE + this->features.size.()*3;
+
+	float low_noise = 0.0001 * dt;
+	float velocity_noise = 0.01*dt;
+	float omega_noise = 5*dt;
+	float accel_noise = 5*dt;
+	float bias_noise = 0.001*dt;
+
+	Eigen::SparseMatrix<float> Q(dim, dim);
+	Q.reserve(dim); // efficient method for setting up this matrix
+
+	// set up base part
+	Q.insert(0, 0) = low_noise;
+	Q.insert(1, 1) = low_noise;
+	Q.insert(2, 2) = low_noise;
+	Q.insert(3, 3) = low_noise;
+	Q.insert(4, 4) = low_noise;
+	Q.insert(5, 5) = low_noise;
+	Q.insert(6, 6) = low_noise;
+
+	Q.insert(7, 7) = velocity_noise;
+	Q.insert(8, 8) = velocity_noise;
+	Q.insert(9, 9) = velocity_noise;
+	Q.insert(10, 10) = omega_noise;
+	Q.insert(11, 11) = omega_noise;
+	Q.insert(12, 12) = omega_noise;
+
+	Q.insert(13, 13) = accel_noise;
+	Q.insert(14, 14) = accel_noise;
+	Q.insert(15, 15) = accel_noise;
+
+	Q.insert(16, 16) = bias_noise;
+	Q.insert(17, 17) = bias_noise;
+	Q.insert(18, 18) = bias_noise;
+	Q.insert(19, 19) = bias_noise;
+	Q.insert(20, 20) = bias_noise;
+	Q.insert(21, 21) = bias_noise;
+
+	// add feature noises
+	int index = BASE_STATE_SIZE;
+	for(auto& e : this->features){
+		Q.insert(index, index) = low_noise;
+		index++;
+		Q.insert(index, index) = low_noise;
+		index++;
+		Q.insert(index, index) = low_noise;
+		index++;
+	}
+}
+
 Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen::Matrix<float, BASE_STATE_SIZE, 1>& base_mu, std::list<Feature>& features, float dt){
 	int dim = BASE_STATE_SIZE + features.size() * 3;
 	Eigen::SparseMatrix<float> F(dim, dim);

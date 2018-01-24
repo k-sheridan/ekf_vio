@@ -41,6 +41,8 @@ public:
 
 	void process(double dt);
 
+	Eigen::SparseMatrix<float> generateProcessNoise(float dt);
+
 	Eigen::Matrix<float, BASE_STATE_SIZE, 1> convolveBaseState(Eigen::Matrix<float, BASE_STATE_SIZE, 1>& last, float dt);
 
 	Eigen::Vector3f convolveFeature(Eigen::Matrix<float, BASE_STATE_SIZE, 1>& base_state, Eigen::Vector3f& feature_state, float dt);
