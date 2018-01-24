@@ -35,6 +35,7 @@
 #include <cv_bridge/cv_bridge.h>
 
 #include <nav_msgs/Odometry.h>
+#include <sensor_msgs/Imu.h>
 
 #include <sophus/se3.hpp>
 
@@ -55,6 +56,15 @@ public:
 
 	std::deque<Frame> frame_buffer; // stores all frames and pose estimates at this frames
 
+	struct UpdatedState{
+		TightlyCoupledEKF state;
+		sensor_msgs::Imu msg;
+	};
+
+	std::deque<UpdatedState> imu_update_buffer; // store states updated with IMU readings to reduce latency
+
+	//std::deque<sensor_msgs::Imu> imu_buffer; // store imu messages 
+
 	tf::TransformListener tf_listener;
 
 	TightlyCoupledEKF tc_ekf;
@@ -63,9 +73,13 @@ public:
 
 	tf::Transform b2c, c2b, c2imu, c2stereo;
 
+	ros::Subscriber imu_sub;
+
 	ros::Publisher insight_pub, insight_cinfo_pub, odom_pub, points_pub;
 
 	VIO();
+
+	void imu_callback(const sensor_msgs::ImuConstPtr& msg);
 
 	void camera_callback(const sensor_msgs::ImageConstPtr& img, const sensor_msgs::CameraInfoConstPtr& cam);
 

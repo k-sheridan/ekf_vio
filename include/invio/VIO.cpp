@@ -75,6 +75,11 @@ VIO::VIO() {
 		this->insight_cinfo_pub = nh.advertise<sensor_msgs::CameraInfo>(INSIGHT_CINFO_TOPIC, 1);
 	}
 
+	//set up IMU sub
+	if(USE_IMU){
+		this->imu_sub = nh.subscribe(IMU_TOPIC, 1000, &VIO::imu_callback, this);
+	}
+
 	this->odom_pub = nh.advertise<nav_msgs::Odometry>(ODOM_TOPIC, 1);
 
 	this->points_pub = nh.advertise<sensor_msgs::PointCloud>(POINTS_TOPIC, 1);
@@ -102,6 +107,11 @@ VIO::VIO() {
 	}
 
 	ros::spin();
+}
+
+
+void VIO::imu_callback(const sensor_msgs::ImuConstPtr& msg){
+	ROS_DEBUG("got imu message");
 }
 
 void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
@@ -141,12 +151,6 @@ void VIO::addFrame(Frame f) {
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
-		//set the predicted pose of the current frame
-
-
-		// attempt to flow features into the next frame if there are features
-		this->updateStateWithNewImage(this->frame_buffer.at(1), this->frame_buffer.front());
-
 		// make the final determination whether or not we are initialized
 		if(!this->initialized)
 		{
@@ -164,9 +168,11 @@ void VIO::addFrame(Frame f) {
 
 		if(this->initialized) // run moba and depth update if initialized
 		{
+			//set the predicted pose of the current frame
 
 
-
+			// attempt to flow features into the next frame if there are features
+			this->updateStateWithNewImage(this->frame_buffer.at(1), this->frame_buffer.front());
 		}
 
 		this->replenishFeatures((this->frame_buffer.front())); // try to get more features if needed
