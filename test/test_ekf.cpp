@@ -200,6 +200,22 @@ int main(int argc, char **argv)
 
 	ROS_INFO_STREAM("base_mu after: " << tc_ekf.convolveBaseState(tc_ekf.base_mu, 0.5) << "\nfeature 1 after: " << tc_ekf.convolveFeature(tc_ekf.base_mu, tc_ekf.features.front().getMu(), 0.5));
 
+
+	ROS_INFO_STREAM("process noise dt=0.1: " << tc_ekf.generateProcessNoise(0.1));
+
+	// test full process function's effect on feature position uncertainties
+	tc_ekf = TightlyCoupledEKF();
+
+	features.clear();
+	features.push_back(Eigen::Vector2f(0.1, 0.1));
+	features.push_back(Eigen::Vector2f(-0.1, -0.1));
+	features.push_back(Eigen::Vector2f(0.1, -0.1));
+
+	tc_ekf.addNewFeatures(features);
+
+	
+
+
 	return 0;
 }
 
