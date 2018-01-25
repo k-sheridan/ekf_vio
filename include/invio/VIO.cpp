@@ -111,7 +111,7 @@ VIO::VIO() {
 
 
 void VIO::imu_callback(const sensor_msgs::ImuConstPtr& msg){
-	ROS_DEBUG("got imu message");
+	ROS_DEBUG_STREAM("got imu message: " << msg->header.stamp);
 }
 
 void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,

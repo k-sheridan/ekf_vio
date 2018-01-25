@@ -91,23 +91,24 @@ void TightlyCoupledEKF::addNewFeatures(std::vector<Eigen::Vector2f> new_homogeno
 	}
 }
 
-void TightlyCoupledEKF::process(double dt){
+void TightlyCoupledEKF::process(float dt){
 	Eigen::SparseMatrix<float> F = this->numericallyLinearizeProcess(this->base_mu, this->features, dt); // compute the jacobian of the process numerically
 
 	// process and update the feature vector because it depends on the base mu
 	for(auto& e : this->features){
-		e.setMu(this->convolveFeature(this->base_mu, e, dt));
+		e.setMu(this->convolveFeature(this->base_mu, e.getMu(), dt));
 	}
 
 	// process the base mu
 	this->base_mu = this->convolveBaseState(this->base_mu, dt);
 
 	// update the Sigma
-	this->Sigma = F * this->Sigma * F.transpose() + this->generateProcessNoise(dt);
+	this->Sigma = F * this->Sigma * F.transpose();
+	this->Sigma.noalias() += this->generateProcessNoise(dt).toDense();
 }
 
 Eigen::SparseMatrix<float> TightlyCoupledEKF::generateProcessNoise(float dt){
-	int dim = BASE_STATE_SIZE + this->features.size.()*3;
+	int dim = BASE_STATE_SIZE + this->features.size()*3;
 
 	float low_noise = 0.0001 * dt;
 	float velocity_noise = 0.01*dt;
@@ -146,8 +147,7 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::generateProcessNoise(float dt){
 	Q.insert(21, 21) = bias_noise;
 
 	// add feature noises
-	int index = BASE_STATE_SIZE;
-	for(auto& e : this->features){
+	for(int index = BASE_STATE_SIZE; index < dim;){
 		Q.insert(index, index) = low_noise;
 		index++;
 		Q.insert(index, index) = low_noise;
@@ -155,6 +155,8 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::generateProcessNoise(float dt){
 		Q.insert(index, index) = low_noise;
 		index++;
 	}
+
+	return Q;
 }
 
 Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen::Matrix<float, BASE_STATE_SIZE, 1>& base_mu, std::list<Feature>& features, float dt){

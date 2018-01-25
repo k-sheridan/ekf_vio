@@ -39,7 +39,7 @@ public:
 
 	std::vector<Eigen::Vector2f> previousFeaturePositionVector();
 
-	void process(double dt);
+	void process(float dt);
 
 	Eigen::SparseMatrix<float> generateProcessNoise(float dt);
 
