@@ -110,7 +110,8 @@ void TightlyCoupledEKF::process(float dt){
 Eigen::SparseMatrix<float> TightlyCoupledEKF::generateProcessNoise(float dt){
 	int dim = BASE_STATE_SIZE + this->features.size()*3;
 
-	float low_noise = 0.0001 * dt;
+	float low_noise = 0.00001 * dt;
+	float pos_noise = 0.0001 * dt;
 	float velocity_noise = 0.01*dt;
 	float omega_noise = 5*dt;
 	float accel_noise = 5*dt;
@@ -120,13 +121,13 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::generateProcessNoise(float dt){
 	Q.reserve(dim); // efficient method for setting up this matrix
 
 	// set up base part
-	Q.insert(0, 0) = low_noise;
-	Q.insert(1, 1) = low_noise;
-	Q.insert(2, 2) = low_noise;
-	Q.insert(3, 3) = low_noise;
-	Q.insert(4, 4) = low_noise;
-	Q.insert(5, 5) = low_noise;
-	Q.insert(6, 6) = low_noise;
+	Q.insert(0, 0) = pos_noise;
+	Q.insert(1, 1) = pos_noise;
+	Q.insert(2, 2) = pos_noise;
+	Q.insert(3, 3) = pos_noise;
+	Q.insert(4, 4) = pos_noise;
+	Q.insert(5, 5) = pos_noise;
+	Q.insert(6, 6) = pos_noise;
 
 	Q.insert(7, 7) = velocity_noise;
 	Q.insert(8, 8) = velocity_noise;

@@ -213,8 +213,6 @@ int main(int argc, char **argv)
 
 	tc_ekf.addNewFeatures(features);
 
-	
-
 
 	return 0;
 }
