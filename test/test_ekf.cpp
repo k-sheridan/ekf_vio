@@ -11,6 +11,7 @@
 #include "Params.h"
 #include "../include/invio/VIO.h"
 
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "general_test"); // initializes ros
@@ -203,16 +204,7 @@ int main(int argc, char **argv)
 
 	ROS_INFO_STREAM("process noise dt=0.1: " << tc_ekf.generateProcessNoise(0.1));
 
-	// test full process function's effect on feature position uncertainties
-	tc_ekf = TightlyCoupledEKF();
-
-	features.clear();
-	features.push_back(Eigen::Vector2f(0.1, 0.1));
-	features.push_back(Eigen::Vector2f(-0.1, -0.1));
-	features.push_back(Eigen::Vector2f(0.1, -0.1));
-
-	tc_ekf.addNewFeatures(features);
-
+	
 
 	return 0;
 }

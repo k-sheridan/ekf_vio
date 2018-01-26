@@ -85,3 +85,6 @@ target_link_libraries(invio_ekf_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${s
 
 add_executable(invio_klt_test test/klt_test.cpp)
 target_link_libraries(invio_klt_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
+
+add_executable(invio_analyze_ekf test/klt_test.cpp)
+target_link_libraries(invio_analyze_ekf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
