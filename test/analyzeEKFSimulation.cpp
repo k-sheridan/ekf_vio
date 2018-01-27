@@ -30,7 +30,7 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 
 	tc_ekf.addNewFeatures(initial_features);
 
-	ROS_DEBUG_STREAM("init sigma diag: " << tc_ekf.Sigma.diagonal().transpose());
+	ROS_DEBUG_STREAM("init sigma diag: " << tc_ekf.Sigma.toDense().diagonal().transpose());
 
 	Eigen::Vector3f pos = Eigen::Vector3f(0, 0, 0);
 	Eigen::Vector3f vel = b_vel;
@@ -46,7 +46,7 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 
 		//tc_ekf.fixSigma();
 
-		ROS_DEBUG_STREAM("post process sigma diag: " << tc_ekf.Sigma.diagonal().transpose());
+		ROS_DEBUG_STREAM("post process sigma diag: " << tc_ekf.Sigma.toDense().diagonal().transpose());
 		tc_ekf.checkSigma();
 
 		//move the pos and quat forward
@@ -83,7 +83,7 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 
 		ROS_DEBUG_STREAM("base_mu: " << tc_ekf.base_mu.transpose());
 		for(auto e : tc_ekf.features){ROS_DEBUG_STREAM("feature mu: " << e.getMu().transpose());}
-		ROS_DEBUG_STREAM("sigma diag: " << tc_ekf.Sigma.diagonal().transpose());
+		ROS_DEBUG_STREAM("sigma diag: " << tc_ekf.Sigma.diagonal());
 		tc_ekf.checkSigma();
 		//visualizeEKF(tc_ekf, measurements);
 	}

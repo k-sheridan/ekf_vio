@@ -23,34 +23,35 @@ TightlyCoupledEKF::TightlyCoupledEKF() {
 void TightlyCoupledEKF::initializeBaseState()
 {
 	this->base_mu.setZero();
-	this->Sigma.block<BASE_STATE_SIZE, BASE_STATE_SIZE>(0, 0).setZero(); //wipe the base state sigmas
+	//this->Sigma.block<BASE_STATE_SIZE, BASE_STATE_SIZE>(0, 0).setZero(); //wipe the base state sigmas
+	this->Sigma.reserve(BASE_STATE_SIZE*BASE_STATE_SIZE + NUM_FEATURES * 9 + NUM_FEATURES * 9 * 3 + 90); // this should sufficiently reserve enough indices
 
-	this->Sigma(0, 0) = 0;
-	this->Sigma(1, 1) = 0;
-	this->Sigma(2, 2) = 0;
-	this->Sigma(3, 3) = 0;
-	this->Sigma(4, 4) = 0;
-	this->Sigma(5, 5) = 0;
-	this->Sigma(6, 6) = 0;
+	this->Sigma.insert(0, 0) = 0;
+	this->Sigma.insert(1, 1) = 0;
+	this->Sigma.insert(2, 2) = 0;
+	this->Sigma.insert(3, 3) = 0;
+	this->Sigma.insert(4, 4) = 0;
+	this->Sigma.insert(5, 5) = 0;
+	this->Sigma.insert(6, 6) = 0;
 
 	this->base_mu(3) = 1.0; // no rotation
 
-	this->Sigma(7, 7) = 30;
-	this->Sigma(8, 8) = 30;
-	this->Sigma(9, 9) = 30;
-	this->Sigma(10, 10) = 30;
-	this->Sigma(11, 11) = 30;
-	this->Sigma(12, 12) = 30;
-	this->Sigma(13, 13) = 30;
-	this->Sigma(14, 14) = 30;
-	this->Sigma(15, 15) = 30;
+	this->Sigma.insert(7, 7) = 30;
+	this->Sigma.insert(8, 8) = 30;
+	this->Sigma.insert(9, 9) = 30;
+	this->Sigma.insert(10, 10) = 30;
+	this->Sigma.insert(11, 11) = 30;
+	this->Sigma.insert(12, 12) = 30;
+	this->Sigma.insert(13, 13) = 30;
+	this->Sigma.insert(14, 14) = 30;
+	this->Sigma.insert(15, 15) = 30;
 
-	this->Sigma(15, 15) = 0.5; // somewhat certain about the biases
-	this->Sigma(16, 16) = 0.5;
-	this->Sigma(17, 17) = 0.5;
-	this->Sigma(18, 18) = 0.5;
-	this->Sigma(19, 19) = 0.5;
-	this->Sigma(20, 20) = 0.5;
+	this->Sigma.insert(16, 16) = 0.5; // somewhat certain about the biases
+	this->Sigma.insert(17, 17) = 0.5;
+	this->Sigma.insert(18, 18) = 0.5;
+	this->Sigma.insert(19, 19) = 0.5;
+	this->Sigma.insert(20, 20) = 0.5;
+	this->Sigma.insert(21, 21) = 0.5;
 
 }
 
@@ -64,8 +65,9 @@ void TightlyCoupledEKF::addNewFeatures(std::vector<Eigen::Vector2f> new_homogeno
 	// set the new rows and columns zero
 	// this ensures that the base state never has an initial correlation to these new features
 	// instead the correlations should be introduced naturally through the process
-	this->Sigma.block(Sigma.rows() - new_homogenous_features.size()*3, 0, new_homogenous_features.size()*3, Sigma.cols()).setZero();
-	this->Sigma.block(0, Sigma.cols() - new_homogenous_features.size()*3, Sigma.rows() - new_homogenous_features.size()*3, new_homogenous_features.size()*3).setZero();
+	// NO Need to do this when sparse
+	//this->Sigma.block(Sigma.rows() - new_homogenous_features.size()*3, 0, new_homogenous_features.size()*3, Sigma.cols()).setZero();
+	//this->Sigma.block(0, Sigma.cols() - new_homogenous_features.size()*3, Sigma.rows() - new_homogenous_features.size()*3, new_homogenous_features.size()*3).setZero();
 
 	//check the zeroing process
 	//ROS_ASSERT(this->Sigma(BASE_STATE_SIZE-1, 0) == 1);
@@ -82,11 +84,11 @@ void TightlyCoupledEKF::addNewFeatures(std::vector<Eigen::Vector2f> new_homogeno
 		this->features.push_back(Feature(e, average_scene_depth)); // add a point with an estimated depth
 
 		//initialize this point's uncertainties
-		this->Sigma(starting_index, starting_index) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
+		this->Sigma.insert(starting_index, starting_index) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
 		starting_index++;
-		this->Sigma(starting_index, starting_index) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
+		this->Sigma.insert(starting_index, starting_index) = DEFAULT_POINT_HOMOGENOUS_VARIANCE;
 		starting_index++;
-		this->Sigma(starting_index, starting_index) = DEFAULT_POINT_DEPTH_VARIANCE; // high uncertainty for the depth of the feature
+		this->Sigma.insert(starting_index, starting_index) = DEFAULT_POINT_DEPTH_VARIANCE; // high uncertainty for the depth of the feature
 		starting_index++;
 	}
 }
@@ -104,7 +106,7 @@ void TightlyCoupledEKF::process(float dt){
 
 	// update the Sigma
 	this->Sigma = F * this->Sigma * F.transpose();
-	this->Sigma.noalias() += this->generateProcessNoise(dt).toDense();
+	this->Sigma += this->generateProcessNoise(dt);
 }
 
 Eigen::SparseMatrix<float> TightlyCoupledEKF::generateProcessNoise(float dt){
@@ -540,21 +542,18 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 
 	ROS_DEBUG("computed residual");
 
-	Eigen::MatrixXf S_dense(H.rows(), H.rows());
-	S_dense = H * Sigma * H.transpose();
-	S_dense += R;
+	Eigen::SparseMatrix<float> S(H.rows(), H.rows());
+	S = H * Sigma * H.transpose();
+	S += R;
 
 	ROS_DEBUG("created S");
 
 	//ROS_DEBUG_STREAM("S_dense: " << S_dense);
 
 	// now we must solve for K
-	Eigen::MatrixXf K(Sigma.rows(), H.rows());
+	Eigen::SparseMatrix<float> K(Sigma.rows(), H.rows());
 
-	// sparsify S
-	Eigen::SparseMatrix<float> S_sparse = S_dense.sparseView();
-
-	ROS_DEBUG("sparsified S");
+	//ROS_DEBUG("sparsified S");
 	//ROS_DEBUG_STREAM("Sparsified: " << S_sparse);
 
 	//Eigen::LDLT<Eigen::MatrixXf> solver;
@@ -562,26 +561,25 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	//K = solver.solve((Sigma * H.transpose()).transpose()).transpose();
 
 	Eigen::SimplicialLDLT<Eigen::SparseMatrix<float>> solver;
-	solver.compute(S_sparse.transpose());
+	solver.compute(S.transpose());
 	ROS_ERROR_COND(solver.info() == Eigen::NumericalIssue, "there was a problem decomposing S... maybe it was not positive semi definite");
-	K = solver.solve((Sigma * H.transpose()).transpose()).transpose();
+	K = solver.solve((Sigma * H.transpose()).transpose().toDense()).transpose().sparseView();
 
 
 	ROS_DEBUG_STREAM("solved for K");
 	//ROS_DEBUG_STREAM("K: " << K);
 
-	Eigen::SparseMatrix<float> K_sparse = K.sparseView();
-
 	Eigen::SparseMatrix<float> I_KH(Sigma.rows(), Sigma.rows());
 	I_KH.setIdentity();
-	I_KH -= K_sparse*H;
+	I_KH -= K*H;
 
-	this->Sigma = I_KH * Sigma * I_KH; // update the covariance matrix
-	this->Sigma.noalias() += K*R*K.transpose();
+	this->Sigma = I_KH * Sigma * I_KH.transpose(); // update the covariance matrix
+	Eigen::SparseMatrix<float> estimate_noise = K * R * K.transpose();
+	this->Sigma += estimate_noise;
 
 	ROS_DEBUG("updated sigma");
 
-	mu += K_sparse*y; // shift the mu with the kalman gain and residual
+	mu += K*y; // shift the mu with the kalman gain and residual
 
 	ROS_DEBUG("updated mu");
 
@@ -642,18 +640,22 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::formFeatureMeasurementMap(std::vec
 
 Eigen::Matrix2f TightlyCoupledEKF::getFeatureHomogenousCovariance(int index){
 	int start = BASE_STATE_SIZE + index * 3;
-	return this->Sigma.block<2, 2>(start, start);
+	return this->Sigma.block(start, start, 2, 2);
 }
 
 void TightlyCoupledEKF::setFeatureHomogenousCovariance(int index, Eigen::Matrix2f cov)
 {
 	int start = BASE_STATE_SIZE + index * 3;
-	this->Sigma.block<2, 2>(start, start) = cov;
+	ROS_ERROR("tried to set to sparse matrix");
+	this->Sigma.coeffRef(start, start) = cov(0, 0);
+	this->Sigma.coeffRef(start+1, start) = cov(1, 0);
+	this->Sigma.coeffRef(start, start+1) = cov(0, 1);
+	this->Sigma.coeffRef(start+1, start+1) = cov(1, 1);
 }
 
 float TightlyCoupledEKF::getFeatureDepthVariance(int index){
 	int start = BASE_STATE_SIZE + index * 3 + 2;
-	return this->Sigma(start, start);
+	return this->Sigma.coeff(start, start);
 }
 
 Eigen::SparseMatrix<float> TightlyCoupledEKF::getMetric2PixelMap(Eigen::Matrix3f& K){
@@ -676,20 +678,20 @@ void TightlyCoupledEKF::checkSigma(){
 #define SYM_EPS 0.0001
 	// first check the diagonal to make sure all members are positive
 	for(int i = 0; i < this->Sigma.rows(); i++){
-		ROS_FATAL_STREAM_COND(this->Sigma(i, i) < 0, "variance is negative for index: " << i);
+		ROS_FATAL_STREAM_COND(this->Sigma.coeff(i, i) < 0, "variance is negative for index: " << i);
 
-		ROS_ASSERT(this->Sigma(i, i) >= 0);
+		ROS_ASSERT(this->Sigma.coeff(i, i) >= 0);
 
 		// check for symmetry
 		for(int j = i+1; j < this->Sigma.rows(); j++){
-			ROS_FATAL_STREAM_COND(fabs(this->Sigma(i, j) - this->Sigma(j, i)) > SYM_EPS, "correlation is not symmetric: " << fabs(this->Sigma(i, j) - this->Sigma(j, i)));
-			ROS_ASSERT(fabs(this->Sigma(i, j) - this->Sigma(j, i)) <= SYM_EPS);
+			ROS_FATAL_STREAM_COND(fabs(this->Sigma.coeff(i, j) - this->Sigma.coeff(j, i)) > SYM_EPS, "correlation is not symmetric: " << fabs(this->Sigma.coeff(i, j) - this->Sigma.coeff(j, i)));
+			ROS_ASSERT(fabs(this->Sigma.coeff(i, j) - this->Sigma.coeff(j, i)) <= SYM_EPS);
 		}
 	}
 
 }
 
 void TightlyCoupledEKF::fixSigma(){
-	this->Sigma = (this->Sigma + this->Sigma.transpose()) / 2.0;
+	//this->Sigma = (this->Sigma + this->Sigma.transpose()) / 2.0;
 }
 

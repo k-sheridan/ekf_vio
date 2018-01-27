@@ -29,7 +29,7 @@ public:
 	std::list<Feature> features; // stores the current best guess about the state of the features
 
 	//must always be kept in sync with the feature vector
-	Eigen::MatrixXf Sigma; // stores the current uncertainty and correlations for the state (including feature positions)
+	Eigen::SparseMatrix<float> Sigma; // stores the current uncertainty and correlations for the state (including feature positions)
 
 	ros::Time t; // store the current time of the state
 

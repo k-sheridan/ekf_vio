@@ -20,6 +20,8 @@ int main(int argc, char **argv)
 
 
 	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
+	ros::param::param<double>("~default_point_depth_variance", DEFAULT_POINT_DEPTH_VARIANCE, D_DEFAULT_POINT_DEPTH_VARIANCE);
+		ros::param::param<double>("~default_point_homogenous_variance", DEFAULT_POINT_HOMOGENOUS_VARIANCE, D_DEFAULT_POINT_HOMOGENOUS_VARIANCE);
 	//parseROSParams();
 
 	Eigen::MatrixXf A;
@@ -80,7 +82,7 @@ int main(int argc, char **argv)
 	ROS_INFO_STREAM("cov after: " << tc_ekf.Sigma);
 
 
-	ROS_INFO_STREAM("test: " << tc_ekf.Sigma * tc_ekf.Sigma.selfadjointView<Eigen::Upper>() * tc_ekf.Sigma);
+	//ROS_INFO_STREAM("test: " << tc_ekf.Sigma * tc_ekf.Sigma.selfadjointView<Eigen::Upper>() * tc_ekf.Sigma);
 
 
 	ROS_INFO("test update function timing");
