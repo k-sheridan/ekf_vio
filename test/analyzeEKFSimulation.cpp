@@ -30,6 +30,8 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 
 	tc_ekf.addNewFeatures(initial_features);
 
+	ROS_DEBUG_STREAM("init sigma diag: " << tc_ekf.Sigma.diagonal().transpose());
+
 	Eigen::Vector3f pos = Eigen::Vector3f(0, 0, 0);
 	Eigen::Vector3f vel = b_vel;
 	Eigen::Vector3f accel = b_accel;
@@ -41,6 +43,10 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 	for(float t = dt; t <= tf; t += dt){
 
 		tc_ekf.process(dt); // process
+
+		//tc_ekf.fixSigma();
+
+		ROS_DEBUG_STREAM("post process sigma diag: " << tc_ekf.Sigma.diagonal().transpose());
 		tc_ekf.checkSigma();
 
 		//move the pos and quat forward
@@ -73,9 +79,11 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 
 		std::vector<Eigen::Vector2f> measurements = generateFakeMeasurementsAndUpdateEKF(tc_ekf, gt_pos_vec, pos, quat); // update
 
+		//tc_ekf.fixSigma();
+
 		ROS_DEBUG_STREAM("base_mu: " << tc_ekf.base_mu.transpose());
 		for(auto e : tc_ekf.features){ROS_DEBUG_STREAM("feature mu: " << e.getMu().transpose());}
-
+		ROS_DEBUG_STREAM("sigma diag: " << tc_ekf.Sigma.diagonal().transpose());
 		tc_ekf.checkSigma();
 		//visualizeEKF(tc_ekf, measurements);
 	}
@@ -208,6 +216,8 @@ int main(int argc, char **argv)
 
 
 	ros::param::param<double>("~default_point_depth", DEFAULT_POINT_DEPTH, D_DEFAULT_POINT_DEPTH);
+	ros::param::param<double>("~default_point_depth_variance", DEFAULT_POINT_DEPTH_VARIANCE, D_DEFAULT_POINT_DEPTH_VARIANCE);
+	ros::param::param<double>("~default_point_homogenous_variance", DEFAULT_POINT_HOMOGENOUS_VARIANCE, D_DEFAULT_POINT_HOMOGENOUS_VARIANCE);
 	//parseROSParams();
 
 

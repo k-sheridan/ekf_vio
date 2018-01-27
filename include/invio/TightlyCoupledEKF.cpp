@@ -110,7 +110,7 @@ void TightlyCoupledEKF::process(float dt){
 Eigen::SparseMatrix<float> TightlyCoupledEKF::generateProcessNoise(float dt){
 	int dim = BASE_STATE_SIZE + this->features.size()*3;
 
-	float low_noise = 0.00001 * dt;
+	float low_noise = 0.0001 * dt;
 	float pos_noise = 0.0001 * dt;
 	float velocity_noise = 0.01*dt;
 	float omega_noise = 5*dt;
@@ -673,6 +673,7 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::getPixel2MetricMap(Eigen::Matrix3f
 }
 
 void TightlyCoupledEKF::checkSigma(){
+#define SYM_EPS 0.0001
 	// first check the diagonal to make sure all members are positive
 	for(int i = 0; i < this->Sigma.rows(); i++){
 		ROS_FATAL_STREAM_COND(this->Sigma(i, i) < 0, "variance is negative for index: " << i);
@@ -681,10 +682,14 @@ void TightlyCoupledEKF::checkSigma(){
 
 		// check for symmetry
 		for(int j = i+1; j < this->Sigma.rows(); j++){
-			ROS_FATAL_STREAM_COND(this->Sigma(i, j) == this->Sigma(j, i), "correlation is not symmetric");
-			ROS_ASSERT(this->Sigma(i, j) != this->Sigma(j, i));
+			ROS_FATAL_STREAM_COND(fabs(this->Sigma(i, j) - this->Sigma(j, i)) > SYM_EPS, "correlation is not symmetric: " << fabs(this->Sigma(i, j) - this->Sigma(j, i)));
+			ROS_ASSERT(fabs(this->Sigma(i, j) - this->Sigma(j, i)) <= SYM_EPS);
 		}
 	}
 
+}
+
+void TightlyCoupledEKF::fixSigma(){
+	this->Sigma = (this->Sigma + this->Sigma.transpose()) / 2.0;
 }
 
