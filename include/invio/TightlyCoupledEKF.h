@@ -58,6 +58,8 @@ public:
 
 	void setFeatureHomogenousCovariance(int index, Eigen::Matrix2f cov);
 
+	void checkSigma();
+
 	Eigen::SparseMatrix<float> getMetric2PixelMap(Eigen::Matrix3f& K);
 	Eigen::SparseMatrix<float> getPixel2MetricMap(Eigen::Matrix3f& K);
 

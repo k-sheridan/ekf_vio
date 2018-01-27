@@ -41,6 +41,7 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 	for(float t = dt; t <= tf; t += dt){
 
 		tc_ekf.process(dt); // process
+		tc_ekf.checkSigma();
 
 		//move the pos and quat forward
 		pos += quat*(dt*vel + 0.5*dt*dt*accel);
@@ -73,8 +74,9 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 		std::vector<Eigen::Vector2f> measurements = generateFakeMeasurementsAndUpdateEKF(tc_ekf, gt_pos_vec, pos, quat); // update
 
 		ROS_DEBUG_STREAM("base_mu: " << tc_ekf.base_mu.transpose());
-		ROS_DEBUG_STREAM("pos x sigma: " << tc_ekf.Sigma(0, 0));
+		for(auto e : tc_ekf.features){ROS_DEBUG_STREAM("feature mu: " << e.getMu().transpose());}
 
+		tc_ekf.checkSigma();
 		//visualizeEKF(tc_ekf, measurements);
 	}
 

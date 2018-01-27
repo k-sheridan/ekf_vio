@@ -586,7 +586,7 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	ROS_DEBUG("updated mu");
 
 	//renormalize the quaternion
-	float quat_norm = mu(3)*mu(3) + mu(4)*mu(4) + mu(5)*mu(5) + mu(6)*mu(6);
+	float quat_norm = sqrt(mu(3)*mu(3) + mu(4)*mu(4) + mu(5)*mu(5) + mu(6)*mu(6));
 	mu(3) /= quat_norm;
 	mu(4) /= quat_norm;
 	mu(5) /= quat_norm;
@@ -670,5 +670,21 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::getPixel2MetricMap(Eigen::Matrix3f
 	J.insert(0, 0) = 1.0f/K(0, 0);
 	J.insert(1, 1) = 1.0f/K(1, 1);
 	return J;
+}
+
+void TightlyCoupledEKF::checkSigma(){
+	// first check the diagonal to make sure all members are positive
+	for(int i = 0; i < this->Sigma.rows(); i++){
+		ROS_FATAL_STREAM_COND(this->Sigma(i, i) < 0, "variance is negative for index: " << i);
+
+		ROS_ASSERT(this->Sigma(i, i) >= 0);
+
+		// check for symmetry
+		for(int j = i+1; j < this->Sigma.rows(); j++){
+			ROS_FATAL_STREAM_COND(this->Sigma(i, j) == this->Sigma(j, i), "correlation is not symmetric");
+			ROS_ASSERT(this->Sigma(i, j) != this->Sigma(j, i));
+		}
+	}
+
 }
 
