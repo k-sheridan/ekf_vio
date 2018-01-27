@@ -585,6 +585,13 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 
 	ROS_DEBUG("updated mu");
 
+	//renormalize the quaternion
+	float quat_norm = mu(3)*mu(3) + mu(4)*mu(4) + mu(5)*mu(5) + mu(6)*mu(6);
+	mu(3) /= quat_norm;
+	mu(4) /= quat_norm;
+	mu(5) /= quat_norm;
+	mu(6) /= quat_norm;
+
 	//go through and update the state
 	for(int i = 0; i < base_mu.size(); i++){base_mu(i) = mu(i);}
 
