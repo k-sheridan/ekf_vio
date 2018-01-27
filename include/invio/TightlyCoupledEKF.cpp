@@ -675,7 +675,7 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::getPixel2MetricMap(Eigen::Matrix3f
 }
 
 void TightlyCoupledEKF::checkSigma(){
-#define SYM_EPS 0.0001
+#define SYM_EPS 0.001
 	// first check the diagonal to make sure all members are positive
 	for(int i = 0; i < this->Sigma.rows(); i++){
 		ROS_FATAL_STREAM_COND(this->Sigma.coeff(i, i) < 0, "variance is negative for index: " << i);
@@ -684,7 +684,7 @@ void TightlyCoupledEKF::checkSigma(){
 
 		// check for symmetry
 		for(int j = i+1; j < this->Sigma.rows(); j++){
-			ROS_FATAL_STREAM_COND(fabs(this->Sigma.coeff(i, j) - this->Sigma.coeff(j, i)) > SYM_EPS, "correlation is not symmetric: " << fabs(this->Sigma.coeff(i, j) - this->Sigma.coeff(j, i)));
+			ROS_FATAL_STREAM_COND(fabs(this->Sigma.coeff(i, j) - this->Sigma.coeff(j, i)) > SYM_EPS, "correlation is not symmetric: " << fabs(this->Sigma.coeff(i, j) - this->Sigma.coeff(j, i)) << " - " <<i<<", "<<j);
 			ROS_ASSERT(fabs(this->Sigma.coeff(i, j) - this->Sigma.coeff(j, i)) <= SYM_EPS);
 		}
 	}

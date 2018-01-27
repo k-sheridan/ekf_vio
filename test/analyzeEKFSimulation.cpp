@@ -83,7 +83,7 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 
 		ROS_DEBUG_STREAM("base_mu: " << tc_ekf.base_mu.transpose());
 		for(auto e : tc_ekf.features){ROS_DEBUG_STREAM("feature mu: " << e.getMu().transpose());}
-		ROS_DEBUG_STREAM("sigma diag: " << tc_ekf.Sigma.diagonal());
+		ROS_DEBUG_STREAM("sigma: " << (tc_ekf.Sigma.toDense().block<15, 15>(0, 0)));
 		tc_ekf.checkSigma();
 		//visualizeEKF(tc_ekf, measurements);
 	}
