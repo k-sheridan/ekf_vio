@@ -7,7 +7,7 @@ cv::RotatedRect getErrorEllipse(double chisquare_val, cv::Point2f mean, Eigen::M
 std::vector<Eigen::Vector2f>  generateFakeMeasurementsAndUpdateEKF(TightlyCoupledEKF& tc_ekf, std::vector<Eigen::Vector3f> point_pos, Eigen::Vector3f pos, Eigen::Quaternionf quat);
 void visualizeEKF(TightlyCoupledEKF tc_ekf, std::vector<Eigen::Vector2f> measurements);
 
-void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_mu, Eigen::Vector3f b_vel, Eigen::Vector3f b_accel, Eigen::Vector3f omega, float dt, float tf){
+void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_mu, Eigen::Vector3f b_vel, Eigen::Vector3f b_accel, Eigen::Vector3f omega, float dt, float tf, bool print){
 	cv::RNG rng(0); // create a rendom number generator with seed zero for repeatability
 
 	//generate features
@@ -23,15 +23,17 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 		gt_pos_vec.push_back(pos);
 		initial_features.push_back(Eigen::Vector2f(pos(0)/pos(2), pos(1)/pos(2)));
 
-		ROS_DEBUG_STREAM("added feature: " << initial_features.back().transpose());
+		if(print){
+			ROS_DEBUG_STREAM("added feature: " << initial_features.back().transpose());
+		}
 	}
 
 	TightlyCoupledEKF tc_ekf;
 
 	tc_ekf.addNewFeatures(initial_features);
-
-	ROS_DEBUG_STREAM("init sigma diag: " << tc_ekf.Sigma.toDense().diagonal().transpose());
-
+	if(print){
+		ROS_DEBUG_STREAM("init sigma diag: " << tc_ekf.Sigma.toDense().diagonal().transpose());
+	}
 	Eigen::Vector3f pos = Eigen::Vector3f(0, 0, 0);
 	Eigen::Vector3f vel = b_vel;
 	Eigen::Vector3f accel = b_accel;
@@ -45,14 +47,17 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 		tc_ekf.process(dt); // process
 
 		//tc_ekf.fixSigma();
-
-		ROS_DEBUG_STREAM("post process sigma diag: " << tc_ekf.Sigma.toDense().diagonal().transpose());
+		if(print){
+			ROS_DEBUG_STREAM("post process sigma diag: " << tc_ekf.Sigma.toDense().diagonal().transpose());
+		}
 		tc_ekf.checkSigma();
 
 		//move the pos and quat forward
 		pos += quat*(dt*vel + 0.5*dt*dt*accel);
 
-		ROS_DEBUG_STREAM("pos: " << pos);
+		if(print){
+			ROS_DEBUG_STREAM("pos: " << pos);
+		}
 
 		float omega_norm = omega.norm();
 
@@ -80,10 +85,12 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 		std::vector<Eigen::Vector2f> measurements = generateFakeMeasurementsAndUpdateEKF(tc_ekf, gt_pos_vec, pos, quat); // update
 
 		//tc_ekf.fixSigma();
-
-		ROS_DEBUG_STREAM("base_mu: " << tc_ekf.base_mu.transpose());
-		for(auto e : tc_ekf.features){ROS_DEBUG_STREAM("feature mu: " << e.getMu().transpose());}
-		ROS_DEBUG_STREAM("sigma: " << (tc_ekf.Sigma.toDense().block<15, 15>(0, 0)));
+		if(print){
+			ROS_DEBUG_STREAM("base_mu: " << tc_ekf.base_mu.transpose());
+			int i = 0;
+			for(auto e : tc_ekf.features){ROS_DEBUG_STREAM("feature mu: " << e.getMu().transpose() << " depth var: " << tc_ekf.getFeatureDepthVariance(i)); i++;}
+			//ROS_DEBUG_STREAM("sigma: " << tc_ekf.Sigma.toDense().diagonal().transpose());
+		}
 		tc_ekf.checkSigma();
 		//visualizeEKF(tc_ekf, measurements);
 	}
@@ -222,7 +229,16 @@ int main(int argc, char **argv)
 
 
 	//simulate a moving camera and make the points converge (ideal scenario)
-	simulateAndVisualizeEKF(30, 0.000001, 0.5, Eigen::Vector3f(0.5, 0, 0), Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0, 0), 0.05, 0.5);
+	simulateAndVisualizeEKF(30, 0.000001, 0.5, Eigen::Vector3f(0.5, 0, 0), Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0, 0), 0.05, 0.5, false);
+
+	simulateAndVisualizeEKF(30, 0.000001, 0.5, Eigen::Vector3f(0.1, 0, -0.1), Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0, 0.1), 0.05, 5, false);
+
+	simulateAndVisualizeEKF(30, 0.000001, 0.5, Eigen::Vector3f(0, 0, -0.1), Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0, 0.1), 0.05, 5, false);
+
+	// start adding depth errors
+	simulateAndVisualizeEKF(30, 0.01, 0.5, Eigen::Vector3f(0, 0, -0.1), Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0, 0.1), 0.05, 5, false);
+
+	simulateAndVisualizeEKF(30, 0.01, 0.5, Eigen::Vector3f(-0.1, 0, -0.1), Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0.1, 0), 0.05, 5, true);
 
 	return 0;
 }
