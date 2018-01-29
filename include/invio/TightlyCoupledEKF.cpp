@@ -96,6 +96,8 @@ void TightlyCoupledEKF::addNewFeatures(std::vector<Eigen::Vector2f> new_homogeno
 void TightlyCoupledEKF::process(float dt){
 	Eigen::SparseMatrix<float> F = this->numericallyLinearizeProcess(this->base_mu, this->features, dt); // compute the jacobian of the process numerically
 
+	ROS_DEBUG_STREAM("F rows: " << F.rows() << " F nnz: " << F.nonZeros());
+
 	// process and update the feature vector because it depends on the base mu
 	for(auto& e : this->features){
 		e.setMu(this->convolveFeature(this->base_mu, e.getMu(), dt));
@@ -110,6 +112,9 @@ void TightlyCoupledEKF::process(float dt){
 	// update the Sigma
 	this->Sigma = F * this->Sigma * F.transpose();
 	this->Sigma += this->generateProcessNoise(dt);
+
+	//prune the non zeros
+	this->Sigma.prune(SPARSE_THRESH, SPARSE_EPS);
 
 	ROS_DEBUG_STREAM("tc_ekf.Sigma (post process) rows: " << this->Sigma.rows() << " sigma nnz: " << this->Sigma.nonZeros());
 	ROS_DEBUG("finish process");
@@ -571,7 +576,7 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	Eigen::SimplicialLDLT<Eigen::SparseMatrix<float>> solver;
 	solver.compute(S.transpose());
 	ROS_ERROR_COND(solver.info() == Eigen::NumericalIssue, "there was a problem decomposing S... maybe it was not positive semi definite");
-	K = solver.solve((Sigma * H.transpose()).transpose().toDense()).transpose().sparseView();
+	K = solver.solve((Sigma * H.transpose()).transpose().toDense()).transpose().sparseView(SPARSE_THRESH, SPARSE_EPS);
 
 
 	ROS_DEBUG_STREAM("solved for K");
@@ -580,6 +585,10 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	Eigen::SparseMatrix<float> I_KH(Sigma.rows(), Sigma.rows());
 	I_KH.setIdentity();
 	I_KH -= K*H;
+
+	// prune I_KH
+	I_KH.prune(SPARSE_THRESH, SPARSE_EPS);
+
 
 	this->Sigma = I_KH * Sigma * I_KH.transpose(); // update the covariance matrix
 	Eigen::SparseMatrix<float> estimate_noise = K * R * K.transpose();
@@ -611,6 +620,8 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 
 	ROS_DEBUG("set mu");
 
+	//prune the non zeros
+	this->Sigma.prune(SPARSE_THRESH, SPARSE_EPS);
 	ROS_DEBUG_STREAM("tc_ekf.Sigma (post update) rows: " << this->Sigma.rows() << " sigma nnz: " << this->Sigma.nonZeros());
 
 }

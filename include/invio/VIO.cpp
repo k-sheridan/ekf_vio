@@ -451,7 +451,7 @@ void VIO::publishOdometry(Frame& cf)
 	br.sendTransform(tf::StampedTransform(currentPose, cf.t, WORLD_FRAME, ODOM_FRAME));
 
 
-	msg.child_frame_id = BASE_FRAME;
+	msg.child_frame_id = CAMERA_FRAME;
 	msg.header.frame_id = WORLD_FRAME;
 	msg.twist.twist.angular.x = this->tc_ekf.base_mu(10);
 	msg.twist.twist.angular.y = this->tc_ekf.base_mu(11);

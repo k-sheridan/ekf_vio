@@ -10,6 +10,8 @@
 
 // x, y, z, qw, qx, qy, qz, b_dx, b_dy, b_dz, b_wx, b_wy, b_wz, b_ax, b_ay, b_az, baccx, baccy, baccz, bgyrx, bgyry, bgyrz
 #define BASE_STATE_SIZE 22
+#define SPARSE_THRESH 1e-8
+#define SPARSE_EPS 1e-5
 
 #include <Feature.h>
 
