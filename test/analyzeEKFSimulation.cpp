@@ -48,7 +48,8 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 
 		//tc_ekf.fixSigma();
 		if(print){
-			ROS_DEBUG_STREAM("post process sigma diag: " << tc_ekf.Sigma.toDense().diagonal().transpose());
+			//ROS_DEBUG_STREAM("post process sigma diag: " << tc_ekf.Sigma.toDense().diagonal().transpose());
+			ROS_DEBUG_STREAM("tc_ekf.Sigma rows: " << tc_ekf.Sigma.rows() << " sigma nnz: " << tc_ekf.Sigma.nonZeros());
 		}
 		tc_ekf.checkSigma();
 
@@ -87,8 +88,8 @@ void simulateAndVisualizeEKF(int feature_count, float depth_sigma, float depth_m
 		//tc_ekf.fixSigma();
 		if(print){
 			ROS_DEBUG_STREAM("base_mu: " << tc_ekf.base_mu.transpose());
-			int i = 0;
-			for(auto e : tc_ekf.features){ROS_DEBUG_STREAM("feature mu: " << e.getMu().transpose() << " depth var: " << tc_ekf.getFeatureDepthVariance(i)); i++;}
+			//int i = 0;
+			//for(auto e : tc_ekf.features){ROS_DEBUG_STREAM("feature mu: " << e.getMu().transpose() << " depth var: " << tc_ekf.getFeatureDepthVariance(i)); i++;}
 			//ROS_DEBUG_STREAM("sigma: " << tc_ekf.Sigma.toDense().diagonal().transpose());
 		}
 		tc_ekf.checkSigma();
@@ -238,7 +239,11 @@ int main(int argc, char **argv)
 	// start adding depth errors
 	simulateAndVisualizeEKF(30, 0.01, 0.5, Eigen::Vector3f(0, 0, -0.1), Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0, 0.1), 0.05, 5, false);
 
-	simulateAndVisualizeEKF(30, 0.01, 0.5, Eigen::Vector3f(-0.1, 0, -0.1), Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0.1, 0), 0.05, 5, true);
+	simulateAndVisualizeEKF(30, 0.01, 0.5, Eigen::Vector3f(-0.1, 0, -0.1), Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0.1, 0), 0.05, 5, false);
+
+	simulateAndVisualizeEKF(100, 0.01, 0.5, Eigen::Vector3f(-0.1, 0, -0.1), Eigen::Vector3f(0, 0, 0), Eigen::Vector3f(0, 0.1, 0), 0.05, 5, true);
+
+
 
 	return 0;
 }

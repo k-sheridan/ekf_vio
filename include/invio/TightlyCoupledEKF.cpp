@@ -104,9 +104,15 @@ void TightlyCoupledEKF::process(float dt){
 	// process the base mu
 	this->base_mu = this->convolveBaseState(this->base_mu, dt);
 
+	ROS_DEBUG_STREAM("tc_ekf.Sigma (pre process) rows: " << this->Sigma.rows() << " sigma nnz: " << this->Sigma.nonZeros());
+
+	ROS_DEBUG("start process");
 	// update the Sigma
 	this->Sigma = F * this->Sigma * F.transpose();
 	this->Sigma += this->generateProcessNoise(dt);
+
+	ROS_DEBUG_STREAM("tc_ekf.Sigma (post process) rows: " << this->Sigma.rows() << " sigma nnz: " << this->Sigma.nonZeros());
+	ROS_DEBUG("finish process");
 }
 
 Eigen::SparseMatrix<float> TightlyCoupledEKF::generateProcessNoise(float dt){
@@ -309,7 +315,7 @@ Eigen::SparseMatrix<float> TightlyCoupledEKF::numericallyLinearizeProcess(Eigen:
 
 	}
 
-	F.finalize();
+	//F.finalize();
 	return F;
 }
 
@@ -465,13 +471,15 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	//ROS_DEBUG_STREAM(measured_positions.size() <<" , "<< estimated_covariance.size() <<" , "<< pass.size() <<" , "<< this->features.size());
 	ROS_ASSERT(measured_positions.size() == estimated_covariance.size() && pass.size() == this->features.size() && estimated_covariance.size() == pass.size()); // make sure that there are enough features
 
+	ROS_DEBUG_STREAM("tc_ekf.Sigma (pre update) rows: " << this->Sigma.rows() << " sigma nnz: " << this->Sigma.nonZeros());
+
 	if(!pass.size()){
 		ROS_ERROR("no measurements to update state with!");
 	}
 
 	Eigen::SparseMatrix<float> H = this->formFeatureMeasurementMap(pass); // create the mapping between the state and measurement dynamically
 
-	//ROS_DEBUG_STREAM("H rows: " << H.rows() << " H cols: " << H.cols());
+	ROS_DEBUG_STREAM("H rows: " << H.rows() << " H cols: " << H.cols());
 
 	Eigen::SparseMatrix<float> R(H.rows(), H.rows()); // this will store the measurement uncertainty
 	Eigen::VectorXf z(H.rows()); // this stores the measured metric feature positions
@@ -480,7 +488,7 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	//reserve the R matrix memory
 	R.reserve(H.rows() * 2);
 
-	//ROS_DEBUG("start loading vectors");
+	ROS_DEBUG("start loading vectors");
 
 	//setup the base_mu
 	for(int i = 0; i < base_mu.size(); i++){mu(i) = base_mu(i);}
@@ -526,7 +534,7 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 		i++;
 	}
 
-	//ROS_DEBUG("start update");
+	ROS_DEBUG("start update");
 
 	//finally update using this procedure (ensures no issues due to rounding errors)
 	//y = z - H*mu
@@ -540,13 +548,13 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	Eigen::VectorXf y = z;
 	y.noalias() -= H*mu;
 
-	//ROS_DEBUG("computed residual");
+	ROS_DEBUG("computed residual");
 
 	Eigen::SparseMatrix<float> S(H.rows(), H.rows());
 	S = H * Sigma * H.transpose();
 	S += R;
 
-	//ROS_DEBUG("created S");
+	ROS_DEBUG("created S");
 
 	//ROS_DEBUG_STREAM("S_dense: " << S_dense);
 
@@ -566,7 +574,7 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	K = solver.solve((Sigma * H.transpose()).transpose().toDense()).transpose().sparseView();
 
 
-	//ROS_DEBUG_STREAM("solved for K");
+	ROS_DEBUG_STREAM("solved for K");
 	//ROS_DEBUG_STREAM("K: " << K);
 
 	Eigen::SparseMatrix<float> I_KH(Sigma.rows(), Sigma.rows());
@@ -577,11 +585,11 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 	Eigen::SparseMatrix<float> estimate_noise = K * R * K.transpose();
 	this->Sigma += estimate_noise;
 
-	//ROS_DEBUG("updated sigma");
+	ROS_DEBUG("updated sigma");
 
 	mu += K*y; // shift the mu with the kalman gain and residual
 
-	//ROS_DEBUG("updated mu");
+	ROS_DEBUG("updated mu");
 
 	//renormalize the quaternion
 	float quat_norm = sqrt(mu(3)*mu(3) + mu(4)*mu(4) + mu(5)*mu(5) + mu(6)*mu(6));
@@ -601,7 +609,9 @@ void TightlyCoupledEKF::updateWithFeaturePositions(std::vector<Eigen::Vector2f> 
 		mu_index++;
 	}
 
-	//ROS_DEBUG("set mu");
+	ROS_DEBUG("set mu");
+
+	ROS_DEBUG_STREAM("tc_ekf.Sigma (post update) rows: " << this->Sigma.rows() << " sigma nnz: " << this->Sigma.nonZeros());
 
 }
 

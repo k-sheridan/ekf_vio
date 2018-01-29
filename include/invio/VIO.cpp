@@ -145,32 +145,26 @@ void VIO::addFrame(Frame f) {
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
+		// set the time if this is the first message
+		if(this->tc_ekf.t == ros::Time(0)){
+			this->tc_ekf.t = f.t;
+		}
+
 		this->replenishFeatures((this->frame_buffer.front()));
 	} else // we have atleast 1 frame in the buffer
 	{
 
 		this->frame_buffer.push_front(f); // add the frame to the front of the buffer
 
-		// make the final determination whether or not we are initialized
-		if(!this->initialized)
+		//set the predicted pose of the current frame
+		float dt = (f.t - this->tc_ekf.t).toSec();
+
+		ROS_ASSERT(dt >= 0);
+		this->tc_ekf.process(dt);
+		this->tc_ekf.t = f.t;
+
+		if(this->tc_ekf.features.size()) // run update if we have enough features
 		{
-			ROS_ASSERT(START_FEATURE_COUNT >= 0);
-			if(this->tc_ekf.features.size() >= (unsigned)START_FEATURE_COUNT)
-			{
-				this->initialized = true; // ready to run motion estimation
-			}
-			else
-			{
-				ROS_WARN_STREAM("it is taking too long to reach " << START_FEATURE_COUNT << " features. lower tweak the feature detection parameters");
-			}
-		}
-
-
-		if(this->initialized) // run moba and depth update if initialized
-		{
-			//set the predicted pose of the current frame
-
-
 			// attempt to flow features into the next frame if there are features
 			this->updateStateWithNewImage(this->frame_buffer.at(1), this->frame_buffer.front());
 		}
@@ -397,11 +391,11 @@ void VIO::publishInsight(Frame& f)
 			cv::drawMarker(img, e.getPixel(f), cv::Scalar(0, 255, 0), cv::MARKER_SQUARE, 22, 1);
 
 			//ROS_DEBUG_STREAM("plotting covariance in pixels: " << this->tc_ekf.getMetric2PixelMap(f.K)*this->tc_ekf.getFeatureHomogenousCovariance(i)*this->tc_ekf.getMetric2PixelMap(f.K).transpose());
-			Eigen::SparseMatrix<float> J = this->tc_ekf.getMetric2PixelMap(f.K);
+			//Eigen::SparseMatrix<float> J = this->tc_ekf.getMetric2PixelMap(f.K);
 
-			cv::RotatedRect rr = this->getErrorEllipse(0.99, e.getPixel(f), J*this->tc_ekf.getFeatureHomogenousCovariance(i)*J);
+			//cv::RotatedRect rr = this->getErrorEllipse(0.99, e.getPixel(f), J*this->tc_ekf.getFeatureHomogenousCovariance(i)*J);
 			//ROS_DEBUG_STREAM(rr.size);
-			cv::ellipse(img, rr, cv::Scalar(255, 255, 0), 1);
+			//cv::ellipse(img, rr, cv::Scalar(255, 255, 0), 1);
 		}
 		// next feature
 		i++;
@@ -452,50 +446,33 @@ void VIO::publishOdometry(Frame& cf)
 	nav_msgs::Odometry msg;
 	static tf::TransformBroadcaster br;
 
-	tf::Transform currentPose = (c2b);
+	tf::Transform currentPose = tf::Transform(tf::Quaternion(this->tc_ekf.base_mu(4), this->tc_ekf.base_mu(5), this->tc_ekf.base_mu(6), this->tc_ekf.base_mu(3)), tf::Vector3(this->tc_ekf.base_mu(0), this->tc_ekf.base_mu(1), this->tc_ekf.base_mu(2)));
 
 	br.sendTransform(tf::StampedTransform(currentPose, cf.t, WORLD_FRAME, ODOM_FRAME));
 
-	/*tf::Transform delta = (c2b * Frame::sophus2tf(last_f.getPose())).inverse() * currentPose;
-
-	double dt = (new_f.t - last_f.t).toSec();
-
-	if(dt == 0)
-	{
-		ROS_WARN_STREAM("dt bewteen frames is zero skipping odom derivation!");
-		return;
-	}
-
-	double r, p, y;
-	delta.getBasis().getRPY(r, p, y);
 
 	msg.child_frame_id = BASE_FRAME;
 	msg.header.frame_id = WORLD_FRAME;
-	msg.twist.twist.angular.x = r / dt;
-	msg.twist.twist.angular.y = p / dt;
-	msg.twist.twist.angular.z = y / dt;
+	msg.twist.twist.angular.x = this->tc_ekf.base_mu(10);
+	msg.twist.twist.angular.y = this->tc_ekf.base_mu(11);
+	msg.twist.twist.angular.z = this->tc_ekf.base_mu(12);
 
-	msg.twist.twist.linear.x = delta.getOrigin().x() / dt;
-	msg.twist.twist.linear.y = delta.getOrigin().y() / dt;
-	msg.twist.twist.linear.z = delta.getOrigin().z() / dt;
+	msg.twist.twist.linear.x = this->tc_ekf.base_mu(7);
+	msg.twist.twist.linear.y = this->tc_ekf.base_mu(8);
+	msg.twist.twist.linear.z = this->tc_ekf.base_mu(9);
 
-	//set the velocities globally
-	this->velocity_set = true;
-	this->velocity = Eigen::Vector3d(msg.twist.twist.linear.x, msg.twist.twist.linear.y, msg.twist.twist.linear.z);
-	this->omega = Eigen::Vector3d(msg.twist.twist.angular.x, msg.twist.twist.angular.y, msg.twist.twist.angular.z);
+	msg.pose.pose.orientation.w = this->tc_ekf.base_mu(3);
+	msg.pose.pose.orientation.x = this->tc_ekf.base_mu(4);
+	msg.pose.pose.orientation.y = this->tc_ekf.base_mu(5);
+	msg.pose.pose.orientation.z = this->tc_ekf.base_mu(6);
 
-	msg.pose.pose.orientation.w = new_f.getPose().unit_quaternion().w();
-	msg.pose.pose.orientation.x = new_f.getPose().unit_quaternion().x();
-	msg.pose.pose.orientation.y = new_f.getPose().unit_quaternion().y();
-	msg.pose.pose.orientation.z = new_f.getPose().unit_quaternion().z();
-
-	msg.pose.pose.position.x = new_f.getPose().translation().x();
-	msg.pose.pose.position.y = new_f.getPose().translation().y();
-	msg.pose.pose.position.z = new_f.getPose().translation().z();
+	msg.pose.pose.position.x = this->tc_ekf.base_mu(0);
+	msg.pose.pose.position.y = this->tc_ekf.base_mu(1);
+	msg.pose.pose.position.z = this->tc_ekf.base_mu(2);
 
 	//TODO add convariance computation
 
-	this->odom_pub.publish(msg); // publish*/
+	this->odom_pub.publish(msg); // publish
 
 }
 
@@ -511,32 +488,30 @@ void VIO::publishPoints(Frame& f)
 	msg.header.stamp = f.t;
 	msg.header.frame_id = ODOM_FRAME;
 
-	/*
-	for(auto e : f.features)
+
+	for(auto e : tc_ekf.features)
 	{
-		if(!e.obsolete)
-		{
-			if(!e.getPoint()->isImmature())
-			{
-				Eigen::Vector3d p_in_f = f.getPose_inv() * e.getPoint()->getWorldCoordinate();
 
-				geometry_msgs::Point32 pt;
+		Eigen::Vector3f p_in_f = e.getMu();
 
-				pt.x = p_in_f.x();
-				pt.y = p_in_f.y();
-				pt.z = p_in_f.z();
+		p_in_f(0) *= p_in_f(2);
+		p_in_f(1) *= p_in_f(2);
 
-				ch.values.push_back(f.img.at<uchar>(e.px));
+		geometry_msgs::Point32 pt;
 
-				msg.points.push_back(pt);
-			}
-		}
+		pt.x = p_in_f.x();
+		pt.y = p_in_f.y();
+		pt.z = p_in_f.z();
+
+		ch.values.push_back(f.img.at<uchar>(e.getPixel(f)));
+
+		msg.points.push_back(pt);
+
 	}
 
 	msg.channels.push_back(ch);
 
 	this->points_pub.publish(msg);
-	 */
 
 }
 

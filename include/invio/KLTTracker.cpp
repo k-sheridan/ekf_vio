@@ -101,7 +101,7 @@ Eigen::Matrix2f KLTTracker::estimateUncertainty(const Frame& cf, cv::Point2f mu)
 {
 	ROS_ASSERT(cf.img.rows || mu.x);
 	Eigen::Matrix2f A;
-	A << 20, 0, 0, 20;
+	A << 0.00001, 0, 0, 0.00001;
 	return A;
 }
 
