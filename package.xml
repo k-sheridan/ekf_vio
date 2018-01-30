@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>invio</name>
+  <name>monoEKFSLAM</name>
   <version>0.0.1</version>
-  <description>Monocular Indirect Visual Inertial Odometry Algorithm</description>
+  <description>Monocular Indirect Visual EKF SLAM</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag --> 
   <!-- Example:  -->

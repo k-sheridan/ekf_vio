@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(invio)
+project(monoEKFSLAM)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
  add_compile_options(-std=c++11)
@@ -38,7 +38,7 @@ find_package(sophus REQUIRED)
 include_directories(
 	${OpenCV_INCLUDE_DIRS}
 	include
-	include/invio
+	include/monoEKFSLAM
 	/usr/include/eigen3
 	${catkin_INCLUDE_DIRS}
 	${Eigen_INCLUDE_DIRS}
@@ -55,36 +55,36 @@ catkin_package(
 )
 
 
-add_library(vioParams include/invio/Params.cpp)
+add_library(vioParams include/monoEKFSLAM/Params.cpp)
 set_target_properties(vioParams PROPERTIES LINKER_LANGUAGE CXX)
 target_link_libraries(vioParams ${catkin_LIBRARIES})
 
-add_library(vioFeature include/invio/Feature.cpp)
+add_library(vioFeature include/monoEKFSLAM/Feature.cpp)
 target_link_libraries(vioFeature ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams)
 
-add_library(vioFrame include/invio/Frame.cpp)
+add_library(vioFrame include/monoEKFSLAM/Frame.cpp)
 target_link_libraries(vioFrame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature)
 
-add_library(vio_tc_ekf include/invio/TightlyCoupledEKF.cpp)
+add_library(vio_tc_ekf include/monoEKFSLAM/TightlyCoupledEKF.cpp)
 target_link_libraries(vio_tc_ekf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature)
 
-add_library(klt_tracker include/invio/KLTTracker.cpp)
+add_library(klt_tracker include/monoEKFSLAM/KLTTracker.cpp)
 target_link_libraries(klt_tracker ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vio_tc_ekf vioParams vioFeature vioFrame)
 
-add_library(full_vio include/invio/VIO.h include/invio/VIO.cpp)
+add_library(full_vio include/monoEKFSLAM/VIO.h include/monoEKFSLAM/VIO.cpp)
 target_link_libraries(full_vio ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vioParams vioFeature vioFrame vio_tc_ekf klt_tracker)
 
-add_executable(invio_node src/invio_node.cpp)
-target_link_libraries(invio_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
+add_executable(monoekfslam_node src/invio_node.cpp)
+target_link_libraries(monoekfslam_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
 
-add_executable(invio_jacobian_test test/jacobian_test.cpp)
-target_link_libraries(invio_jacobian_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
+add_executable(jacobian_test test/jacobian_test.cpp)
+target_link_libraries(jacobian_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
 
-add_executable(invio_ekf_test test/test_ekf.cpp)
-target_link_libraries(invio_ekf_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
+add_executable(ekf_test test/test_ekf.cpp)
+target_link_libraries(ekf_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
 
-add_executable(invio_klt_test test/klt_test.cpp)
-target_link_libraries(invio_klt_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
+add_executable(klt_test test/klt_test.cpp)
+target_link_libraries(klt_test ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
 
-add_executable(invio_analyze_ekf test/analyzeEKFSimulation.cpp)
-target_link_libraries(invio_analyze_ekf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)
+add_executable(analyze_ekf test/analyzeEKFSimulation.cpp)
+target_link_libraries(analyze_ekf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} full_vio)

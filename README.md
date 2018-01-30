@@ -1,5 +1,4 @@
-# invio (still under heavy development)
-## INdirect VIsual Inertial Odometry.
+## Monocular Visual EKF SLAM.
 Developed by Kevin Sheridan, Purdue University.
 
 ## Purpose and Intended Use
@@ -10,9 +9,7 @@ invio was developed for ROS and uses a few ROS tools like tf and the rosconsole.
 
 This algorithm is intended to be used with a downward facing, **high framerate (>30fps)**, **high horizontal field of view (>90 degrees)**, **global shutter** camera, but it should still work with most other configurations. It is important that the camera is facing a textured well lit planar surface when initializing. I have been trying to get good results with forward facing results, and in some cases it is working well.
 
-The best scenario for invio is the bottom facing camera scenario. In this scenario there is very little occlusions and a lot of parallax for depth estimation. The forward facing scenario is the most difficult one because there are many occlusions and sometimes very little parallax to determine the depth of pixels accurately. Currently the forward facing scenario is working with most but not all of my datasets.
-
-
+The best scenario for invio is the bottom facing camera scenario. In this scenario there is very little occlusions and a lot of parallax for depth estimation. The forward facing scenario is the most difficult one because there are many occlusions and sometimes very little parallax to determine the depth o
 ## Performance
 
 videos coming soon!
@@ -59,6 +56,4 @@ You must provide a rectified mono image with a corresponding camera info on topi
 - [x] remove old frames from the buffer safely preventing the algorithm from using an extremely high amount of memory
 - [ ] integrate imu readings
 - [ ] determine fast and accurate params and increase speed
-- [ ] add third party initialization through rosservice
-- [ ] add realtime reinitialization feature
-- [ ] add more initialization methods
+- [ ] add third party init
