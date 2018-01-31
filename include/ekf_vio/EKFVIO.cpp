@@ -5,9 +5,9 @@
  *      Author: kevin
  */
 
-#include "../invio/VIO.h"
+#include "../ekf_vio/VIO.h"
 
-VIO::VIO() {
+EKFVIO::EKFVIO() {
 
 	//set uninitialized
 	this->initialized = false;
@@ -110,11 +110,11 @@ VIO::VIO() {
 }
 
 
-void VIO::imu_callback(const sensor_msgs::ImuConstPtr& msg){
+void EKFVIO::imu_callback(const sensor_msgs::ImuConstPtr& msg){
 	ROS_DEBUG_STREAM("got imu message: " << msg->header.stamp);
 }
 
-void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
+void EKFVIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
 		const sensor_msgs::CameraInfoConstPtr& cam) {
 	static int dt_count = 1;
 	static double dt_sum = 0;
@@ -136,7 +136,7 @@ void VIO::camera_callback(const sensor_msgs::ImageConstPtr& img,
 	dt_count++;
 }
 
-void VIO::addFrame(Frame f) {
+void EKFVIO::addFrame(Frame f) {
 
 	if (this->frame_buffer.size() == 0) // if this is the first frame that we are receiving
 	{
@@ -195,7 +195,7 @@ void VIO::addFrame(Frame f) {
 	this->removeExcessFrames(this->frame_buffer);
 }
 
-void VIO::removeExcessFrames(std::deque<Frame>& buffer)
+void EKFVIO::removeExcessFrames(std::deque<Frame>& buffer)
 {
 	// remove the last element if the buffer is larger than the desired size
 	if(buffer.size() > (size_t)FRAME_BUFFER_SIZE)
@@ -204,7 +204,7 @@ void VIO::removeExcessFrames(std::deque<Frame>& buffer)
 	}
 }
 
-void VIO::updateStateWithNewImage(Frame& lf, Frame& cf){
+void EKFVIO::updateStateWithNewImage(Frame& lf, Frame& cf){
 
 	//create the containers for the results of the klt tracking
 	std::vector<Eigen::Vector2f> new_positions;
@@ -221,7 +221,7 @@ void VIO::updateStateWithNewImage(Frame& lf, Frame& cf){
 /*
  * get more features after updating the pose
  */
-void VIO::replenishFeatures(Frame& f) {
+void EKFVIO::replenishFeatures(Frame& f) {
 
 	//add more features if needed
 	cv::Mat img;
@@ -313,7 +313,7 @@ void VIO::replenishFeatures(Frame& f) {
 /*
  * covariance and mean must be in pixels
  */
-cv::RotatedRect VIO::getErrorEllipse(double chisquare_val, cv::Point2f mean, Eigen::Matrix2f eig_covmat){
+cv::RotatedRect EKFVIO::getErrorEllipse(double chisquare_val, cv::Point2f mean, Eigen::Matrix2f eig_covmat){
 
 	//Get the eigenvalues and eigenvectors
 	Eigen::EigenSolver<Eigen::Matrix2f> es;
@@ -441,7 +441,7 @@ void VIO::publishInsight(Frame& f)
 	ROS_DEBUG("end publish");
 }
 
-void VIO::publishOdometry(Frame& cf)
+void EKFVIO::publishOdometry(Frame& cf)
 {
 	nav_msgs::Odometry msg;
 	static tf::TransformBroadcaster br;
@@ -476,7 +476,7 @@ void VIO::publishOdometry(Frame& cf)
 
 }
 
-void VIO::publishPoints(Frame& f)
+void EKFVIO::publishPoints(Frame& f)
 {
 
 	sensor_msgs::PointCloud msg;

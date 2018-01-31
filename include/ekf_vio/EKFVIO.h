@@ -5,8 +5,8 @@
  *      Author: kevin
  */
 
-#ifndef PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIO_H_
-#define PAUVSI_VIO_INCLUDE_PAUVSI_VIO_VIO_H_
+#ifndef PAUVSI_EKFVIO_INCLUDE_EKFVIO_EKFVIO_H_
+#define PAUVSI_EKFVIO_INCLUDE_EKFVIO_EKFVIO_H_
 
 #include <ros/ros.h>
 
@@ -47,7 +47,7 @@
 
 #include <Eigen/Eigenvalues>
 
-class VIO {
+class EKFVIO {
 public:
 
 
@@ -77,7 +77,7 @@ public:
 
 	ros::Publisher insight_pub, insight_cinfo_pub, odom_pub, points_pub;
 
-	VIO();
+	EKFVIO();
 
 	void imu_callback(const sensor_msgs::ImuConstPtr& msg);
 

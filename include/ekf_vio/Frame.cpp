@@ -5,7 +5,7 @@
  *      Author: kevin
  */
 
-#include "../invio/Frame.h"
+#include "../ekf_vio/Frame.h"
 
 Frame::Frame() {
 

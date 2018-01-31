@@ -5,7 +5,7 @@
  *      Author: kevin
  */
 
-#include "../invio/Feature.h"
+#include "../ekf_vio/Feature.h"
 
 Feature::Feature() {
 
