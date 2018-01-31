@@ -9,11 +9,11 @@
 
 #include <ros/ros.h>
 
-#include "../include/invio/VIO.h"
+#include "../include/ekf_vio/EKFVIO.h"
 
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "invio_node"); // initializes ros
+	ros::init(argc, argv, "ekfvio_node"); // initializes ros
 
 	VIO vio; // create an instance of the visual inertial odometry algorithm
 

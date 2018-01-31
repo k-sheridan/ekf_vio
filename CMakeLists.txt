@@ -65,16 +65,16 @@ target_link_libraries(ekfvio_Feature ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${E
 add_library(ekfvio_Frame include/ekf_vio/Frame.cpp)
 target_link_libraries(ekfvio_Frame ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} ekfvio_Params ekfvio_Feature)
 
-add_library(vio_tc_ekf include/ekf_vio/TightlyCoupledEKF.cpp)
-target_link_libraries(vio_tc_ekf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} ekfvio_Params ekfvio_Feature)
+add_library(ekfvio_tc_ekf include/ekf_vio/TightlyCoupledEKF.cpp)
+target_link_libraries(ekfvio_tc_ekf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Eigen_LIBRARIES} ${sophus_LIBRARIES} ekfvio_Params ekfvio_Feature)
 
 add_library(ekfvio_klt_tracker include/ekf_vio/KLTTracker.cpp)
-target_link_libraries(ekfvio_klt_tracker ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} vio_tc_ekf ekfvio_Params ekfvio_Feature ekfvio_Frame)
+target_link_libraries(ekfvio_klt_tracker ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} ekfvio_tc_ekf ekfvio_Params ekfvio_Feature ekfvio_Frame)
 
 add_library(ekfvio_full include/ekf_vio/VIO.h include/ekf_vio/VIO.cpp)
-target_link_libraries(ekfvio_full ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} ekfvio_Params ekfvio_Feature ekfvio_Frame vio_tc_ekf ekfvio_klt_tracker)
+target_link_libraries(ekfvio_full ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} ekfvio_Params ekfvio_Feature ekfvio_Frame ekfvio_tc_ekf ekfvio_klt_tracker)
 
-add_executable(ekfvio_node src/invio_node.cpp)
+add_executable(ekfvio_node src/ekfvio_node.cpp)
 target_link_libraries(ekfvio_node ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} ekfvio_full)
 
 add_executable(ekfvio_jacobian_test test/jacobian_test.cpp)
