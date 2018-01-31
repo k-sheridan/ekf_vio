@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 
 #include "Params.h"
-#include "../include/invio/VIO.h"
+#include "../include/ekf_vio/EKFVIO.h"
 
 cv::RotatedRect getErrorEllipse(double chisquare_val, cv::Point2f mean, Eigen::Matrix2f eig_covmat);
 std::vector<Eigen::Vector2f>  generateFakeMeasurementsAndUpdateEKF(TightlyCoupledEKF& tc_ekf, std::vector<Eigen::Vector3f> point_pos, Eigen::Vector3f pos, Eigen::Quaternionf quat);

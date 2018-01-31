@@ -8,7 +8,7 @@
 
 #include <ros/ros.h>
 
-#include "../include/invio/VIO.h"
+#include "../include/ekf_vio/EKFVIO.h"
 #include "Params.h"
 
 int main(int argc, char **argv)

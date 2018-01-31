@@ -15,7 +15,7 @@ Feature::Feature(Eigen::Vector2f homogenous, float depth){
 	this->last_result_from_klt_tracker = homogenous;
 	this->mu(0) = homogenous.x();
 	this->mu(1) = homogenous.y();
-	this->mu(2) = depth;
+	this->mu(2) = 1.0/depth; // use an inverse depth parameterization
 	this->delete_flag = false;
 }
 

@@ -412,7 +412,7 @@ Eigen::Vector3f TightlyCoupledEKF::convolveFeature(Eigen::Matrix<float, BASE_STA
 	Eigen::Vector3f feature_pos = feature_state;
 
 	//ROS_DEBUG_STREAM("feature pos to convolve: " << feature_pos);
-
+	feature_pos(2) = 1.0/feature_pos(2); // bring the depth back form its inverse
 	feature_pos(0) = feature_pos(0)*feature_pos(2);
 	feature_pos(1) = feature_pos(1)*feature_pos(2);
 
@@ -452,6 +452,7 @@ Eigen::Vector3f TightlyCoupledEKF::convolveFeature(Eigen::Matrix<float, BASE_STA
 	//bring the point back to homogenous coordinates
 	feature_pos(0) /= feature_pos(2);
 	feature_pos(1) /= feature_pos(2);
+	feature_pos(2) = 1.0/feature_pos(2); // reinvert the feature 
 
 	//ROS_DEBUG_STREAM("convolved feature: " << feature_pos);
 

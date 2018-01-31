@@ -9,7 +9,7 @@
 #include <ros/ros.h>
 
 #include "Params.h"
-#include "../include/invio/VIO.h"
+#include "../include/ekf_vio/EKFVIO.h"
 
 
 int main(int argc, char **argv)

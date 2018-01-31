@@ -15,7 +15,7 @@ int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "ekfvio_node"); // initializes ros
 
-	VIO vio; // create an instance of the visual inertial odometry algorithm
+	EKFVIO vio; // create an instance of the visual inertial odometry algorithm
 
 	return 0;
 }

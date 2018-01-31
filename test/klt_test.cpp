@@ -10,7 +10,7 @@
 #include <ros/ros.h>
 #include <ros/package.h>
 
-#include "../include/invio/VIO.h"
+#include "../include/ekf_vio/EKFVIO.h"
 #include <KLTTracker.h>
 
 

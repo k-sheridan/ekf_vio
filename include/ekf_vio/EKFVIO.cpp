@@ -5,7 +5,7 @@
  *      Author: kevin
  */
 
-#include "../ekf_vio/VIO.h"
+#include "../ekf_vio/EKFVIO.h"
 
 EKFVIO::EKFVIO() {
 
@@ -68,7 +68,7 @@ EKFVIO::EKFVIO() {
 
 	image_transport::ImageTransport it(nh);
 	image_transport::CameraSubscriber bottom_cam_sub = it.subscribeCamera(
-			CAMERA_TOPIC, 10, &VIO::camera_callback, this);
+			CAMERA_TOPIC, 10, &EKFVIO::camera_callback, this);
 
 	if(PUBLISH_INSIGHT){
 		this->insight_pub = nh.advertise<sensor_msgs::Image>(INSIGHT_TOPIC, 1);
@@ -77,7 +77,7 @@ EKFVIO::EKFVIO() {
 
 	//set up IMU sub
 	if(USE_IMU){
-		this->imu_sub = nh.subscribe(IMU_TOPIC, 1000, &VIO::imu_callback, this);
+		this->imu_sub = nh.subscribe(IMU_TOPIC, 1000, &EKFVIO::imu_callback, this);
 	}
 
 	this->odom_pub = nh.advertise<nav_msgs::Odometry>(ODOM_TOPIC, 1);
@@ -376,7 +376,7 @@ cv::RotatedRect EKFVIO::getErrorEllipse(double chisquare_val, cv::Point2f mean, 
 
 }
 
-void VIO::publishInsight(Frame& f)
+void EKFVIO::publishInsight(Frame& f)
 {
 	cv::Mat img;
 
@@ -493,6 +493,8 @@ void EKFVIO::publishPoints(Frame& f)
 	{
 
 		Eigen::Vector3f p_in_f = e.getMu();
+		
+		p_in_f(2) = 1.0/p_in_f(2); // invert the depth back
 
 		p_in_f(0) *= p_in_f(2);
 		p_in_f(1) *= p_in_f(2);

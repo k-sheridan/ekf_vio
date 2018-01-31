@@ -71,7 +71,7 @@ target_link_libraries(ekfvio_tc_ekf ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${Ei
 add_library(ekfvio_klt_tracker include/ekf_vio/KLTTracker.cpp)
 target_link_libraries(ekfvio_klt_tracker ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} ekfvio_tc_ekf ekfvio_Params ekfvio_Feature ekfvio_Frame)
 
-add_library(ekfvio_full include/ekf_vio/VIO.h include/ekf_vio/VIO.cpp)
+add_library(ekfvio_full include/ekf_vio/EKFVIO.h include/ekf_vio/EKFVIO.cpp)
 target_link_libraries(ekfvio_full ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${sophus_LIBRARIES} ekfvio_Params ekfvio_Feature ekfvio_Frame ekfvio_tc_ekf ekfvio_klt_tracker)
 
 add_executable(ekfvio_node src/ekfvio_node.cpp)
